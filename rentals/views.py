@@ -2,8 +2,11 @@ import datetime
 
 from django.contrib import messages
 from django.contrib.auth.decorators import login_required
-from django.db.models import Sum
+from django.db.models import Max, Sum
+from django.http import JsonResponse
 from django.shortcuts import get_object_or_404, redirect, render
+from django.template.loader import render_to_string
+from django.urls import reverse
 from django.utils import timezone
 from django.utils.http import url_has_allowed_host_and_scheme
 from django.views.decorators.http import require_POST
@@ -25,22 +28,24 @@ def home(request):
     return render(request, 'home.html')
 
 
-@login_required
-def dashboard(request):
-    user = request.user
+def dashboard_numbers(user):
+    """Everything the dashboard's live areas show (summary numbers, arrears, recent payments)."""
     today = datetime.date.today()
     month_start = today.replace(day=1)
-
     leases = (
         Lease.objects.filter(unit__property__owner=user, is_active=True)
         .select_related('tenant', 'unit__property')
     )
     lease_rows = [(lease, lease.balance) for lease in leases]
     arrears = [(lease, bal) for lease, bal in lease_rows if bal > 0]
-
-    units = Unit.objects.filter(property__owner=user)
+    unit_count = Unit.objects.filter(property__owner=user).count()
     collected = (
         Payment.objects.filter(lease__unit__property__owner=user, paid_at__date__gte=month_start)
+        .aggregate(total=Sum('amount'))['total']
+        or 0
+    )
+    billed = (
+        RentCharge.objects.filter(lease__unit__property__owner=user, period=month_start)
         .aggregate(total=Sum('amount'))['total']
         or 0
     )
@@ -50,20 +55,9 @@ def dashboard(request):
         .select_related('unit__property')
         .order_by('-created_at')
     )
-
-    billed = (
-        RentCharge.objects.filter(lease__unit__property__owner=user, period=month_start)
-        .aggregate(total=Sum('amount'))['total']
-        or 0
-    )
-    unit_count = units.count()
-    steps = setup_steps(user)
-    hour = timezone.localtime().hour
-    greeting = 'Good morning' if hour < 12 else 'Good afternoon' if hour < 17 else 'Good evening'
-
-    return render(request, 'rentals/dashboard.html', {
+    return {
         'today': today,
-        'greeting': greeting,
+        'open_requests': open_requests,
         'open_count': open_requests.count(),
         'urgent_count': open_requests.filter(
             priority__in=[MaintenanceRequest.Priority.HIGH, MaintenanceRequest.Priority.URGENT]
@@ -76,16 +70,70 @@ def dashboard(request):
         'collected_this_month': collected,
         'total_arrears': sum(bal for _, bal in arrears),
         'arrears': sorted(arrears, key=lambda row: row[1], reverse=True),
-        'open_requests': open_requests[:8],
+        'recent_payments': Payment.objects.filter(lease__unit__property__owner=user)
+        .select_related('lease__tenant', 'lease__unit')[:8],
+    }
+
+
+@login_required
+def dashboard(request):
+    user = request.user
+    numbers = dashboard_numbers(user)
+    steps = setup_steps(user)
+    hour = timezone.localtime().hour
+    greeting = 'Good morning' if hour < 12 else 'Good afternoon' if hour < 17 else 'Good evening'
+    return render(request, 'rentals/dashboard.html', {
+        **numbers,
+        'greeting': greeting,
+        'open_requests': numbers['open_requests'][:8],
         'unmatched_c2b': C2BPayment.objects.filter(account__owner=user, payment__isnull=True).count(),
         'mpesa_account': MpesaAccount.objects.filter(owner=user).first(),
         'setup_incomplete': not all(step['done'] for step in steps),
         'setup_done': sum(step['done'] for step in steps),
         'setup_total': len(steps),
         'setup_next': next((step for step in steps if not step['done']), None),
-        'recent_payments': Payment.objects.filter(lease__unit__property__owner=user)
-        .select_related('lease__tenant', 'lease__unit')[:8],
     })
+
+
+def latest_payment_id(user):
+    return Payment.objects.filter(lease__unit__property__owner=user).aggregate(m=Max('id'))['m'] or 0
+
+
+@login_required
+def live(request):
+    """Background check from the browser: payments newer than `since`, and fresh dashboard parts.
+
+    Polling every few seconds mustn't count as activity, or idle sessions would never expire;
+    request.passive_session tells the session middleware not to extend the session.
+    """
+    request.passive_session = True
+    user = request.user
+    try:
+        since = int(request.GET.get('since', '0'))
+    except ValueError:
+        since = 0
+    new = list(
+        Payment.objects.filter(lease__unit__property__owner=user, pk__gt=since)
+        .select_related('lease__tenant', 'lease__unit').order_by('pk')[:20]
+    )
+    data = {
+        'cursor': max([since, latest_payment_id(user)]),
+        'payments': [{
+            'id': p.pk,
+            'amount': f'KES {p.amount:,.0f}',
+            'tenant': p.lease.tenant.full_name,
+            'unit': p.lease.unit.label,
+            'method': p.get_method_display(),
+            'url': reverse('rentals:lease_detail', args=[p.lease_id]),
+        } for p in new],
+    }
+    if request.GET.get('fragments'):
+        context = {**dashboard_numbers(user), 'request': request}
+        data['fragments'] = {
+            name: render_to_string(f'rentals/dashboard/_{name}.html', context, request=request)
+            for name in ('kpis', 'arrears', 'recent')
+        }
+    return JsonResponse(data)
 
 
 def statement(lease, limit=24):

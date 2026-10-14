@@ -40,6 +40,8 @@ JOBS = [
     Job('backup_db', 'backup_db', daily_at=datetime.time(2, 0)),
     Job('clearsessions', 'clearsessions', daily_at=datetime.time(3, 0)),
     Job('generate_rent_charges', 'generate_rent_charges', daily_at=datetime.time(6, 0)),
+    # Daily, but each landlord gets last month's report card once (normally on the 1st).
+    Job('send_report_cards', 'send_report_cards', daily_at=datetime.time(7, 0)),
     Job('send_rent_reminders', 'send_rent_reminders', daily_at=datetime.time(9, 0)),
 ]
 

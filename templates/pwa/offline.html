@@ -1,0 +1,12 @@
+{% extends 'base.html' %}
+{% block title %}Offline · {{ APP_NAME }}{% endblock %}
+{% block body %}
+<main>
+  <div class="card auth-card" style="text-align:center">
+    <div class="auth-logo">{% include 'includes/logo_full.html' %}</div>
+    <h1>You're offline</h1>
+    <p class="muted">Check your internet or mobile data, then try again. Nothing is lost: your records are safe on the server.</p>
+    <button type="button" class="btn btn-primary btn-block btn-lg" data-reload>Try again</button>
+  </div>
+</main>
+{% endblock %}

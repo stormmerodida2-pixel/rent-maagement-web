@@ -220,6 +220,12 @@ docker compose exec web python manage.py check --deploy
 - **Monitoring:** point an uptime monitor at `/healthz/`. It returns 503 if the database or cache is down.
 - After a few days of confirmed HTTPS, raise `DJANGO_HSTS_SECONDS` to `31536000`.
 
+### Live payments, monthly report cards, install on phones
+
+- **Live "just paid" alerts:** every landlord page checks for new payments every 15 seconds (every minute in a background tab) and shows a notice that opens the lease. More than two at once collapse into "+N more". **Turn on payment alerts** on the dashboard enables system notifications while the app is in the background. The dashboard's numbers, arrears and recent payments refresh themselves. These checks are marked as passive, so they never stop an idle session from logging out.
+- **Monthly report card:** on the 1st, at 07:00, landlords get last month's results by email: collected against billed, arrears, the tenants owing most, occupancy and repairs, compared with the month before. An optional short SMS goes to the phone number set under **Notifications**. It's sent once per landlord per month (a missed day catches up), skips months with no activity, and only emails confirmed addresses. **Send me last month's report now** previews it.
+- **Install on phones (PWA):** landlords get an **Install app** button in the menu, and the app opens on the dashboard. Tenants can install their own rent page, which opens straight to it. iPhones show "Share → Add to Home Screen" instructions. The service worker only caches static files and an offline page; pages and data are never stored on the device. Installing needs HTTPS, which the production setup provides; `localhost` also works for testing.
+
 ### Search engines
 
 - **`/sitemap.xml`** lists only the public pages (home, sign-up, login, contact), always with the domain from `SITE_URL`.

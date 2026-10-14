@@ -1,0 +1,18 @@
+{% autoescape off %}Hi {{ user.first_name|default:user.username }},
+
+Here's how your rentals did in {{ s.month|date:"F Y" }}.
+
+Collected:   KES {{ s.collected|floatformat:0 }}{% if s.billed %} of KES {{ s.billed|floatformat:0 }} billed{% if s.rate is not None %} ({{ s.rate }}%){% endif %}{% endif %}
+vs {{ s.month|date:"F" }}'s previous month: {% if s.change >= 0 %}up{% else %}down{% endif %} KES {% if s.change >= 0 %}{{ s.change|floatformat:0 }}{% else %}{{ s.change|floatformat:0|cut:"-" }}{% endif %}
+Arrears now: KES {{ s.arrears|floatformat:0 }} ({{ s.owing_count }} tenant{{ s.owing_count|pluralize }})
+Occupancy:   {{ s.occupied }} of {{ s.units }} units{% if s.vacant %} ({{ s.vacant }} vacant){% endif %}
+Open repairs: {{ s.open_repairs }}
+{% if s.top_owing %}
+Owing the most:
+{% for lease, balance in s.top_owing %}  - {{ lease.tenant }} ({{ lease.unit.label }}): KES {{ balance|floatformat:0 }}
+{% endfor %}{% endif %}
+Full report: {{ url }}
+
+You get this on the 1st of every month. Change it here: {{ settings_url }}
+
+{{ APP_NAME }}{% endautoescape %}

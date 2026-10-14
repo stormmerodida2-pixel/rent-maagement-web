@@ -1,5 +1,5 @@
 {% extends 'base.html' %}
-{% load ui %}
+{% load static ui %}
 {% block title %}{% block page_title %}{% endblock %} · {{ APP_NAME }}{% endblock %}
 {% block body %}
 {% with url_name=request.resolver_match.url_name %}
@@ -31,7 +31,10 @@
 
       <div class="nav-section">Settings</div>
       <a href="{% url 'payments:mpesa_settings' %}" class="{% if url_name == 'mpesa_settings' %}active{% endif %}">{% icon 'settings' %}M-Pesa{% if nav_mpesa_missing %}<span class="count">!</span>{% endif %}</a>
+      <a href="{% url 'notifications:preferences' %}" class="{% if url_name == 'preferences' %}active{% endif %}">{% icon 'bell' %}Notifications</a>
       <a href="{% url 'support:contact' %}?from={{ request.path|urlencode }}" class="{% if url_name == 'contact' %}active{% endif %}">{% icon 'bell' %}Help &amp; support</a>
+      <button type="button" class="nav-install" data-install hidden>{% icon 'phone' %}Install app</button>
+      <p class="install-hint" data-install-ios hidden>On iPhone: tap <strong>Share</strong> {% icon 'external' 14 %} at the bottom of Safari, then <strong>Add to Home Screen</strong>.</p>
       {% if user.is_superuser %}<a href="{% url 'admin:index' %}">{% icon 'shield' %}Admin</a>{% endif %}
       {% endwith %}
     </nav>
@@ -73,5 +76,10 @@
     </div>
   </main>
 </div>
+<div id="live" hidden data-url="{% url 'rentals:live' %}" data-cursor="{{ live_cursor|default:0 }}"
+     data-dashboard="{% if url_name == 'dashboard' %}1{% endif %}" data-icon="{% static 'img/icons/icon-192.png' %}"
+     data-payments-url="{% url 'payments:payment_list' %}"></div>
+<div id="toasts" class="toasts" aria-live="polite"></div>
+<script src="{% static 'js/live.js' %}" defer></script>
 {% endwith %}
 {% endblock %}

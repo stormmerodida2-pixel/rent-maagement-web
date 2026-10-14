@@ -1,0 +1,27 @@
+{% load ui %}<div class="kpis" style="margin-bottom:20px">
+  <div class="card kpi">
+    <div class="label">Collected this month</div>
+    <div class="value text-success">{{ collected_this_month|kes }}</div>
+    {% if collection_rate is not None %}
+      <div class="progress" role="progressbar" aria-valuenow="{{ collection_rate }}" aria-valuemin="0" aria-valuemax="100"><span style="width: {{ collection_rate }}%"></span></div>
+      <div class="sub">{{ collection_rate }}% of {{ billed_this_month|kes }} billed</div>
+    {% else %}
+      <div class="sub">Nothing billed yet this month</div>
+    {% endif %}
+  </div>
+  <div class="card kpi">
+    <div class="label">Outstanding arrears</div>
+    <div class="value {% if total_arrears %}text-danger{% endif %}">{{ total_arrears|kes }}</div>
+    <div class="sub">{{ arrears|length }} tenant{{ arrears|length|pluralize }} owing</div>
+  </div>
+  <div class="card kpi">
+    <div class="label">Occupancy</div>
+    <div class="value">{{ occupied_count }}<small> / {{ unit_count }}</small></div>
+    <div class="sub">{% if vacant_count %}{{ vacant_count }} vacant unit{{ vacant_count|pluralize }}{% elif unit_count %}Fully let{% else %}No units yet{% endif %}</div>
+  </div>
+  <div class="card kpi">
+    <div class="label">Open repairs</div>
+    <div class="value">{{ open_count }}</div>
+    <div class="sub">{% if urgent_count %}<span class="text-danger">{{ urgent_count }} high priority</span>{% elif open_requests %}None urgent{% else %}All caught up{% endif %}</div>
+  </div>
+</div>
