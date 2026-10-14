@@ -1,0 +1,78 @@
+{% extends 'legal/base.html' %}
+{% block title %}Terms of service · {{ APP_NAME }}{% endblock %}
+{% block doc_title %}Terms of service{% endblock %}
+{% block doc %}
+<p>These terms are an agreement between you (the landlord or business using {{ APP_NAME }}) and
+{{ legal.ENTITY }}. By creating an account you accept them, so please read them carefully.</p>
+
+<h2>1. The service</h2>
+<p>{{ APP_NAME }} is software for managing rental properties: recording tenants and leases, billing rent and other
+charges, requesting and recording M-Pesa payments, sending SMS reminders, receipts and announcements, and handling
+repairs and tenant messages.</p>
+
+<h2>2. Your account</h2>
+<ul>
+  <li>You must be at least 18 and give accurate information.</li>
+  <li>Keep your password secret. You are responsible for what happens under your account; tell us straight away if
+    you think someone else has used it.</li>
+  <li>You may let others use the service on your behalf, but you remain responsible for what they do.</li>
+</ul>
+
+<h2>3. Your responsibilities as a landlord</h2>
+<ul>
+  <li><strong>Tenants' data.</strong> You are the data controller for the tenant data you add. You must have a
+    lawful basis to collect and use it, tell your tenants how it is used (you may refer them to our
+    <a href="{% url 'privacy' %}">privacy policy</a>), keep it accurate, and comply with the Data Protection Act,
+    2019, including registering with the Data Protection Commissioner where the law requires.</li>
+  <li><strong>Charges and tenancies.</strong> You decide the rent, charges, fees, deposits and deductions you bill.
+    They must be lawful and agree with your tenancy agreements and the laws that apply to tenancies in Kenya.</li>
+  <li><strong>Messages.</strong> Only send tenants messages about their tenancy. Do not use {{ APP_NAME }} to send
+    spam, threats, harassment or anything unlawful.</li>
+</ul>
+
+<h2>4. M-Pesa payments</h2>
+<ul>
+  <li>Rent is paid <strong>directly into your own Paybill or Till</strong>. {{ APP_NAME }} never receives, holds
+    or transfers your money and is not a party to payments between you and your tenants.</li>
+  <li>M-Pesa is provided by Safaricom under its own terms and fees. We are not responsible for M-Pesa outages,
+    delays or errors, or for Safaricom's decisions about your account.</li>
+  <li>We record payments from the notifications Safaricom sends. If a payment looks wrong, check your M-Pesa
+    statement; you can move or correct records in the app, and every correction is logged.</li>
+  <li>You are responsible for your Daraja (M-Pesa API) credentials and for keeping them up to date.</li>
+</ul>
+
+<h2>5. Fees</h2>
+<p>Any fees for {{ APP_NAME }}, and for SMS messages sent through it, will be shown to you before you are charged.
+We will give you notice before introducing or changing fees.</p>
+
+<h2>6. Acceptable use</h2>
+<p>Do not try to access other landlords' or tenants' data, interfere with or overload the service, probe it for
+vulnerabilities without our written permission, copy or resell it, or use it for anything unlawful.</p>
+
+<h2>7. Availability and changes</h2>
+<p>We work hard to keep {{ APP_NAME }} available and your data safe, but we cannot promise it will always be
+uninterrupted or error-free. We may improve or change features over time, and will give notice in the app
+before planned maintenance or significant changes.</p>
+
+<h2>8. Your data, and leaving</h2>
+<p>Your data stays yours. You can export your records (for example as CSV) at any time and may close your account
+by contacting us. We then handle your data as our <a href="{% url 'privacy' %}">privacy policy</a> describes,
+including keeping financial records for as long as the law requires.</p>
+
+<h2>9. Suspension and termination</h2>
+<p>We may suspend or close an account that breaks these terms, puts others at risk or is used unlawfully. Where
+reasonable we will warn you first and give you a chance to fix the problem and export your data.</p>
+
+<h2>10. Liability</h2>
+<p>As far as the law allows, {{ legal.ENTITY }} is not liable for indirect or consequential losses (such as lost
+rent or profits), for disputes between you and your tenants, or for failures of services we do not control,
+including M-Pesa and mobile networks. Nothing in these terms limits liability that cannot be limited under
+Kenyan law. You agree to cover us for claims caused by your unlawful use of the service or of tenants' data.</p>
+
+<h2>11. Changes to these terms</h2>
+<p>We may update these terms. We will tell you in the app or by email before important changes take effect, and
+may ask you to accept them again. The date at the top shows when they last changed.</p>
+
+<h2>12. Governing law</h2>
+<p>These terms are governed by the laws of Kenya, and the courts of Kenya have jurisdiction over any dispute.</p>
+{% endblock %}

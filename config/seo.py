@@ -19,6 +19,8 @@ class PublicPagesSitemap(Sitemap):
         'accounts:signup': (0.8, 'monthly'),
         'login': (0.5, 'yearly'),
         'support:contact': (0.4, 'yearly'),
+        'privacy': (0.3, 'yearly'),
+        'terms': (0.3, 'yearly'),
     }
 
     def items(self):

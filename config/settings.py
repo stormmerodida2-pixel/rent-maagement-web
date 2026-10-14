@@ -251,6 +251,16 @@ SERVER_EMAIL = DEFAULT_FROM_EMAIL
 # Product name shown across the site, home page and emails/SMS footers.
 APP_NAME = os.environ.get('APP_NAME', 'Liskodi')
 
+# Shown on the privacy policy and terms. Set them to your registered business details.
+LEGAL = {
+    'ENTITY': os.environ.get('LEGAL_ENTITY_NAME', APP_NAME),
+    'ADDRESS': os.environ.get('LEGAL_ADDRESS', ''),
+    'EMAIL': os.environ.get('PRIVACY_EMAIL', '') or os.environ.get('SUPPORT_EMAIL', ''),
+    # Bump TERMS_VERSION when the terms change materially; each landlord's accepted version is recorded.
+    'UPDATED': 'October 14, 2026',
+    'TERMS_VERSION': '2026-10-14',
+}
+
 # M-Pesa Daraja. Each landlord connects their own Paybill/Till and Daraja app in the
 # app (Settings -> M-Pesa); only platform-wide values live here.
 MPESA = {

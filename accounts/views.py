@@ -7,6 +7,7 @@ from django.contrib.auth import get_user_model, login
 from django.contrib.auth import views as auth_views
 from django.contrib.auth.decorators import login_required
 from django.shortcuts import redirect, render
+from django.utils import timezone
 from django.utils.decorators import method_decorator
 from django.views.decorators.http import require_POST
 
@@ -47,7 +48,8 @@ def signup(request):
         if form.is_valid():
             ratelimit.hit('signup', ip, 60 * 60)
             user = form.save()
-            Profile.objects.create(user=user)
+            Profile.objects.create(user=user, terms_accepted_at=timezone.now(),
+                                   terms_version=settings.LEGAL['TERMS_VERSION'])
             login(request, user, backend='django.contrib.auth.backends.ModelBackend')
             _send_verification(request, user)
             messages.success(

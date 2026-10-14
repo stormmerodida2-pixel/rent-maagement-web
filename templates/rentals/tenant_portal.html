@@ -154,6 +154,7 @@
     {% else %}<div class="empty">No payments yet.</div>{% endif %}
   </section>
 
-  <p class="muted small" style="text-align:center">This page is private to you. Please don't share the link.</p>
+  <p class="muted small" style="text-align:center">This page is private to you. Please don't share the link.<br>
+    <a href="{% url 'privacy' %}">How your data is used</a></p>
 </main>
 {% endblock %}

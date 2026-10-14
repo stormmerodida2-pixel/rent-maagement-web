@@ -226,6 +226,13 @@ docker compose exec web python manage.py check --deploy
 - **Monthly report card:** on the 1st, at 07:00, landlords get last month's results by email: collected against billed, arrears, the tenants owing most, occupancy and repairs, compared with the month before. An optional short SMS goes to the phone number set under **Notifications**. It's sent once per landlord per month (a missed day catches up), skips months with no activity, and only emails confirmed addresses. **Send me last month's report now** previews it.
 - **Install on phones (PWA):** landlords get an **Install app** button in the menu, and the app opens on the dashboard. Tenants can install their own rent page, which opens straight to it. iPhones show "Share → Add to Home Screen" instructions. The service worker only caches static files and an offline page; pages and data are never stored on the device. Installing needs HTTPS, which the production setup provides; `localhost` also works for testing.
 
+### Privacy policy and terms
+
+- `/privacy/` and `/terms/` are written for Kenya's Data Protection Act, 2019. Landlords are the data controllers for their tenants' data, and the platform is their processor. **They are a first draft: have an advocate review them before launch.**
+- Set `LEGAL_ENTITY_NAME`, `LEGAL_ADDRESS` and `PRIVACY_EMAIL` so the pages show your business details.
+- Sign-up requires accepting both. The date and the terms version (`LEGAL['TERMS_VERSION']` in settings) are saved on each landlord's profile. When you change the terms materially, bump the version and the "last updated" date.
+- Register with the Office of the Data Protection Commissioner (odpc.go.ke) if the law requires it for your business.
+
 ### Search engines
 
 - **`/sitemap.xml`** lists only the public pages (home, sign-up, login, contact), always with the domain from `SITE_URL`.

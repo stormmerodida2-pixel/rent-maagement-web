@@ -7,7 +7,7 @@ from django.urls import include, path
 from accounts import views as account_views
 from ops.views import healthz
 
-from . import pwa
+from . import legal, pwa
 from .seo import SITEMAPS, robots_txt
 
 admin.site.site_header = settings.APP_NAME
@@ -24,6 +24,8 @@ urlpatterns = [
     path('sw.js', pwa.service_worker, name='service_worker'),
     path('offline/', pwa.offline, name='offline'),
     path('sitemap.xml', sitemap, {'sitemaps': SITEMAPS}, name='sitemap'),
+    path('privacy/', legal.privacy, name='privacy'),
+    path('terms/', legal.terms, name='terms'),
     path('admin/', admin.site.urls),
     path('login/', account_views.LoginView.as_view(), name='login'),
     path('logout/', auth_views.LogoutView.as_view(), name='logout'),
