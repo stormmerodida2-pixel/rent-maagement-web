@@ -193,3 +193,15 @@ class NavigationTests(TestCase):
             self.assertContains(self.client.get(url), f'href="{reverse("rentals:home")}"', msg_prefix=url)
         # The home page itself still offers the way back in.
         self.assertContains(self.client.get(reverse('rentals:home')), reverse('rentals:dashboard'))
+
+
+class MobileTests(TestCase):
+    def test_app_pages_have_a_menu_button_and_table_script(self):
+        owner = get_user_model().objects.create_user('landlord')
+        self.client.force_login(owner)
+        page = self.client.get(reverse('rentals:dashboard'))
+        self.assertContains(page, 'data-nav-toggle')
+        self.assertContains(page, 'aria-controls="main-nav"')
+        self.assertContains(page, 'id="main-nav"')
+        self.assertContains(page, 'js/app.js')  # labels table cells so they stack on phones
+        self.assertContains(page, 'name="viewport" content="width=device-width, initial-scale=1"')

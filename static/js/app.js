@@ -33,4 +33,28 @@
   }
   document.addEventListener('change', syncConditional);
   document.addEventListener('DOMContentLoaded', syncConditional);
+
+  // Phones: the Menu button opens and closes the main navigation.
+  document.addEventListener('click', function (event) {
+    var toggle = event.target.closest('[data-nav-toggle]');
+    if (!toggle) return;
+    var open = toggle.closest('.sidebar').classList.toggle('nav-open');
+    toggle.setAttribute('aria-expanded', String(open));
+  });
+
+  // Phones: label every table cell with its column heading, so tables can stack into cards.
+  function labelTables() {
+    document.querySelectorAll('table.table').forEach(function (table) {
+      var head = table.tHead && table.tHead.rows[0];
+      if (!head) return;
+      var labels = Array.prototype.map.call(head.cells, function (th) { return th.textContent.trim(); });
+      Array.prototype.forEach.call(table.querySelectorAll('tbody tr, tfoot tr'), function (row) {
+        Array.prototype.forEach.call(row.cells, function (cell, i) {
+          if (!cell.hasAttribute('data-label')) cell.setAttribute('data-label', labels[i] || '');
+        });
+      });
+      table.classList.add('stack');
+    });
+  }
+  document.addEventListener('DOMContentLoaded', labelTables);
 })();

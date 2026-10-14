@@ -233,7 +233,7 @@ label, .label { display: block; font-size: 13px; font-weight: 500; color: var(--
 .footer-logo .logo { height: 72px; }
 .topbar .logo, .site-nav .logo { height: 64px; }
 .sidebar .logo { height: 118px; }
-@media (max-width: 900px) { .sidebar .logo { height: 48px; } }
+@media (max-width: 900px) { .sidebar .logo { height: 56px; } }
 .nav-section { font-size: 11px; text-transform: uppercase; letter-spacing: .06em; color: var(--muted); padding: 14px 10px 6px; }
 .nav a {
   display: flex; align-items: center; gap: 10px; padding: 8px 10px; border-radius: var(--radius-sm);
@@ -257,9 +257,10 @@ label, .label { display: block; font-size: 13px; font-weight: 500; color: var(--
   .app { grid-template-columns: minmax(0, 1fr); }
   .sidebar { position: static; height: auto; flex-direction: row; flex-wrap: wrap; align-items: center; padding: 10px 16px; border-right: 0; border-bottom: 1px solid var(--border); }
   .brand { padding: 0; margin-right: auto; }
-  .nav-section { display: none; }
-  .nav { display: flex; gap: 2px; overflow-x: auto; width: 100%; order: 3; padding-top: 8px; }
-  .nav a { white-space: nowrap; padding: 6px 10px; }
+  /* Phones: the menu folds away behind a Menu button and opens as a full list. */
+  .nav { display: none; width: 100%; order: 3; flex-direction: column; padding-top: 6px; }
+  .sidebar.nav-open .nav { display: flex; }
+  .nav a { padding: 10px; }
   .sidebar-footer { margin: 0; border: 0; padding: 0; }
   .sidebar-footer .who { display: none; }
   .main { padding: 20px 16px 40px; }
@@ -516,3 +517,38 @@ html:root .doc .logo { background-image: url("../img/logo-transparent.png"); asp
 .checkbox-list > div { display: grid; grid-template-columns: repeat(auto-fill, minmax(170px, 1fr)); gap: 6px 14px; }
 .checkbox-list label { display: flex; gap: 8px; align-items: center; margin: 0; font-weight: 400; color: var(--text); }
 .checkbox-list input { width: 16px; height: 16px; accent-color: var(--brand); }
+
+/* ---- Phones ----------------------------------------------------------------------------- */
+
+.nav-toggle { display: none; }
+@media (max-width: 900px) {
+  .nav-toggle { display: inline-flex; order: 2; }
+  .sidebar-footer { order: 1; }
+}
+
+/* Tables become one card per row: the first cell is the title, the rest are "label: value" lines,
+   so the important right-hand columns (balance, amount, actions) are never off-screen.
+   app.js copies each column's heading into data-label. */
+@media (max-width: 640px) {
+  table.table.stack thead { display: none; }
+  table.table.stack, table.table.stack tbody, table.table.stack tfoot,
+  table.table.stack tr, table.table.stack td { display: block; width: 100%; }
+  table.table.stack tr { padding: 12px 16px; border-bottom: 1px solid var(--border); }
+  table.table.stack tr:last-child { border-bottom: 0; }
+  table.table.stack td { display: flex; justify-content: space-between; align-items: center; gap: 12px;
+    padding: 3px 0; border: 0; text-align: right; white-space: normal; }
+  table.table.stack td::before { content: attr(data-label); flex: none; color: var(--muted); font-size: 12px;
+    text-transform: uppercase; letter-spacing: .04em; text-align: left; }
+  table.table.stack td:first-child { display: block; text-align: left; padding-bottom: 6px; }
+  table.table.stack td:first-child::before { content: none; }
+  table.table.stack td[data-label=""]::before { content: none; }
+  table.table.stack td[data-label=""] { justify-content: flex-end; }
+  table.table.stack tbody tr:hover td { background: none; }
+  table.table.stack tfoot tr { background: var(--surface-2); }
+
+  /* Home page header: everything on one line. */
+  .site-nav .inner { gap: 8px; padding: 8px 12px; }
+  .site-nav .row { flex-wrap: nowrap; gap: 4px !important; }
+  .site-nav .btn { padding: 7px 10px; font-size: 13px; }
+  .site-nav .logo { height: 48px; }
+}
