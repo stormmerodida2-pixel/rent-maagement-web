@@ -34,6 +34,7 @@
       {% if r.balance > 0 %}<span class="staff-owes">Owes<strong>{{ r.balance|kes }}</strong></span>
       {% else %}<span class="badge badge-success">Paid up</span>{% endif %}
     </div>
+    {% if lease.moving_out %}<div><span class="badge badge-warn">Moving out {{ lease.end_date|date:"D d M" }}</span></div>{% endif %}
     <div class="muted small">{% if r.last_paid %}Last paid {{ r.last_paid|date:"d M Y" }}{% else %}No payments yet{% endif %}
       {% if r.prompt %} · <a href="{% url 'staff:prompt' r.prompt.pk %}">Prompt {% if r.prompt.status == 'success' %}<span class="text-success">paid ✓</span>{% elif r.prompt.status == 'failed' %}not paid{% else %}waiting…{% endif %}</a>{% endif %}</div>
     <div class="staff-actions">

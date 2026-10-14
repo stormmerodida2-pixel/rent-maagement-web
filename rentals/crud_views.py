@@ -347,7 +347,10 @@ class LeaseEnd(OwnedMixin, FormPageMixin, FormView):
         return kwargs
 
     def get_initial(self):
-        return {**super().get_initial(), 'apply_deposit': self.lease.deposit_held > 0}
+        initial = {**super().get_initial(), 'apply_deposit': self.lease.deposit_held > 0}
+        if self.lease.end_date:  # notice was given: end on the agreed move-out date
+            initial['end_date'] = self.lease.end_date
+        return initial
 
     def get_context_data(self, **kwargs):
         ctx = super().get_context_data(**kwargs)

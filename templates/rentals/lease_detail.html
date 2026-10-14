@@ -9,7 +9,7 @@
       <h1>{{ lease.tenant }}</h1>
       <p class="sub">
         {{ lease.unit }}
-        {% if lease.is_active %}<span class="badge badge-success">Active lease</span>{% else %}<span class="badge">Ended</span>{% endif %}
+        {% if lease.moving_out %}<span class="badge badge-warn">Moving out {{ lease.end_date|date:"d M" }}</span>{% elif lease.is_active %}<span class="badge badge-success">Active lease</span>{% else %}<span class="badge">Ended</span>{% endif %}
       </p>
     </div>
   </div>
@@ -18,9 +18,21 @@
     <a class="btn" href="{% url 'rentals:charge_create' lease.pk %}">{% icon 'plus' %}Add charge</a>
     <a class="btn" href="{% url 'rentals:tenant_update' lease.tenant_id %}?next={{ request.path|urlencode }}">Edit tenant</a>
     <a class="btn" href="{% url 'rentals:lease_update' lease.pk %}">Edit lease</a>
+    {% if lease.is_active and not lease.moving_out %}<a class="btn" href="{% url 'rentals:lease_notice' lease.pk %}">{% icon 'calendar' %}Record move-out notice</a>{% endif %}
     {% if lease.is_active %}<a class="btn text-danger" href="{% url 'rentals:lease_end' lease.pk %}">End lease</a>{% endif %}
   </div>
 </div>
+
+{% if lease.moving_out %}
+<div class="alert {% if lease.move_out_overdue %}alert-warning{% else %}alert-info{% endif %} moveout-banner">
+  {% icon 'calendar' 18 %}
+  <span>{% if lease.move_out_overdue %}<strong>The move-out date ({{ lease.end_date|date:"D d M Y" }}) has passed.</strong> If {{ lease.tenant.full_name.split.0 }} has left, finish the move-out to settle the deposit and free the unit.
+    {% else %}<strong>Moving out {{ lease.end_date|date:"D d M Y" }}</strong> (in {{ lease.end_date|timeuntil }}).{% if lease.notice_given_on %} Notice given {{ lease.notice_given_on|date:"d M" }}.{% endif %}{% if lease.notice_note %} “{{ lease.notice_note }}”{% endif %} Rent is billed up to {{ lease.end_date|date:"F" }}.{% endif %}</span>
+  <span class="spacer"></span>
+  <a class="btn btn-sm" href="{% url 'rentals:lease_notice' lease.pk %}">Change</a>
+  <a class="btn btn-sm {% if lease.move_out_overdue %}btn-primary{% endif %}" href="{% url 'rentals:lease_end' lease.pk %}">Finish move-out</a>
+</div>
+{% endif %}
 
 <div class="grid-2">
   <div class="stack">

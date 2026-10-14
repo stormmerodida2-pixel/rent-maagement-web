@@ -104,14 +104,14 @@ class LeaseForm(OwnedForm):
 
     class Meta:
         model = Lease
-        fields = ['unit', 'tenant', 'start_date', 'end_date', 'monthly_rent', 'service_charge', 'deposit',
+        fields = ['unit', 'tenant', 'start_date', 'monthly_rent', 'service_charge', 'deposit',
                   'due_day', 'late_fee', 'late_fee_grace_days']
         labels = {
-            'monthly_rent': 'Monthly rent (KES)', 'deposit': 'Deposit (KES)', 'end_date': 'End date',
+            'monthly_rent': 'Monthly rent (KES)', 'deposit': 'Deposit (KES)',
             'service_charge': 'Service charge (KES / month)', 'late_fee': 'Late fee (KES)',
             'late_fee_grace_days': 'Grace period (days)',
         }
-        widgets = {'start_date': DATE, 'end_date': DATE}
+        widgets = {'start_date': DATE}
 
     def __init__(self, *args, **kwargs):
         super().__init__(*args, **kwargs)
@@ -152,6 +152,44 @@ class LeaseForm(OwnedForm):
         if commit and self.cleaned_data.get('bill_now') and lease.start_date <= datetime.date.today():
             lease.ensure_charge_for(datetime.date.today())
         return lease
+
+
+def end_of_next_month(today=None):
+    today = today or datetime.date.today()
+    first_next = (today.replace(day=1) + datetime.timedelta(days=32)).replace(day=1)
+    return (first_next + datetime.timedelta(days=32)).replace(day=1) - datetime.timedelta(days=1)
+
+
+class NoticeForm(forms.Form):
+    """A tenant (or the landlord) gives notice: when they will move out."""
+
+    move_out = forms.DateField(widget=DATE, label='Move-out date',
+                               help_text="Rent is billed up to and including this month, then billing stops.")
+    given_on = forms.DateField(widget=DATE, label='Notice given on', initial=datetime.date.today)
+    note = forms.CharField(max_length=200, required=False, label='Note',
+                           help_text='e.g. "Moving to Nakuru for work", or who gave notice.')
+
+    def __init__(self, *args, lease, **kwargs):
+        self.lease = lease
+        super().__init__(*args, **kwargs)
+        if lease.end_date:
+            self.initial.update(move_out=lease.end_date, given_on=lease.notice_given_on, note=lease.notice_note)
+        else:
+            self.initial.setdefault('move_out', end_of_next_month())
+
+    def clean_move_out(self):
+        move_out = self.cleaned_data['move_out']
+        if move_out < datetime.date.today():
+            raise ValidationError('That date has passed. If they have already left, use "End lease" instead.')
+        if move_out < self.lease.start_date:
+            raise ValidationError('The move-out date is before the lease started.')
+        return move_out
+
+    def clean_given_on(self):
+        given_on = self.cleaned_data['given_on']
+        if given_on > datetime.date.today():
+            raise ValidationError("Notice can't be given in the future.")
+        return given_on
 
 
 class EndLeaseForm(forms.Form):

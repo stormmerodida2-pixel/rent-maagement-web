@@ -1,0 +1,30 @@
+{% extends 'app_base.html' %}
+{% block page_title %}Move-out notice · {{ lease.tenant }}{% endblock %}
+{% block content %}
+<div class="form-page">
+<div class="page-header"><div>
+  <h1>{% if lease.moving_out %}Change move-out notice{% else %}Record move-out notice{% endif %}</h1>
+  <p class="sub">{{ lease.tenant }} · {{ lease.unit }}. Rent keeps being billed up to the move-out month, then stops.
+    On the day, use <strong>End lease</strong> to settle the deposit and free the unit.</p>
+</div></div>
+<section class="card form-card">
+  <div class="card-body">
+    <form method="post" novalidate>
+      {% csrf_token %}
+      {% include 'includes/form_fields.html' %}
+      <div class="form-actions">
+        <button type="submit" class="btn btn-primary">Save notice</button>
+        <a class="btn btn-ghost" href="{% url 'rentals:lease_detail' lease.pk %}">Cancel</a>
+      </div>
+    </form>
+    {% if lease.moving_out %}
+    <form method="post" style="margin-top:18px;border-top:1px solid var(--border);padding-top:16px">{% csrf_token %}
+      <input type="hidden" name="action" value="cancel">
+      <p class="muted small" style="margin:0 0 8px">Changed their mind? Cancel the notice and they stay on month to month.</p>
+      <button class="btn">They're staying: cancel notice</button>
+    </form>
+    {% endif %}
+  </div>
+</section>
+</div>
+{% endblock %}

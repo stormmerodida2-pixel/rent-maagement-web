@@ -58,6 +58,7 @@
         <div class="value">{% if balance < 0 %}{{ balance|kes|cut:"-" }}{% else %}{{ balance|kes }}{% endif %}</div>
         <div class="muted small">{% blocktranslate with rent=lease.monthly_rent|kes day=lease.due_day %}Rent {{ rent }} a month, due on day {{ day }}{% endblocktranslate %}</div>
       </div>
+      {% if lease.moving_out %}<div class="alert alert-info small">{% icon 'calendar' 16 %}<span>{% blocktranslate with date=lease.end_date|date:"j F Y" %}You're moving out on {{ date }}. Please arrange the handover with your landlord.{% endblocktranslate %}</span></div>{% endif %}
 
       {% if mpesa_account and mpesa_account.is_complete %}
       <form method="post">

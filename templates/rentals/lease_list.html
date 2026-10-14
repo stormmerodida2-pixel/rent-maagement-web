@@ -28,7 +28,7 @@
         <td><a class="who" href="{% url 'rentals:lease_detail' lease.pk %}" style="text-decoration:none"><span class="avatar">{{ lease.tenant.full_name|initials }}</span><span class="name">{{ lease.tenant }}</span></a></td>
         <td>{{ lease.unit }}{% if not lease.is_active %} <span class="badge">Ended</span>{% endif %}</td>
         <td class="num">{{ lease.monthly_rent|kes }}</td>
-        <td class="muted nowrap">{{ lease.start_date|date:"d M Y" }}</td>
+        <td class="muted nowrap">{{ lease.start_date|date:"d M Y" }}{% if lease.moving_out %}<div><span class="badge badge-warn">Moving out {{ lease.end_date|date:"d M" }}</span></div>{% endif %}</td>
         <td class="num {% if balance > 0 %}text-danger{% elif balance < 0 %}text-success{% endif %}"><strong>{{ balance|kes }}</strong></td>
       </tr>
       {% endfor %}
