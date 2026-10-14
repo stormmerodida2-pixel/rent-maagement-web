@@ -11,6 +11,7 @@ urlpatterns = [
     path('live/', views.live, name='live'),
     path('leases/<int:pk>/', views.lease_detail, name='lease_detail'),
     path('leases/<int:pk>/remind/', views.send_reminder, name='send_reminder'),
+    path('reminders/', views.remind_all, name='remind_all'),
     path('t/<str:token>/', views.tenant_portal, name='tenant_portal'),
 
     path('properties/', crud.PropertyList.as_view(), name='property_list'),

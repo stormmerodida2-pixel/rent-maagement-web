@@ -240,6 +240,12 @@ docker compose exec web python manage.py check --deploy
 - Sign-up requires accepting both. The date and the terms version (`LEGAL['TERMS_VERSION']` in settings) are saved on each landlord's profile. When you change the terms materially, bump the version and the "last updated" date.
 - Register with the Office of the Data Protection Commissioner (odpc.go.ke) if the law requires it for your business.
 
+### Rent day: ring, chime and reminding everyone
+
+- **Rent-day ring:** the top of the dashboard shows how much of this month's billing has come in, with "N of M tenants paid up" (tenants with no balance at all). It glides forward as payments arrive, without reloading.
+- **Payment toast and chime:** a new payment pops up as "💚 Wanjiku just paid KES 18,000" with a soft chime made in the browser. Browsers only play sound after you've clicked or typed on the page once, and **Sound on/off** on the dashboard mutes it (remembered per browser).
+- **Remind everyone who owes:** a button on the dashboard opens a preview of every tenant with a balance and their personal SMS. Anyone reminded in the last 24 hours starts unticked, and the SMS cost updates as you tick. Messages go out several at a time, so a long list still takes only a few seconds.
+
 ### Search engines
 
 - **`/sitemap.xml`** lists only the public pages (home, sign-up, login, contact), always with the domain from `SITE_URL`.

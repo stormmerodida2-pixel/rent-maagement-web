@@ -9,6 +9,7 @@
   </div>
   <div class="actions">
     <button type="button" class="btn" data-enable-alerts hidden>{% icon 'bell' %}Turn on payment alerts</button>
+    <button type="button" class="btn" data-chime-toggle hidden aria-pressed="true" title="A soft chime when a payment arrives">{% icon 'bell' %}<span data-chime-label>Sound on</span></button>
     <a class="btn" href="{% url 'maintenance:create' %}">{% icon 'wrench' %}Log repair</a>
     <a class="btn btn-primary" href="{% url 'rentals:lease_create' %}">{% icon 'plus' %}New lease</a>
   </div>

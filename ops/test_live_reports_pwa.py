@@ -4,11 +4,13 @@ import datetime
 import json
 import time
 from decimal import Decimal
+from unittest import mock
 
 from django.contrib.auth import get_user_model
 from django.contrib.staticfiles import finders
 from django.core import mail
 from django.core.management import call_command
+from django.conf import settings
 from django.test import TestCase, override_settings
 from django.urls import reverse
 
@@ -168,6 +170,18 @@ class PwaTests(TestCase):
         self.assertIn('/static/css/app.css', body)
         self.assertIn("request.mode === 'navigate'", body)
         self.assertNotIn('cache.put(request', body.split("request.mode === 'navigate'")[1].split('return;')[0])
+
+    def test_unhashed_static_files_are_never_served_stale(self):
+        # Development (DEBUG): file names don't change with their contents, so the worker must ask the
+        # server first, and its version must change when a file does (so old caches are cleared).
+        storages = {**settings.STORAGES,
+                    'staticfiles': {'BACKEND': 'django.contrib.staticfiles.storage.StaticFilesStorage'}}
+        with override_settings(STORAGES=storages):
+            body = self.client.get('/sw.js').content.decode()
+            self.assertIn('fetch(request).then(save).catch(() => caches.match(request))', body)
+            self.assertNotIn('hit || fetch', body)
+            with mock.patch('config.pwa._contents_fingerprint', return_value='changed'):
+                self.assertNotEqual(self.client.get('/sw.js').content.decode().split('\n')[3], body.split('\n')[3])
 
     def test_offline_page_and_head_tags(self):
         self.assertContains(self.client.get('/offline/'), "You're offline")

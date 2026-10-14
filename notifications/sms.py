@@ -2,6 +2,7 @@
 
 import datetime
 import logging
+from concurrent.futures import ThreadPoolExecutor
 
 import requests
 from django.conf import settings
@@ -44,13 +45,14 @@ def _send_africastalking(msg):
     msg.status = SmsMessage.Status.SENT
 
 
-def send_sms(phone, body, lease=None, kind=SmsMessage.Kind.OTHER):
-    msg = SmsMessage(lease=lease, phone=phone, body=body, kind=kind, status=SmsMessage.Status.FAILED)
+def _deliver(msg):
+    """Send one unsaved SmsMessage and record the outcome on it. No database access, so it's thread-safe."""
+    phone = msg.phone
     try:
         msg.phone = normalize_phone(phone)
         backend = settings.SMS['BACKEND']
         if backend == 'console':
-            logger.info('SMS to %s: %s', msg.phone, body)
+            logger.info('SMS to %s: %s', msg.phone, msg.body)
             msg.status = SmsMessage.Status.LOGGED
         elif backend == 'africastalking':
             _send_africastalking(msg)
@@ -59,8 +61,29 @@ def send_sms(phone, body, lease=None, kind=SmsMessage.Kind.OTHER):
     except (requests.RequestException, ValueError, KeyError) as exc:
         logger.warning('SMS to %s failed: %s', phone, exc)
         msg.error = str(exc)[:255]
+    return msg
+
+
+def send_sms(phone, body, lease=None, kind=SmsMessage.Kind.OTHER):
+    msg = SmsMessage(lease=lease, phone=phone, body=body, kind=kind, status=SmsMessage.Status.FAILED)
+    _deliver(msg)
     msg.save()
     return msg
+
+
+PARALLEL_SENDS = 8
+
+
+def send_personal_sms(items, kind=SmsMessage.Kind.OTHER):
+    """Send a different message to each of [(lease, phone, body)], several at a time. Never raises.
+
+    Returns the saved SmsMessages in the same order. Only the network calls run in threads.
+    """
+    msgs = [SmsMessage(lease=lease, phone=phone, body=body, kind=kind, status=SmsMessage.Status.FAILED)
+            for lease, phone, body in items]
+    with ThreadPoolExecutor(max_workers=PARALLEL_SENDS) as pool:
+        list(pool.map(_deliver, msgs))
+    return SmsMessage.objects.bulk_create(msgs)
 
 
 BULK_BATCH = 100  # numbers per Africa's Talking request

@@ -4,6 +4,8 @@ import hashlib
 import json
 
 from django.conf import settings
+from django.contrib.staticfiles import finders
+from django.contrib.staticfiles.storage import ManifestFilesMixin, staticfiles_storage
 from django.http import HttpResponse
 from django.shortcuts import get_object_or_404, render
 from django.templatetags.static import static
@@ -76,6 +78,14 @@ def tenant_manifest(request, token):
     })
 
 
+def _contents_fingerprint(urls):
+    parts = []
+    for url in urls:
+        path = finders.find(url.removeprefix(settings.STATIC_URL).removeprefix('/' + settings.STATIC_URL))
+        parts.append(hashlib.sha256(open(path, 'rb').read()).hexdigest() if path else url)
+    return '|'.join(parts)
+
+
 @cache_control(no_cache=True)
 def service_worker(request):
     """Served from the site root so it can work for every page. Caches only static files."""
@@ -84,9 +94,13 @@ def service_worker(request):
         static('js/live.js'), static('img/logo-transparent.png'), static('img/logo-on-dark.png'),
         static('img/icons/icon-192.png'),
     ]
-    # Static file names carry a content hash in production, so this changes whenever they do.
-    version = hashlib.sha256('|'.join(precache).encode()).hexdigest()[:12]
-    response = render(request, 'pwa/sw.js', {'precache': precache, 'version': version},
+    # In production static file names carry a content hash, so a cached copy is always right and the
+    # version changes whenever a file does. Without hashing (local development) a file keeps its name
+    # when it changes, so the worker must check the server first and the version follows the contents.
+    hashed = isinstance(staticfiles_storage, ManifestFilesMixin)
+    fingerprint = '|'.join(precache) if hashed else _contents_fingerprint(precache)
+    version = hashlib.sha256(fingerprint.encode()).hexdigest()[:12]
+    response = render(request, 'pwa/sw.js', {'precache': precache, 'version': version, 'cache_first': hashed},
                       content_type='application/javascript')
     response['Service-Worker-Allowed'] = '/'
     return response

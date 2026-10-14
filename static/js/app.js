@@ -89,6 +89,26 @@
       document.querySelectorAll('[data-install-ios]').forEach(function (hint) { hint.hidden = !hint.hidden; });
     }
   });
+  // "Remind everyone who owes": keep the count, SMS cost and button in step with the ticks.
+  function syncRemind(form) {
+    var boxes = form.querySelectorAll('input[name="lease"]');
+    var count = 0, parts = 0;
+    boxes.forEach(function (b) { if (b.checked) { count += 1; parts += Number(b.dataset.parts) || 1; } });
+    form.querySelector('[data-remind-count]').textContent = count;
+    form.querySelector('[data-remind-cost]').textContent = (parts * Number(form.dataset.costPerPart)).toFixed(2);
+    form.querySelector('[data-remind-send]').disabled = count === 0;
+  }
+  document.addEventListener('change', function (event) {
+    var form = event.target.closest('[data-remind-form]');
+    if (form) syncRemind(form);
+  });
+  document.addEventListener('click', function (event) {
+    var toggle = event.target.closest('[data-remind-all]');
+    if (!toggle) return;
+    var form = toggle.closest('[data-remind-form]');
+    form.querySelectorAll('input[name="lease"]').forEach(function (b) { b.checked = toggle.dataset.remindAll === '1'; });
+    syncRemind(form);
+  });
   window.addEventListener('appinstalled', function () {
     document.querySelectorAll('[data-install], [data-install-ios]').forEach(function (b) { b.hidden = true; });
   });

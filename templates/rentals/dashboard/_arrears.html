@@ -2,6 +2,7 @@
   <div class="card-header">
     <h2>Tenants in arrears</h2>
     <span class="spacer"></span>
+    {% if arrears %}<a class="btn btn-sm btn-primary" href="{% url 'rentals:remind_all' %}">{% icon 'bell' %}Remind everyone who owes ({{ arrears|length }})</a>{% endif %}
     <a class="small" href="{% url 'rentals:lease_list' %}">All leases</a>
   </div>
   {% if arrears %}

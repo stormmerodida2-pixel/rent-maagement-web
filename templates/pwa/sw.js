@@ -29,16 +29,18 @@ self.addEventListener('fetch', (event) => {
     return;
   }
   if (url.pathname.startsWith('{% get_static_prefix %}')) {
-    // Static files are versioned by name, so a cached copy is always correct.
-    event.respondWith(
-      caches.match(request).then((hit) => hit || fetch(request).then((response) => {
-        if (response.ok) {
-          const copy = response.clone();
-          caches.open(CACHE).then((cache) => cache.put(request, copy));
-        }
-        return response;
-      }))
-    );
+    const save = (response) => {
+      if (response.ok) {
+        const copy = response.clone();
+        caches.open(CACHE).then((cache) => cache.put(request, copy));
+      }
+      return response;
+    };
+    {% if cache_first %}// Static file names carry a content hash, so a cached copy is always correct.
+    event.respondWith(caches.match(request).then((hit) => hit || fetch(request).then(save)));
+    {% else %}// File names aren't hashed here (development), so always ask the server; the cache is only for offline.
+    event.respondWith(fetch(request).then(save).catch(() => caches.match(request)));
+    {% endif %}
   }
   // Everything else (live updates, downloads…) goes straight to the network, uncached.
 });

@@ -1,0 +1,54 @@
+{% extends 'app_base.html' %}
+{% load humanize ui %}
+{% block page_title %}Remind everyone who owes{% endblock %}
+{% block content %}
+<div class="page-header">
+  <div><h1>Remind everyone who owes</h1>
+    <p class="sub">Each tenant gets a personal SMS with their own balance and how to pay. Check the list, then send.</p></div>
+  <div class="actions"><a class="btn" href="{% url 'rentals:dashboard' %}">Back to dashboard</a></div>
+</div>
+
+{% if rows %}
+<form method="post" data-remind-form data-cost-per-part="{{ cost_each }}">
+  {% csrf_token %}
+  <section class="card" style="margin-bottom:20px">
+    <div class="card-body row">
+      <div style="flex:1;min-width:220px">
+        <strong><span data-remind-count>{{ selected_count }}</span> of {{ rows|length }} tenant{{ rows|length|pluralize }}</strong> will get a reminder
+        <div class="muted small">They owe {{ total_owed|kes }} in total · about KES <span data-remind-cost>{{ estimated_cost|floatformat:2 }}</span> in SMS</div>
+      </div>
+      <button type="submit" class="btn btn-primary" data-remind-send {% if not selected_count %}disabled{% endif %}>{% icon 'bell' %}Send reminders</button>
+    </div>
+  </section>
+
+  <section class="card">
+    <div class="toolbar">
+      <button type="button" class="btn btn-sm btn-ghost" data-remind-all="1">Select all</button>
+      <button type="button" class="btn btn-sm btn-ghost" data-remind-all="0">Select none</button>
+    </div>
+    <div class="table-wrap">
+      <table class="table">
+        <thead><tr><th></th><th>Tenant</th><th class="num">Owes</th><th>Message</th></tr></thead>
+        <tbody>
+        {% for r in rows %}
+        <tr>
+          <td><input type="checkbox" name="lease" value="{{ r.lease.pk }}" id="remind-{{ r.lease.pk }}" data-parts="{{ r.parts }}"
+                     {% if not r.reminded_at %}checked{% endif %} aria-label="Remind {{ r.lease.tenant }}"></td>
+          <td><label for="remind-{{ r.lease.pk }}" class="who">
+            <span class="avatar">{{ r.lease.tenant.full_name|initials }}</span>
+            <span><span class="name">{{ r.lease.tenant }}</span><span class="meta" style="display:block">{{ r.lease.unit }} · {{ r.lease.tenant.phone }}</span>
+              {% if r.reminded_at %}<span class="badge badge-warning" title="Unticked so they don't get two in a day">Reminded {{ r.reminded_at|naturaltime }}</span>{% endif %}</span>
+          </label></td>
+          <td class="num text-danger"><strong>{{ r.balance|kes }}</strong></td>
+          <td><details><summary class="small">Preview</summary><div class="bubble-msg" style="max-width:100%;margin-top:6px"><div class="body">{{ r.text }}</div></div></details></td>
+        </tr>
+        {% endfor %}
+        </tbody>
+      </table>
+    </div>
+  </section>
+</form>
+{% else %}
+<section class="card"><div class="empty"><strong>Everyone is paid up 🎉</strong>Nobody owes anything right now, so there's no one to remind.</div></section>
+{% endif %}
+{% endblock %}

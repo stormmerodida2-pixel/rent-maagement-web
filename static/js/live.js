@@ -19,13 +19,17 @@
     return node;
   }
 
+  function headline(p) {
+    return '\uD83D\uDC9A ' + p.tenant.split(' ')[0] + ' just paid ' + p.amount;  // 💚 Wanjiku just paid KES 18,000
+  }
+
   function toast(p, summary) {
     var list = document.getElementById('toasts');
     var t = el('a', 'toast');
     t.href = p.url;
     t.setAttribute('role', 'status');
-    t.appendChild(el('strong', '', summary ? p.amount : p.amount + ' received'));
-    t.appendChild(el('span', '', summary ? p.tenant : p.tenant + ' · ' + p.unit + ' · ' + p.method));
+    t.appendChild(el('strong', '', summary ? p.amount : headline(p)));
+    t.appendChild(el('span', '', summary ? p.tenant : p.unit + ' · ' + p.method));
     list.appendChild(t);
     setTimeout(function () { t.classList.add('toast-out'); }, 9000);
     setTimeout(function () { t.remove(); }, 9600);
@@ -33,17 +37,75 @@
 
   function notify(p) {
     if (!('Notification' in window) || Notification.permission !== 'granted' || !document.hidden) return;
-    var n = new Notification('Payment received: ' + p.amount, {
-      body: p.tenant + ' (' + p.unit + ') via ' + p.method, icon: icon, tag: 'payment-' + p.id,
+    var n = new Notification(headline(p), {
+      body: p.tenant + ' · ' + p.unit + ' · ' + p.method, icon: icon, tag: 'payment-' + p.id,
     });
     n.onclick = function () { window.focus(); window.location.href = p.url; };
   }
+
+  // A soft two-note chime, made in the browser (no sound file). Browsers only allow sound after the
+  // person has clicked or typed on the page, so the audio is unlocked on their first interaction.
+  var audio = null;
+  function soundOn() {
+    try { return localStorage.getItem('payment-chime') !== 'off'; } catch (e) { return true; }
+  }
+  function unlockAudio() {
+    var Ctx = window.AudioContext || window.webkitAudioContext;
+    if (!audio && Ctx) audio = new Ctx();
+    if (audio && audio.state === 'suspended') audio.resume();
+  }
+  document.addEventListener('pointerdown', unlockAudio, {once: true});
+  document.addEventListener('keydown', unlockAudio, {once: true});
+  function chime() {
+    if (!audio || audio.state !== 'running' || !soundOn()) return;
+    [[880, 0], [1318.5, 0.13]].forEach(function (note) {
+      var start = audio.currentTime + note[1];
+      var osc = audio.createOscillator();
+      var gain = audio.createGain();
+      osc.type = 'sine';
+      osc.frequency.value = note[0];
+      gain.gain.setValueAtTime(0.0001, start);
+      gain.gain.exponentialRampToValueAtTime(0.07, start + 0.02);
+      gain.gain.exponentialRampToValueAtTime(0.0001, start + 0.45);
+      osc.connect(gain).connect(audio.destination);
+      osc.start(start);
+      osc.stop(start + 0.5);
+    });
+  }
+  var soundToggle = document.querySelector('[data-chime-toggle]');
+  function showSound() {
+    if (!soundToggle) return;
+    soundToggle.hidden = false;
+    soundToggle.setAttribute('aria-pressed', soundOn() ? 'true' : 'false');
+    soundToggle.querySelector('[data-chime-label]').textContent = soundOn() ? 'Sound on' : 'Sound off';
+  }
+  if (soundToggle) {
+    soundToggle.addEventListener('click', function () {
+      try { localStorage.setItem('payment-chime', soundOn() ? 'off' : 'on'); } catch (e) {}
+      showSound();
+      unlockAudio();
+      chime();  // a preview, so they know what it sounds like
+    });
+    showSound();
+  }
+
+  // The rent-day ring glides to its new value instead of jumping.
+  function animateRing(ring, from) {
+    if (!ring) return;
+    ring.style.strokeDashoffset = from;
+    void ring.getBoundingClientRect();
+    requestAnimationFrame(function () { ring.style.strokeDashoffset = ''; });
+  }
+  animateRing(document.querySelector('.ring-fill'), 100);
 
   function applyFragments(fragments) {
     Object.keys(fragments).forEach(function (name) {
       var target = document.getElementById('live-' + name);
       if (!target || target.innerHTML === fragments[name]) return;
+      var oldRing = target.querySelector('.ring-fill');
+      var from = oldRing ? getComputedStyle(oldRing).strokeDashoffset : null;
       target.innerHTML = fragments[name];
+      if (from !== null) animateRing(target.querySelector('.ring-fill'), from);
       target.classList.remove('live-updated');
       void target.offsetWidth;  // restart the highlight animation
       target.classList.add('live-updated');
@@ -71,6 +133,7 @@
       if (data.payments.length) {
         // A burst (e.g. after the laptop slept): two alerts and a summary, not a flood.
         data.payments.slice(0, 2).forEach(function (p) { toast(p); notify(p); });
+        chime();
         if (data.payments.length > 2) {
           var more = data.payments.length - 2;
           toast({url: box.dataset.paymentsUrl, amount: '+' + more + ' more payment' + (more > 1 ? 's' : ''),
