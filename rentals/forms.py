@@ -278,3 +278,75 @@ class ChargeForm(forms.ModelForm):
         if commit:
             charge.save()
         return charge
+
+
+class RentChangeForm(forms.Form):
+    """Change one tenant's rent from a future rent day."""
+
+    new_rent = forms.DecimalField(label='New monthly rent (KES)', min_value=1, max_digits=10, decimal_places=2)
+    effective_from = forms.DateField(
+        widget=DATE, label='Starting from',
+        help_text='The new rent applies from the first rent day on or after this date. Give tenants at least a '
+                  "month's notice.",
+    )
+    notify = forms.BooleanField(required=False, initial=True, label='Tell the tenant by SMS now')
+
+    def __init__(self, *args, lease, **kwargs):
+        self.lease = lease
+        super().__init__(*args, **kwargs)
+        self.initial.setdefault('effective_from', lease.first_rent_day_from(datetime.date.today()
+                                                                            + datetime.timedelta(days=30)))
+
+    def clean_effective_from(self):
+        day = self.cleaned_data['effective_from']
+        if day <= datetime.date.today():
+            raise ValidationError('Choose a date in the future.')
+        if self.lease.end_date and self.lease.first_rent_day_from(day) > self.lease.end_date:
+            raise ValidationError('They move out before then.')
+        return day
+
+    def clean_new_rent(self):
+        rent = self.cleaned_data['new_rent']
+        if rent == self.lease.monthly_rent:
+            raise ValidationError("That's their current rent.")
+        return rent
+
+
+class BulkRentChangeForm(forms.Form):
+    """Change rent for several tenants in a property at once."""
+
+    MODES = [('percent', 'Raise by a percentage'), ('amount', 'Raise by an amount (KES)'),
+             ('set', 'Set everyone to the same rent (KES)')]
+    mode = forms.ChoiceField(choices=MODES, initial='percent', label='How')
+    value = forms.DecimalField(max_digits=10, decimal_places=2, label='By how much',
+                               help_text='e.g. 10 for 10%, or 1000 for KES 1,000. Use a minus to lower rent.')
+    effective_from = forms.DateField(widget=DATE, label='Starting from',
+                                     help_text='Each tenant changes on their first rent day on or after this date.')
+    leases = forms.ModelMultipleChoiceField(queryset=Lease.objects.none(), widget=forms.CheckboxSelectMultiple,
+                                            label='Tenants')
+    notify = forms.BooleanField(required=False, initial=True, label='Tell each tenant by SMS')
+
+    def __init__(self, *args, property, **kwargs):
+        super().__init__(*args, **kwargs)
+        leases = (Lease.objects.filter(unit__property=property, is_active=True, end_date__isnull=True)
+                  .select_related('tenant', 'unit').order_by('unit__label'))
+        self.fields['leases'].queryset = leases
+        self.fields['leases'].label_from_instance = lambda l: f'{l.unit.label} · {l.tenant} · KES {l.monthly_rent:,.0f}'
+        self.initial.setdefault('leases', list(leases))
+        today = datetime.date.today()
+        self.initial.setdefault('effective_from', (today + datetime.timedelta(days=62)).replace(day=1))
+
+    def clean_effective_from(self):
+        day = self.cleaned_data['effective_from']
+        if day <= datetime.date.today():
+            raise ValidationError('Choose a date in the future.')
+        return day
+
+    def clean(self):
+        cleaned = super().clean()
+        mode, value = cleaned.get('mode'), cleaned.get('value')
+        if mode == 'set' and value is not None and value < 1:
+            self.add_error('value', 'Enter the new rent.')
+        if mode in ('percent', 'amount') and value == 0:
+            self.add_error('value', 'Enter how much to change it by.')
+        return cleaned

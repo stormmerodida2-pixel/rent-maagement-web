@@ -1,0 +1,32 @@
+{% extends 'app_base.html' %}
+{% load humanize ui %}
+{% block page_title %}Change rent · {{ lease.tenant }}{% endblock %}
+{% block content %}
+<div class="form-page">
+<div class="page-header"><div>
+  <h1>Change rent</h1>
+  <p class="sub">{{ lease.tenant }} · {{ lease.unit }} · now {{ lease.monthly_rent|kes }} a month, rent day the {{ lease.due_day|ordinal }}.</p>
+</div></div>
+
+{% if pending %}
+<div class="alert alert-info" style="margin-bottom:16px">{% icon 'calendar' 18 %}
+  <span>Already planned: <strong>{{ pending.new_rent|kes }}</strong> from {{ pending.starts_on|date:"d M Y" }}{% if pending.notified_at %} (tenant told by SMS {{ pending.notified_at|date:"d M" }}){% endif %}. Saving below replaces it.</span>
+  <span class="spacer"></span>
+  <form method="post">{% csrf_token %}<input type="hidden" name="action" value="cancel"><button class="btn btn-sm">Cancel this change</button></form>
+</div>
+{% endif %}
+
+<section class="card form-card">
+  <div class="card-body">
+    <form method="post" novalidate>
+      {% csrf_token %}
+      {% include 'includes/form_fields.html' %}
+      <div class="form-actions">
+        <button type="submit" class="btn btn-primary">Plan the change</button>
+        <a class="btn btn-ghost" href="{% url 'rentals:lease_detail' lease.pk %}">Cancel</a>
+      </div>
+    </form>
+  </div>
+</section>
+</div>
+{% endblock %}

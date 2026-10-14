@@ -18,11 +18,20 @@
     <a class="btn" href="{% url 'rentals:charge_create' lease.pk %}">{% icon 'plus' %}Add charge</a>
     <a class="btn" href="{% url 'rentals:tenant_update' lease.tenant_id %}?next={{ request.path|urlencode }}">Edit tenant</a>
     <a class="btn" href="{% url 'rentals:lease_update' lease.pk %}">Edit lease</a>
+    {% if lease.is_active %}<a class="btn" href="{% url 'rentals:rent_change' lease.pk %}">Change rent</a>{% endif %}
     {% if lease.is_active and not lease.moving_out %}<a class="btn" href="{% url 'rentals:lease_notice' lease.pk %}">{% icon 'calendar' %}Record move-out notice</a>{% endif %}
     {% if lease.is_active %}<a class="btn text-danger" href="{% url 'rentals:lease_end' lease.pk %}">End lease</a>{% endif %}
   </div>
 </div>
 
+{% with change=lease.pending_rent_change %}{% if change %}
+<div class="alert alert-info moveout-banner">
+  {% icon 'calendar' 18 %}
+  <span><strong>Rent changes to {{ change.new_rent|kes }} from {{ change.starts_on|date:"D d M Y" }}</strong> (now {{ change.old_rent|kes }}).{% if change.notified_at %} Tenant told by SMS {{ change.notified_at|date:"d M" }}.{% else %} Tenant not told by SMS yet.{% endif %}</span>
+  <span class="spacer"></span>
+  <a class="btn btn-sm" href="{% url 'rentals:rent_change' lease.pk %}">Change</a>
+</div>
+{% endif %}{% endwith %}
 {% if lease.moving_out %}
 <div class="alert {% if lease.move_out_overdue %}alert-warning{% else %}alert-info{% endif %} moveout-banner">
   {% icon 'calendar' 18 %}

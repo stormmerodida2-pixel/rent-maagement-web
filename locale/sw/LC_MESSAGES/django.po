@@ -5,7 +5,7 @@ msgid ""
 msgstr ""
 "Project-Id-Version: Liskodi\n"
 "Report-Msgid-Bugs-To: \n"
-"POT-Creation-Date: 2026-10-14 19:51+0300\n"
+"POT-Creation-Date: 2026-10-14 20:03+0300\n"
 "PO-Revision-Date: YEAR-MO-DA HO:MI+ZONE\n"
 "Last-Translator: FULL NAME <EMAIL@ADDRESS>\n"
 "Language-Team: Kiswahili\n"
@@ -101,6 +101,10 @@ msgstr "Umelipa kodi yote."
 #, python-format
 msgid "Received %(amount)s cash for %(unit)s, recorded by %(name)s. Thank you! %(status)s"
 msgstr "Tumepokea pesa taslimu %(amount)s kwa %(unit)s, zimerekodiwa na %(name)s. Asante! %(status)s"
+
+#, python-format
+msgid "Hi %(name)s, your rent for %(unit)s will change from %(old)s to %(new)s a month, starting with the rent due on %(date)s. Details: %(link)s"
+msgstr "Habari %(name)s, kodi yako ya %(unit)s itabadilika kutoka %(old)s hadi %(new)s kwa mwezi, kuanzia kodi inayolipwa tarehe %(date)s. Maelezo: %(link)s"
 
 msgid "M-Pesa"
 msgstr "M-Pesa"
@@ -301,6 +305,10 @@ msgstr "Salio"
 #, python-format
 msgid "Rent %(rent)s a month, due on day %(day)s"
 msgstr "Kodi %(rent)s kwa mwezi, hulipwa tarehe %(day)s"
+
+#, python-format
+msgid "Your rent changes to %(new)s a month from %(date)s."
+msgstr "Kodi yako itabadilika kuwa %(new)s kwa mwezi kuanzia tarehe %(date)s."
 
 #, python-format
 msgid "You're moving out on %(date)s. Please arrange the handover with your landlord."

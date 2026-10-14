@@ -219,6 +219,18 @@ def send_cash_receipt(payment, recorded_by):
                     SmsMessage.Kind.RECEIPT)
 
 
+def rent_change_text(change):
+    """Tells a tenant their rent is changing, and from which rent day, in their language."""
+    lease = change.lease
+    with tenant_language(lease.tenant):
+        return _('Hi %(name)s, your rent for %(unit)s will change from %(old)s to %(new)s a month, starting with '
+                 'the rent due on %(date)s. Details: %(link)s') % {
+            'name': lease.tenant.full_name.split()[0], 'unit': lease.unit.label, 'old': _kes(change.old_rent),
+            'new': _kes(change.new_rent), 'date': date_format(change.starts_on, 'j M Y'),
+            'link': lease.tenant.portal_url(),
+        }
+
+
 def send_payment_receipt(payment):
     if not settings.SMS['PAYMENT_RECEIPTS']:
         return None

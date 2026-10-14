@@ -6,6 +6,7 @@
   <div><h1>{{ object.name }}</h1><p class="sub">{{ object.address|default:"No address" }}{% if object.water_rate %} · Water KES {{ object.water_rate|floatformat:"-2" }}/unit{% endif %}</p></div>
   <div class="actions">
     <a class="btn" href="{% url 'rentals:water_readings' object.pk %}">{% icon 'chart' %}Water readings</a>
+    <a class="btn" href="{% url 'rentals:property_rent_change' object.pk %}">Change rent</a>
     <a class="btn" href="{% url 'rentals:property_update' object.pk %}">Edit property</a>
   </div>
 </div>
