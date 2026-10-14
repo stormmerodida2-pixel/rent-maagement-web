@@ -1,0 +1,24 @@
+{% extends 'base.html' %}
+{% load static ui %}
+{% block title %}{% block page_title %}{% endblock %} · {{ APP_NAME }}{% endblock %}
+{% block body_class %}staff-area{% endblock %}
+{% block body %}
+{% with url_name=request.resolver_match.url_name %}
+<header class="staff-bar">
+  <a class="brand" href="{% url 'staff:home' %}">{% include 'includes/logo.html' %}</a>
+  <span class="spacer"></span>
+  <span class="staff-who"><span class="avatar">{{ request.staff.name|initials }}</span><span class="staff-name">{{ request.staff.name }}</span></span>
+</header>
+<nav class="staff-tabs" aria-label="Staff">
+  <a href="{% url 'staff:home' %}" class="{% if url_name == 'home' or url_name == 'prompt' or url_name == 'record_cash' %}active{% endif %}">{% icon 'wallet' %}Rent</a>
+  <a href="{% url 'staff:repairs' %}" class="{% if 'repair' in url_name %}active{% endif %}">{% icon 'wrench' %}Repairs</a>
+  <a href="{% url 'staff:password' %}" class="{% if url_name == 'password' %}active{% endif %}">{% icon 'settings' %}Password</a>
+  <form method="post" action="{% url 'logout' %}">{% csrf_token %}<button>{% icon 'logout' %}Log out</button></form>
+</nav>
+<main class="staff-main">
+  {% include 'includes/messages.html' %}
+  {% block content %}{% endblock %}
+</main>
+<script src="{% static 'js/staff.js' %}" defer></script>
+{% endwith %}
+{% endblock %}

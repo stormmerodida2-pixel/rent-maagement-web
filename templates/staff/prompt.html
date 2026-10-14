@@ -1,0 +1,20 @@
+{% extends 'staff/base.html' %}
+{% load ui %}
+{% block page_title %}M-Pesa prompt{% endblock %}
+{% block content %}
+<div class="staff-head"><a class="small" href="{% url 'staff:home' %}">← Back to tenants</a>
+  <h1>{{ txn.lease.tenant.full_name }}</h1><p class="muted">{{ txn.lease.unit }}</p></div>
+
+<section class="card prompt-card prompt-{{ state.status }}" data-prompt-poll="{% url 'staff:prompt' txn.pk %}?format=json" aria-live="polite">
+  <div class="prompt-icon" aria-hidden="true"><span class="prompt-spinner"></span><span class="prompt-tick">✓</span><span class="prompt-cross">✕</span></div>
+  <h2 data-prompt-title>{{ state.title }}</h2>
+  <p class="muted" data-prompt-detail>{{ state.detail }}</p>
+</section>
+
+<div class="staff-actions" style="margin-top:16px">
+  <form method="post" action="{% url 'staff:prompt_check' txn.pk %}" data-prompt-check {% if state.status != 'waiting' %}hidden{% endif %}>{% csrf_token %}
+    <button class="btn">{% icon 'refresh' %}Check with Safaricom</button></form>
+  <a class="btn btn-primary" href="{% url 'staff:home' %}">Done</a>
+</div>
+<p class="muted small" style="margin-top:12px">This page updates by itself. Prompts expire after about a minute if the tenant doesn't respond; you can send another from the list.</p>
+{% endblock %}

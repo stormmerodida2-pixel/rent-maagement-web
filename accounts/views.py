@@ -190,6 +190,7 @@ def settings_page(request):
         'mpesa_ready': account is not None and account.is_complete(),
         'prefs': LandlordPreferences.for_user(request.user),
         'email_verified': is_verified(request.user),
+        'staff_count': request.user.staff_members.filter(user__is_active=True).count(),
     })
 
 
@@ -255,7 +256,7 @@ class ChangePasswordView(auth_views.PasswordChangeView):
     def post(self, request, *args, **kwargs):
         if ratelimit.hit('password-change', request.user.pk, 60 * 60) > PASSWORD_CHANGES_PER_HOUR:
             messages.error(request, 'Too many attempts. Please try again in an hour.')
-            return redirect('accounts:password_change')
+            return redirect(request.path)
         return super().post(request, *args, **kwargs)
 
     def form_valid(self, form):

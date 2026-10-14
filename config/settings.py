@@ -74,6 +74,7 @@ INSTALLED_APPS = [
     'audit',
     'support',
     'announcements',
+    'staff',
     'ops',
 ]
 
@@ -85,6 +86,7 @@ MIDDLEWARE = [
     'django.middleware.common.CommonMiddleware',
     'django.middleware.csrf.CsrfViewMiddleware',
     'django.contrib.auth.middleware.AuthenticationMiddleware',
+    'staff.middleware.StaffAreaMiddleware',  # staff accounts only reach /staff/
     'django.contrib.messages.middleware.MessageMiddleware',
     'django.middleware.clickjacking.XFrameOptionsMiddleware',
 ]

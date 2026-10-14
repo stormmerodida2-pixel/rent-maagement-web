@@ -1,0 +1,11 @@
+{% extends 'staff/base.html' %}
+{% block page_title %}{{ title }}{% endblock %}
+{% block content %}
+<div class="staff-head"><a class="small" href="{{ cancel|default:'/staff/' }}">← Back</a><h1>{{ title }}</h1>{% if intro %}<p class="muted">{{ intro }}</p>{% endif %}</div>
+<section class="card"><div class="card-body">
+  <form method="post" novalidate>{% csrf_token %}
+    {% include 'includes/form_fields.html' %}
+    <button type="submit" class="btn btn-primary btn-block" style="margin-top:16px">{{ submit }}</button>
+  </form>
+</div></section>
+{% endblock %}

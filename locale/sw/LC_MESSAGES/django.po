@@ -5,7 +5,7 @@ msgid ""
 msgstr ""
 "Project-Id-Version: Liskodi\n"
 "Report-Msgid-Bugs-To: \n"
-"POT-Creation-Date: 2026-10-14 16:58+0300\n"
+"POT-Creation-Date: 2026-10-14 19:03+0300\n"
 "PO-Revision-Date: YEAR-MO-DA HO:MI+ZONE\n"
 "Last-Translator: FULL NAME <EMAIL@ADDRESS>\n"
 "Language-Team: Kiswahili\n"
@@ -84,6 +84,10 @@ msgid "Hi %(name)s, your rent balance for %(unit)s is %(balance)s%(when)s. %(how
 msgstr "Habari %(name)s, salio la kodi yako ya %(unit)s ni %(balance)s%(when)s. %(how)s: %(link)s"
 
 #, python-format
+msgid "Received %(amount)s (M-Pesa %(reference)s) for %(unit)s. Thank you! %(status)s"
+msgstr "Tumepokea %(amount)s (M-Pesa %(reference)s) kwa %(unit)s. Asante! %(status)s"
+
+#, python-format
 msgid "Balance: %(amount)s."
 msgstr "Salio: %(amount)s."
 
@@ -95,8 +99,8 @@ msgid "You are fully paid up."
 msgstr "Umelipa kodi yote."
 
 #, python-format
-msgid "Received %(amount)s (M-Pesa %(reference)s) for %(unit)s. Thank you! %(status)s"
-msgstr "Tumepokea %(amount)s (M-Pesa %(reference)s) kwa %(unit)s. Asante! %(status)s"
+msgid "Received %(amount)s cash for %(unit)s, recorded by %(name)s. Thank you! %(status)s"
+msgstr "Tumepokea pesa taslimu %(amount)s kwa %(unit)s, zimerekodiwa na %(name)s. Asante! %(status)s"
 
 msgid "M-Pesa"
 msgstr "M-Pesa"

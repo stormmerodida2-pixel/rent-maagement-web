@@ -97,3 +97,57 @@ a.settings-link:hover { text-decoration: none; background: var(--surface-2); }
 .settings-link > svg { width: 18px; height: 18px; color: var(--muted); flex: none; }
 .settings-group .settings-row:last-child { border-radius: 0 0 var(--radius) var(--radius); }
 .settings-avatar { width: 40px; height: 40px; font-size: 15px; flex: none; }
+
+/* --- Staff area (caretakers, mostly on phones) ---------------------------------------------- */
+.staff-bar { position: sticky; top: 0; z-index: 30; display: flex; align-items: center; gap: 10px; height: 64px;
+  padding: 0 14px; background: var(--surface); border-bottom: 1px solid var(--border); }
+.staff-bar .brand { padding: 0; }
+.staff-bar .logo { height: 58px; }
+.staff-who { display: inline-flex; align-items: center; gap: 8px; font-weight: 600; font-size: 14px; }
+.staff-tabs { display: flex; gap: 4px; padding: 8px 10px; background: var(--surface); border-bottom: 1px solid var(--border);
+  overflow-x: auto; }
+.staff-tabs a, .staff-tabs button { display: inline-flex; align-items: center; gap: 6px; padding: 9px 12px; border: 0;
+  border-radius: 10px; background: none; color: var(--text-2); font: inherit; font-size: 14px; font-weight: 500;
+  white-space: nowrap; cursor: pointer; }
+.staff-tabs a:hover, .staff-tabs button:hover { background: var(--surface-2); text-decoration: none; }
+.staff-tabs a.active { background: var(--brand-soft); color: var(--brand); }
+.staff-tabs svg { width: 17px; height: 17px; }
+.staff-tabs form { margin-left: auto; }
+.staff-main { max-width: 680px; margin: 0 auto; padding: 18px 16px 48px; }
+.staff-main > .messages, .staff-main > .alert { margin-bottom: 14px; }
+.staff-head { margin-bottom: 14px; }
+.staff-head h1 { font-size: 24px; margin: 4px 0 2px; }
+.staff-search { display: flex; gap: 8px; margin-bottom: 10px; }
+.staff-search input { flex: 1; min-width: 0; }
+.staff-filter { margin-bottom: 14px; }
+.staff-list { display: grid; gap: 12px; }
+.staff-card { display: grid; gap: 10px; padding: 16px; }
+a.staff-card-link { color: var(--text); }
+a.staff-card-link:hover { text-decoration: none; border-color: var(--brand); }
+.staff-card-head { display: flex; align-items: center; gap: 12px; }
+.staff-card-who { flex: 1; min-width: 0; display: flex; flex-direction: column; gap: 2px; }
+.staff-owes { display: flex; flex-direction: column; align-items: flex-end; font-size: 11px; text-transform: uppercase;
+  letter-spacing: .04em; color: var(--muted); }
+.staff-owes strong { font-size: 17px; color: var(--danger); text-transform: none; letter-spacing: 0; }
+.staff-actions { display: flex; flex-wrap: wrap; gap: 8px; }
+.staff-actions > .btn, .staff-actions > form { flex: 1 1 auto; }
+.staff-actions .btn { justify-content: center; }
+.staff-prompt { display: flex; gap: 8px; flex: 1 1 100%; }
+.staff-prompt input { width: 120px; flex: none; }
+.staff-prompt .btn { flex: 1; }
+
+.prompt-card { padding: 28px 20px; text-align: center; }
+.prompt-card h2 { font-size: 20px; margin: 14px 0 6px; }
+.prompt-icon { width: 64px; height: 64px; margin: 0 auto; border-radius: 50%; display: grid; place-items: center;
+  font-size: 30px; font-weight: 700; background: var(--surface-2); }
+.prompt-icon > span { display: none; }
+.prompt-waiting .prompt-spinner { display: block; width: 34px; height: 34px; border-radius: 50%;
+  border: 4px solid var(--brand-soft); border-top-color: var(--brand); animation: prompt-spin .9s linear infinite; }
+.prompt-paid .prompt-icon { background: var(--brand); color: #fff; }
+.prompt-paid .prompt-tick { display: block; }
+.prompt-paid h2 { color: var(--brand); }
+.prompt-failed .prompt-icon { background: var(--danger); color: #fff; }
+.prompt-failed .prompt-cross { display: block; }
+@keyframes prompt-spin { to { transform: rotate(360deg); } }
+@media (prefers-reduced-motion: reduce) { .prompt-spinner { animation-duration: 3s; } }
+@media (max-width: 420px) { .staff-name { display: none; } }
