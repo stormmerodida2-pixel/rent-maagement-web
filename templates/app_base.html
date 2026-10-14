@@ -36,6 +36,7 @@
         <span class="avatar">{{ user.get_full_name|default:user.username|initials }}</span>
         <div><div class="name small">{{ user.get_full_name|default:user.username }}</div><div class="meta">{% if user.is_superuser %}Administrator{% else %}Landlord{% endif %}</div></div>
       </div>
+      {% include 'includes/theme_switch.html' %}
       <form method="post" action="{% url 'logout' %}">{% csrf_token %}
         <button class="btn btn-ghost btn-sm" title="Log out">{% icon 'logout' %}<span class="visually-hidden">Log out</span></button>
       </form>

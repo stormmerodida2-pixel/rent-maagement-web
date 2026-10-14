@@ -26,8 +26,34 @@
   color-scheme: light;
 }
 
+/* Dark theme. Applied when the user picks Dark, or picks System (the default) on a device set to
+   dark. The choice lives in localStorage "theme" (auto | light | dark), the same key Django's admin
+   uses, and is mirrored to <html data-theme> before the page paints (see templates/base.html). */
+:root[data-theme="dark"] {
+  --bg: #0d1117;
+  --surface: #151b23;
+  --surface-2: #1b232e;
+  --text: #e6e9ee;
+  --text-2: #b4bcc8;
+  --muted: #8b95a5;
+  --border: #273040;
+  --brand: #34c48a;
+  --brand-hover: #4fd69c;
+  --brand-ink: #04261a;
+  --brand-soft: rgb(52 196 138 / 0.13);
+  --danger: #f97066;
+  --danger-soft: rgb(249 112 102 / 0.13);
+  --warn: #fdb022;
+  --warn-soft: rgb(253 176 34 / 0.13);
+  --info: #84adff;
+  --info-soft: rgb(132 173 255 / 0.13);
+  --shadow: 0 1px 2px rgb(0 0 0 / 0.4);
+  --shadow-lg: 0 16px 40px -8px rgb(0 0 0 / 0.6);
+  color-scheme: dark;
+}
+
 @media (prefers-color-scheme: dark) {
-  :root {
+  :root:not([data-theme="light"]):not([data-theme="dark"]) {
     --bg: #0d1117;
     --surface: #151b23;
     --surface-2: #1b232e;
@@ -434,3 +460,21 @@ label, .label { display: block; font-size: 13px; font-weight: 500; color: var(--
 .timeline { list-style: none; margin: 0; padding: 4px 18px 14px; }
 .timeline li { position: relative; padding: 10px 0 10px 18px; border-left: 2px solid var(--border); }
 .timeline li::before { content: ""; position: absolute; left: -6px; top: 15px; width: 10px; height: 10px; border-radius: 50%; background: var(--surface); border: 2px solid var(--brand); }
+
+
+/* ---- Theme switch ------------------------------------------------------------------------ */
+
+.theme-switch { display: inline-flex; gap: 2px; padding: 3px; border-radius: 99px; background: var(--surface-2); border: 1px solid var(--border); }
+.theme-switch button {
+  display: grid; place-items: center; width: 28px; height: 26px; padding: 0; border: 0; border-radius: 99px;
+  background: transparent; color: var(--muted); cursor: pointer;
+}
+.theme-switch button:hover { color: var(--text); }
+.theme-switch button[aria-pressed="true"] { background: var(--surface); color: var(--text); box-shadow: var(--shadow); }
+.theme-switch svg { width: 15px; height: 15px; }
+.sidebar-footer { flex-wrap: wrap; }
+.sidebar-footer .theme-switch { order: 3; width: 100%; justify-content: space-between; }
+.sidebar-footer .theme-switch button { flex: 1; }
+@media (max-width: 900px) {
+  .sidebar-footer .theme-switch { order: 0; width: auto; }
+}

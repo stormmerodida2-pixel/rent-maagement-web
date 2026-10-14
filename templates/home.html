@@ -10,6 +10,7 @@
       <a href="#how-it-works">How it works</a>
       <a href="#tenants">For tenants</a>
     </nav>
+    {% include 'includes/theme_switch.html' %}
     {% if user.is_authenticated %}
       <a class="btn btn-primary" href="{% url 'rentals:dashboard' %}">Open dashboard {% icon 'arrow-right' %}</a>
     {% else %}

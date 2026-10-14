@@ -3,6 +3,8 @@
 {% block body %}
 <header class="topbar">
   <a class="brand" href="{% url 'rentals:home' %}" style="padding:0">{% include 'includes/logo.html' %}{{ APP_NAME }}</a>
+  <span class="spacer"></span>
+  {% include 'includes/theme_switch.html' %}
 </header>
 <main>
   <div class="card auth-card">

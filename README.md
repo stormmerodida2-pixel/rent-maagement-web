@@ -24,7 +24,7 @@ Built with Django. Landlords sign up themselves and do everything in the app. Th
 
 Every page is restricted to the signed-in landlord's own records. Another landlord's record returns 404.
 
-Styles live in `static/css/app.css`, which uses colour tokens and supports dark mode. Icons and helpers are in `rentals/templatetags/ui.py`. Set `APP_NAME` in `.env` to rebrand.
+Styles live in `static/css/app.css`, which uses colour tokens. Every page has a **Light / Dark / System** switch (`static/js/theme.js`). The choice is saved in the browser under the same key Django's admin uses, so the app and admin always match. "System" follows the device's setting. Printed statements and receipts stay white like paper. Icons and helpers are in `rentals/templatetags/ui.py`. Set `APP_NAME` in `.env` to rebrand.
 
 ## Setup
 

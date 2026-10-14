@@ -168,3 +168,18 @@ class LoginRequiredTests(TestCase):
             resp = self.client.get(reverse(f'rentals:{name}'))
             self.assertEqual(resp.status_code, 302, name)
             self.assertTrue(resp['Location'].startswith(reverse('login')), name)
+
+
+class ThemeSwitchTests(TestCase):
+    def test_switch_and_early_theme_script_on_public_and_app_pages(self):
+        owner = get_user_model().objects.create_user('landlord')
+        lease = make_lease(owner)
+        pages = [reverse('rentals:home'), reverse('login'), reverse('accounts:signup'),
+                 reverse('rentals:tenant_portal', args=[lease.tenant.portal_token])]
+        for url in pages:
+            resp = self.client.get(url)
+            self.assertContains(resp, 'data-theme-choice="dark"', msg_prefix=url)
+            self.assertContains(resp, "localStorage.getItem('theme')", msg_prefix=url)
+            self.assertContains(resp, 'js/theme.js', msg_prefix=url)
+        self.client.force_login(owner)
+        self.assertContains(self.client.get(reverse('rentals:dashboard')), 'data-theme-choice="auto"')
