@@ -6,18 +6,21 @@ from django.contrib import messages
 from django.contrib.auth import get_user_model, login
 from django.contrib.auth import views as auth_views
 from django.contrib.auth.decorators import login_required
+from django.core.mail import send_mail
 from django.shortcuts import redirect, render
+from django.urls import reverse_lazy
 from django.utils import timezone
 from django.utils.decorators import method_decorator
 from django.views.decorators.http import require_POST
 
+from audit import log as audit
 from notifications.models import LandlordPreferences
 from payments.models import MpesaAccount
 from rentals.models import Lease, Property, Tenant, Unit
 
 from . import ratelimit
-from .forms import SignupForm
-from .models import Profile
+from .forms import ChangePasswordForm, ProfileForm, SignupForm
+from .models import Profile, profile_for
 from .verification import is_verified, mark_verified, send_verification_email, user_from_token
 
 logger = logging.getLogger(__name__)
@@ -188,3 +191,79 @@ def settings_page(request):
         'prefs': LandlordPreferences.for_user(request.user),
         'email_verified': is_verified(request.user),
     })
+
+
+PROFILE_CHANGES_PER_HOUR = 10
+PASSWORD_CHANGES_PER_HOUR = 10
+
+
+def _notify(email, subject, body):
+    """Security notices to the landlord. A mail outage mustn't undo a change that already happened."""
+    if not email:
+        return
+    try:
+        send_mail(subject=f'{settings.APP_NAME}: {subject}', message=f'{body}\n\n{settings.APP_NAME}',
+                  from_email=None, recipient_list=[email])
+    except Exception:
+        logger.exception('Could not send security notice "%s"', subject)
+
+
+@login_required
+def profile_edit(request):
+    prefs = LandlordPreferences.for_user(request.user)
+    form = ProfileForm(request.POST or None, instance=request.user, prefs=prefs)
+    if request.method == 'POST':
+        if ratelimit.hit('profile', request.user.pk, 60 * 60) > PROFILE_CHANGES_PER_HOUR:
+            messages.error(request, 'Too many changes in a short time. Please try again in an hour.')
+            return redirect('accounts:profile')
+        if form.is_valid():
+            old_email, email_changed = form.original_email, form.email_changed
+            changes = audit.form_changes(form)
+            changes.pop('Current password', None)  # typed to confirm, not changed
+            user = form.save()
+            audit.record(owner=user, actor=user, action='account.profile_changed',
+                         summary='Updated profile details.', changes=changes)
+            if email_changed:
+                profile = profile_for(user)
+                profile.email_verified_at = None
+                profile.save(update_fields=['email_verified_at'])
+                _send_verification(request, user)
+                _notify(old_email, 'your email was changed',
+                        f'Hi {user.first_name or user.username},\n\nThe email on your account was changed to '
+                        f'{user.email}. If this wasn\'t you, reply to this email or contact support right away.')
+                messages.success(request, f'Saved. We sent a link to {user.email}: open it to confirm your new email.')
+            else:
+                messages.success(request, 'Saved.')
+            return redirect('accounts:settings')
+    return render(request, 'accounts/profile.html', {'form': form})
+
+
+@method_decorator(login_required, name='dispatch')
+class ChangePasswordView(auth_views.PasswordChangeView):
+    """Change password. Other devices are signed out (Django does this); this one stays signed in."""
+
+    form_class = ChangePasswordForm
+    template_name = 'form_page.html'
+    success_url = reverse_lazy('accounts:settings')
+    extra_context = {
+        'page_title': 'Change password',
+        'intro': 'You stay signed in here. Anywhere else you are signed in will be signed out.',
+        'submit_label': 'Change password',
+        'cancel_url': reverse_lazy('accounts:settings'),
+    }
+
+    def post(self, request, *args, **kwargs):
+        if ratelimit.hit('password-change', request.user.pk, 60 * 60) > PASSWORD_CHANGES_PER_HOUR:
+            messages.error(request, 'Too many attempts. Please try again in an hour.')
+            return redirect('accounts:password_change')
+        return super().post(request, *args, **kwargs)
+
+    def form_valid(self, form):
+        response = super().form_valid(form)
+        user = form.user
+        audit.record(owner=user, actor=user, action='account.password_changed', summary='Changed password.')
+        _notify(user.email, 'your password was changed',
+                f'Hi {user.first_name or user.username},\n\nYour password was just changed. If this wasn\'t you, '
+                'reset it now using "Forgot password?" on the login page, and contact support.')
+        messages.success(self.request, 'Password changed.')
+        return response

@@ -91,3 +91,9 @@ a.settings-item:hover { text-decoration: none; border-color: var(--brand); }
   .settings-row { padding-left: 18px; }
 }
 @media (prefers-reduced-motion: reduce) { .switch-knob, .switch-knob::after { transition: none; } }
+
+a.settings-link { color: var(--text); }
+a.settings-link:hover { text-decoration: none; background: var(--surface-2); }
+.settings-link > svg { width: 18px; height: 18px; color: var(--muted); flex: none; }
+.settings-group .settings-row:last-child { border-radius: 0 0 var(--radius) var(--radius); }
+.settings-avatar { width: 40px; height: 40px; font-size: 15px; flex: none; }
