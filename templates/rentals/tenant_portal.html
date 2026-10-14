@@ -20,6 +20,21 @@
 
   {% include 'includes/messages.html' %}
 
+  {% if notices %}
+  <section class="card">
+    <div class="card-header"><h2>{% icon 'megaphone' 18 %} Notices from your landlord</h2></div>
+    <div class="card-body stack">
+      {% for d in notices %}
+      <div class="notice-card{% if d.announcement.pinned %} pinned{% endif %}">
+        <strong>{{ d.announcement.title }}</strong>{% if d.announcement.pinned %} <span class="badge badge-info">Important</span>{% endif %}
+        <p>{{ d.announcement.body|linebreaksbr }}</p>
+        <div class="muted small">{{ d.announcement.sent_at|date:"d M Y" }}</div>
+      </div>
+      {% endfor %}
+    </div>
+  </section>
+  {% endif %}
+
   {% for lease, balance in lease_rows %}
   <section class="card">
     <div class="card-header">

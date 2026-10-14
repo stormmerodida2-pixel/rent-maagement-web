@@ -18,6 +18,7 @@
       <a href="{% url 'rentals:property_list' %}" class="{% if 'property' in url_name or 'unit_' in url_name %}active{% endif %}">{% icon 'building' %}Properties</a>
       <a href="{% url 'rentals:tenant_list' %}" class="{% if 'tenant_' in url_name and url_name != 'tenant_portal' %}active{% endif %}">{% icon 'users' %}Tenants</a>
       <a href="{% url 'rentals:lease_list' %}" class="{% if 'lease' in url_name %}active{% endif %}">{% icon 'file' %}Leases</a>
+      <a href="{% url 'announcements:list' %}" class="{% if app == 'announcements' %}active{% endif %}">{% icon 'megaphone' %}Announcements</a>
       <a href="{% url 'support:complaint_list' %}" class="{% if url_name == 'complaint_list' or url_name == 'complaint_detail' %}active{% endif %}">{% icon 'message' %}Complaints{% if nav_complaints %}<span class="count">{{ nav_complaints }}</span>{% endif %}</a>
       <a href="{% url 'maintenance:list' %}" class="{% if app == 'maintenance' %}active{% endif %}">{% icon 'wrench' %}Maintenance{% if nav_open_requests %}<span class="count">{{ nav_open_requests }}</span>{% endif %}</a>
 
@@ -57,6 +58,15 @@
           <input type="hidden" name="next" value="{{ request.get_full_path }}"><button class="btn btn-sm">Resend</button></form>
       </div>
       {% endif %}
+      {% for notice in platform_notices %}
+      <div class="alert {% if notice.level == 'warning' %}alert-warning{% else %}alert-info{% endif %}" style="margin-bottom:16px">
+        {% icon 'megaphone' 18 %}
+        <span><strong>{{ notice.title }}</strong>{% if notice.body %} {{ notice.body }}{% endif %}{% if notice.link %} <a href="{{ notice.link }}" target="_blank" rel="noopener">Learn more</a>{% endif %}</span>
+        <span class="spacer"></span>
+        <form method="post" action="{% url 'announcements:dismiss_notice' notice.pk %}">{% csrf_token %}
+          <input type="hidden" name="next" value="{{ request.get_full_path }}"><button class="btn btn-sm btn-ghost" title="Dismiss">Dismiss</button></form>
+      </div>
+      {% endfor %}
       {% include 'includes/messages.html' %}
       {% block content %}{% endblock %}
     </div>

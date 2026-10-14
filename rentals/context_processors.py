@@ -5,7 +5,7 @@ def branding(request):
     context = {'APP_NAME': settings.APP_NAME}
     user = getattr(request, 'user', None)
     if user is not None and user.is_authenticated and request.resolver_match \
-            and request.resolver_match.app_name in ('rentals', 'payments', 'maintenance', 'notifications', 'accounts', 'reports', 'audit', 'support'):
+            and request.resolver_match.app_name in ('rentals', 'payments', 'maintenance', 'notifications', 'accounts', 'reports', 'audit', 'support', 'announcements'):
         # Lazily imported to keep this module importable before apps are ready.
         from maintenance.models import MaintenanceRequest
         from payments.models import C2BPayment, MpesaAccount
@@ -23,6 +23,9 @@ def branding(request):
         ).count()
         account = MpesaAccount.objects.filter(owner=user).first()
         context['nav_mpesa_missing'] = account is None or not account.is_complete()
+        from announcements.models import PlatformNotice
+
+        context['platform_notices'] = list(PlatformNotice.current_for(user)[:3])
         from accounts.verification import is_verified
         from accounts.views import setup_steps
 

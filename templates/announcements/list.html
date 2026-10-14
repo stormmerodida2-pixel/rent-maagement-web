@@ -1,0 +1,33 @@
+{% extends 'app_base.html' %}
+{% load ui %}
+{% block page_title %}Announcements{% endblock %}
+{% block content %}
+<div class="page-header">
+  <div><h1>Announcements</h1><p class="sub">Notices to your tenants by SMS and on their rent page.</p></div>
+  <div class="actions"><a class="btn btn-primary" href="{% url 'announcements:create' %}">{% icon 'plus' %}New announcement</a></div>
+</div>
+<section class="card">
+  {% if object_list %}
+  <div class="table-wrap">
+    <table class="table">
+      <thead><tr><th>Announcement</th><th>To</th><th>Status</th><th>When</th></tr></thead>
+      <tbody>
+      {% for a in object_list %}
+      <tr>
+        <td><a href="{% url 'announcements:detail' a.pk %}"><strong>{{ a.title }}</strong></a>{% if a.pinned %} <span class="badge badge-info">Pinned</span>{% endif %}
+          <div class="muted small">{{ a.body|truncatechars:80 }}</div></td>
+        <td class="small">{{ a.get_audience_display }}</td>
+        <td>{% if a.status == 'sent' %}{% badge 'success' 'Sent' %}{% elif a.status == 'scheduled' %}{% badge 'pending' 'Scheduled' %}{% elif a.status == 'cancelled' %}{% badge 'cancelled' 'Removed' %}{% else %}{% badge 'open' 'Draft' %}{% endif %}</td>
+        <td class="muted nowrap small">{% if a.sent_at %}{{ a.sent_at|date:"d M Y, H:i" }}{% elif a.scheduled_for %}{{ a.scheduled_for|date:"d M Y, H:i" }}{% else %}not sent{% endif %}</td>
+      </tr>
+      {% endfor %}
+      </tbody>
+    </table>
+  </div>
+  {% include 'includes/pagination.html' %}
+  {% else %}
+  <div class="empty"><strong>No announcements yet</strong>Let tenants know about outages, maintenance or meetings.
+    <div style="margin-top:14px"><a class="btn btn-primary btn-sm" href="{% url 'announcements:create' %}">{% icon 'plus' %}New announcement</a></div></div>
+  {% endif %}
+</section>
+{% endblock %}

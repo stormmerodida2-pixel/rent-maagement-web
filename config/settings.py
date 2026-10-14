@@ -72,6 +72,7 @@ INSTALLED_APPS = [
     'reports',
     'audit',
     'support',
+    'announcements',
     'ops',
 ]
 
@@ -282,6 +283,8 @@ SMS = {
     'AT_SENDER_ID': os.environ.get('AT_SENDER_ID', ''),  # optional alphanumeric sender ID
     'PAYMENT_RECEIPTS': env_bool('SMS_PAYMENT_RECEIPTS', True),
 }
+# Shown as an estimate before sending announcements (KES per SMS part).
+SMS_COST_PER_PART = float(os.environ.get('SMS_COST_PER_PART', '0.80'))
 
 # Database backups written by the scheduler (`python manage.py backup_db`).
 BACKUP_DIR = Path(os.environ.get('BACKUP_DIR', BASE_DIR / 'backups'))

@@ -60,6 +60,69 @@ def send_sms(phone, body, lease=None, kind=SmsMessage.Kind.OTHER):
     return msg
 
 
+BULK_BATCH = 100  # numbers per Africa's Talking request
+
+
+def send_bulk_sms(recipients, body, kind=SmsMessage.Kind.OTHER):
+    """Send the same text to many people in as few requests as possible.
+
+    `recipients` is a list of (lease, phone). Returns one SmsMessage per recipient, each recording
+    its own outcome. Like send_sms, this never raises.
+    """
+    messages = []
+    for lease, phone in recipients:
+        msg = SmsMessage(lease=lease, phone=phone, body=body, kind=kind, status=SmsMessage.Status.FAILED)
+        try:
+            msg.phone = normalize_phone(phone)
+        except ValueError as exc:
+            msg.error = str(exc)[:255]
+        messages.append(msg)
+    valid = [m for m in messages if not m.error]
+
+    backend = settings.SMS['BACKEND']
+    if backend == 'console':
+        for msg in valid:
+            logger.info('SMS to %s: %s', msg.phone, body)
+            msg.status = SmsMessage.Status.LOGGED
+    elif backend == 'africastalking':
+        for start in range(0, len(valid), BULK_BATCH):
+            _send_africastalking_bulk(valid[start:start + BULK_BATCH], body)
+    else:
+        for msg in valid:
+            msg.error = f'Unknown SMS_BACKEND {backend!r}'
+    SmsMessage.objects.bulk_create(messages)
+    return messages
+
+
+def _send_africastalking_bulk(batch, body):
+    cfg = settings.SMS
+    url = AT_URLS['sandbox' if cfg['AT_USERNAME'] == 'sandbox' else 'live']
+    data = {'username': cfg['AT_USERNAME'], 'to': ','.join(f'+{m.phone}' for m in batch), 'message': body}
+    if cfg['AT_SENDER_ID']:
+        data['from'] = cfg['AT_SENDER_ID']
+    try:
+        resp = requests.post(url, data=data, headers={'apiKey': cfg['AT_API_KEY'], 'Accept': 'application/json'},
+                             timeout=60)
+        resp.raise_for_status()
+        results = {r.get('number', '').lstrip('+'): r for r in resp.json()['SMSMessageData']['Recipients']}
+    except (requests.RequestException, ValueError, KeyError) as exc:
+        logger.warning('Bulk SMS batch of %s failed: %s', len(batch), exc)
+        for msg in batch:
+            msg.error = str(exc)[:255]
+        return
+    for msg in batch:
+        r = results.get(msg.phone)
+        if r is None:
+            msg.error = 'Not accepted by the SMS provider'
+            continue
+        msg.provider_message_id = r.get('messageId', '')
+        msg.cost = r.get('cost', '')
+        if r.get('statusCode') in AT_SUCCESS_CODES:
+            msg.status = SmsMessage.Status.SENT
+        else:
+            msg.error = str(r.get('status', 'Rejected'))[:255]
+
+
 def _kes(amount):
     return f'KES {amount:,.0f}'
 
