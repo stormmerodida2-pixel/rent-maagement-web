@@ -5,13 +5,13 @@ from django.shortcuts import get_object_or_404, redirect, render
 from django.utils.translation import gettext
 from django.views.generic import ListView
 
-from accounts import ratelimit
-from audit import log as audit
-from rentals.mixins import OwnedMixin
-from rentals.i18n import tenant_page
+from accounts import utils as ratelimit
+from audit import utils as audit
+from rentals.utils import OwnedMixin
+from rentals.utils import tenant_page
 from rentals.models import Tenant
 
-from . import notify
+from . import utils as notify
 from .forms import ComplaintForm, ContactForm, LandlordReplyForm, ReplyForm
 from .models import Complaint, ComplaintMessage
 

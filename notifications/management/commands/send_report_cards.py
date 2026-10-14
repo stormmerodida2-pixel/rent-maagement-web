@@ -2,7 +2,7 @@ import datetime
 
 from django.core.management.base import BaseCommand
 
-from notifications.report_cards import previous_month, send_all
+from notifications.utils import previous_month, send_all
 
 
 class Command(BaseCommand):

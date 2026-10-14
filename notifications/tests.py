@@ -10,7 +10,7 @@ from payments.tests import make_account
 from rentals.tests import make_lease
 
 from .models import SmsMessage
-from .sms import send_rent_reminder, send_sms
+from .utils import send_rent_reminder, send_sms
 
 AT_SETTINGS = {
     'BACKEND': 'africastalking', 'AT_USERNAME': 'sandbox', 'AT_API_KEY': 'k',
@@ -29,7 +29,7 @@ class SendSmsTests(TestCase):
         self.assertIn('not a valid', msg.error)
 
     @override_settings(SMS=AT_SETTINGS)
-    @mock.patch('notifications.sms.requests.post')
+    @mock.patch('notifications.utils.requests.post')
     def test_africastalking(self, post):
         post.return_value.json.return_value = {'SMSMessageData': {'Message': 'Sent to 1/1', 'Recipients': [
             {'statusCode': 101, 'number': '+254712345678', 'status': 'Success', 'cost': 'KES 0.8000', 'messageId': 'ATPid_1'},
@@ -40,7 +40,7 @@ class SendSmsTests(TestCase):
         self.assertEqual(post.call_args.kwargs['data']['to'], '+254712345678')
 
     @override_settings(SMS=AT_SETTINGS)
-    @mock.patch('notifications.sms.requests.post')
+    @mock.patch('notifications.utils.requests.post')
     def test_africastalking_rejection(self, post):
         post.return_value.json.return_value = {'SMSMessageData': {'Message': 'Sent to 0/1', 'Recipients': [
             {'statusCode': 403, 'number': '+254712345678', 'status': 'InvalidPhoneNumber', 'cost': '0', 'messageId': 'None'},

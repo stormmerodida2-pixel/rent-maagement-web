@@ -15,9 +15,8 @@ from django.utils.formats import date_format
 from django.utils.translation import gettext
 from django.utils.translation import gettext_lazy as _
 
-from payments.fields import EncryptedTextField
+from payments.utils import EncryptedTextField
 
-from .phone import normalize_phone
 
 
 class Property(models.Model):
@@ -122,12 +121,16 @@ class Tenant(models.Model):
         return self.full_name
 
     def clean(self):
+        from .utils import normalize_phone  # utils imports these models, so not at the top
+
         try:
             self.phone = normalize_phone(self.phone)
         except ValueError as exc:
             raise ValidationError({'phone': str(exc)}) from exc
 
     def save(self, *args, **kwargs):
+        from .utils import normalize_phone
+
         try:
             self.phone = normalize_phone(self.phone)
         except ValueError:

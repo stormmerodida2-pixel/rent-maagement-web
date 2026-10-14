@@ -16,9 +16,9 @@ from django.utils.decorators import method_decorator
 from django.views.decorators.http import require_POST
 
 from accounts.views import ChangePasswordView
-from audit import log as audit
+from audit import utils as audit
 from maintenance.models import MaintenanceRequest
-from notifications.sms import send_cash_receipt
+from notifications.utils import send_cash_receipt
 from payments import mpesa
 from payments.forms import StkPushForm
 from payments.models import MpesaAccount, MpesaTransaction, Payment

@@ -3,7 +3,7 @@ from pathlib import Path
 from django.conf import settings
 from django.core.management.base import BaseCommand, CommandError
 
-from ops.backup_crypto import BackupKeyError, decrypt_file
+from ops.utils import BackupKeyError, decrypt_file
 
 
 class Command(BaseCommand):

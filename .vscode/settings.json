@@ -1,0 +1,8 @@
+{
+  // Hide files Python and the linter regenerate on their own, so the explorer shows only real code.
+  "files.exclude": {
+    "**/__pycache__": true,
+    "**/*.pyc": true,
+    ".ruff_cache": true
+  }
+}

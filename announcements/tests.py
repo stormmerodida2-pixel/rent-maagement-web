@@ -9,7 +9,7 @@ from django.utils import timezone
 
 from audit.models import AuditEntry
 from notifications.models import SmsMessage
-from notifications.sms import send_bulk_sms
+from notifications.utils import send_bulk_sms
 from rentals.models import Property
 from rentals.tests import make_lease
 
@@ -159,7 +159,7 @@ class PortalTests(AnnouncementTestCase):
 @override_settings(SMS={'BACKEND': 'africastalking', 'AT_USERNAME': 'sandbox', 'AT_API_KEY': 'k',
                         'AT_SENDER_ID': '', 'PAYMENT_RECEIPTS': True})
 class BulkSmsTests(TestCase):
-    @mock.patch('notifications.sms.requests.post')
+    @mock.patch('notifications.utils.requests.post')
     def test_one_request_per_100_and_per_number_results(self, post):
         owner = get_user_model().objects.create_user('landlord')
         lease = make_lease(owner)

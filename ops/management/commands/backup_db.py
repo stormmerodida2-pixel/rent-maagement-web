@@ -7,7 +7,7 @@ from django.conf import settings
 from django.core.management.base import BaseCommand, CommandError
 from django.db import connection
 
-from ops.backup_crypto import encrypt_file
+from ops.utils import encrypt_file
 
 
 class Command(BaseCommand):

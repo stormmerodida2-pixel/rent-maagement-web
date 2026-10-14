@@ -7,8 +7,8 @@ from django.urls import include, path
 from accounts import views as account_views
 from ops.views import healthz
 
-from . import legal, pwa
-from .seo import SITEMAPS, robots_txt
+from . import views
+from .views import SITEMAPS, robots_txt
 
 admin.site.site_header = settings.APP_NAME
 admin.site.site_title = settings.APP_NAME
@@ -19,13 +19,13 @@ admin.site.login = account_views.throttle_login(admin.site.login)
 urlpatterns = [
     path('healthz/', healthz, name='healthz'),
     path('robots.txt', robots_txt, name='robots_txt'),
-    path('manifest.webmanifest', pwa.manifest, name='manifest'),
-    path('t/<str:token>/manifest.webmanifest', pwa.tenant_manifest, name='tenant_manifest'),
-    path('sw.js', pwa.service_worker, name='service_worker'),
-    path('offline/', pwa.offline, name='offline'),
+    path('manifest.webmanifest', views.manifest, name='manifest'),
+    path('t/<str:token>/manifest.webmanifest', views.tenant_manifest, name='tenant_manifest'),
+    path('sw.js', views.service_worker, name='service_worker'),
+    path('offline/', views.offline, name='offline'),
     path('sitemap.xml', sitemap, {'sitemaps': SITEMAPS}, name='sitemap'),
-    path('privacy/', legal.privacy, name='privacy'),
-    path('terms/', legal.terms, name='terms'),
+    path('privacy/', views.privacy, name='privacy'),
+    path('terms/', views.terms, name='terms'),
     path('admin/', admin.site.urls),
     path('login/', account_views.LoginView.as_view(), name='login'),
     path('logout/', auth_views.LogoutView.as_view(), name='logout'),

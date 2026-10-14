@@ -2,7 +2,7 @@ import datetime
 
 from django.core.management.base import BaseCommand
 
-from rentals.billing import apply_late_fees
+from rentals.utils import apply_late_fees
 from rentals.models import Lease
 
 

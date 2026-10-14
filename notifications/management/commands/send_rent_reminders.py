@@ -4,7 +4,7 @@ from django.core.management.base import BaseCommand
 from django.utils import timezone
 
 from notifications.models import SmsMessage
-from notifications.sms import reminder_text, send_rent_reminder
+from notifications.utils import reminder_text, send_rent_reminder
 from rentals.models import Lease
 
 

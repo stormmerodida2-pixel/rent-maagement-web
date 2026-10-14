@@ -41,6 +41,18 @@ python manage.py runserver
 
 Landlords create their own accounts at `/signup/`. You can also create one from the command line with `python manage.py create_landlord jane`.
 
+## Project layout
+
+Each app keeps the same small set of files:
+
+| File | What goes in it |
+|---|---|
+| `models.py`, `views.py`, `forms.py`, `urls.py`, `admin.py` | the usual Django pieces |
+| `utils.py` | the app's helper functions (e.g. `rentals/utils.py`: phone numbers, tenant language, billing, rent changes, view mixins; `notifications/utils.py`: SMS, report cards, move-out reminders) |
+| `tests.py`, or a `tests/` folder when there are several test files | tests |
+
+The only other module is `payments/mpesa.py`, the M-Pesa (Daraja) connection, which is big enough to keep on its own. Site-wide pages that belong to no app (sitemap, robots.txt, privacy/terms, the installable-app files) are in `config/views.py`.
+
 ## Day-to-day flow
 
 1. Follow the getting-started checklist: add a property with its units, add tenants, then start a lease. Starting a lease bills the current month straight away.

@@ -1,6 +1,6 @@
 from django.db import migrations
 
-import payments.fields
+import payments.utils
 
 
 def encrypt_existing(apps, schema_editor):
@@ -29,7 +29,7 @@ class Migration(migrations.Migration):
         migrations.RenameField('tenant', 'id_number', 'id_number_plain'),
         migrations.AddField(
             model_name='tenant', name='id_number',
-            field=payments.fields.EncryptedTextField(blank=True, default='', verbose_name='national ID / passport'),
+            field=payments.utils.EncryptedTextField(blank=True, default='', verbose_name='national ID / passport'),
             preserve_default=False,
         ),
         migrations.RunPython(encrypt_existing, decrypt_back),
