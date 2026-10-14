@@ -1,0 +1,102 @@
+{% extends 'legal/base.html' %}
+{% block title %}Privacy policy · {{ APP_NAME }}{% endblock %}
+{% block doc_title %}Privacy policy{% endblock %}
+{% block doc %}
+<p>{{ APP_NAME }} helps landlords in Kenya manage rentals: tenants, rent, M-Pesa payments, repairs and messages.
+This policy explains what personal data we handle, why, who we share it with, how long we keep it and your
+rights under Kenya's <strong>Data Protection Act, 2019</strong>.</p>
+
+<h2>1. Who is responsible for your data</h2>
+<ul>
+  <li><strong>Landlords' account data.</strong> For the details landlords give us about themselves (name, email,
+    login), {{ legal.ENTITY }} is the <em>data controller</em>.</li>
+  <li><strong>Tenants' data.</strong> Each landlord decides which tenant details to keep and why, so the
+    <strong>landlord is the data controller</strong> for their tenants' data. {{ legal.ENTITY }} is the
+    <em>data processor</em>: we store and process it on the landlord's behalf and only to provide the service.
+    Tenants with questions about their data should first contact their landlord; we will help them respond.</li>
+</ul>
+
+<h2>2. What we collect</h2>
+<ul>
+  <li><strong>Landlords:</strong> name, email address, username, password (stored only as a secure hash),
+    business details such as property names and addresses, and M-Pesa account settings (the Daraja keys are
+    stored encrypted).</li>
+  <li><strong>Tenants</strong> (entered by their landlord): name, phone number, email address (optional),
+    national ID or passport number (optional, stored encrypted), the unit rented, rent and lease details,
+    charges, payments and their M-Pesa receipt numbers, repair requests, complaints and messages, and the
+    announcements and SMS messages sent to them.</li>
+  <li><strong>M-Pesa payment notifications</strong> from Safaricom, which can include the payer's name and
+    phone number.</li>
+  <li><strong>Technical data:</strong> IP addresses (to stop password guessing and spam, kept for up to an hour
+    in our rate-limiting records), and security logs of who changed what in a landlord's records.</li>
+</ul>
+<p>We do not sell personal data, use it for advertising, or build marketing profiles.</p>
+
+<h2>3. Why we use it, and on what basis</h2>
+<ul>
+  <li><strong>To provide the service</strong> landlords sign up for: billing rent, recording payments, sending
+    reminders, receipts and announcements, and handling repairs and complaints (performance of a contract).</li>
+  <li><strong>To keep accounts and payments secure</strong>, prevent fraud and fake payment notifications, and
+    keep an audit trail of changes (legitimate interests, and our security obligations under the Act).</li>
+  <li><strong>To meet legal duties</strong>, such as keeping financial records.</li>
+  <li><strong>To reply</strong> when you contact us.</li>
+</ul>
+<p>Landlords are responsible for having a lawful basis to collect their tenants' data and for telling tenants how
+it is used. They can point tenants to this policy.</p>
+
+<h2>4. Who we share it with</h2>
+<p>Only the service providers we need to run {{ APP_NAME }}, each bound to protect the data:</p>
+<ul>
+  <li><strong>Safaricom (M-Pesa)</strong>, to request and confirm payments.</li>
+  <li><strong>Africa's Talking</strong>, to send SMS messages.</li>
+  <li><strong>Our email provider</strong>, to send account and notification emails.</li>
+  <li><strong>Our hosting and backup providers</strong>, who store the data on our behalf.</li>
+  <li><strong>Our error-monitoring provider</strong>, if enabled, which receives technical error reports
+    without tenants' personal data.</li>
+</ul>
+<p>We will also disclose data if Kenyan law, a court or a regulator lawfully requires it.</p>
+
+<h2>5. Transfers outside Kenya</h2>
+<p>Some of our providers may store or process data outside Kenya. Where they do, we only use providers that give
+appropriate safeguards for personal data, as the Data Protection Act requires.</p>
+
+<h2>6. How long we keep it</h2>
+<ul>
+  <li><strong>Account and tenant records:</strong> while the landlord's account is active. When an account is
+    closed we delete or anonymise its data within 90 days, except where we must keep it longer by law.</li>
+  <li><strong>Payment and financial records:</strong> for as long as the law requires, currently at least five
+    years under Kenya's tax laws.</li>
+  <li><strong>Backups:</strong> encrypted, and kept for 14 days before being replaced.</li>
+  <li><strong>Security logs and rate-limiting records:</strong> only as long as needed for security.</li>
+</ul>
+
+<h2>7. How we protect it</h2>
+<p>All connections use HTTPS. ID numbers, M-Pesa credentials and backups are encrypted at rest. Each landlord can
+only see their own records, and every change to money records is logged. Logins are protected against password
+guessing, and inactive sessions sign out automatically. If a breach puts your data at risk, we will notify the
+Data Protection Commissioner within 72 hours and tell affected people without delay, as the Act requires.</p>
+
+<h2>8. Your rights</h2>
+<p>Under the Data Protection Act you have the right to:</p>
+<ul>
+  <li>be told how your data is used (this policy);</li>
+  <li>get a copy of the personal data held about you;</li>
+  <li>have inaccurate data corrected, and out-of-date or unlawfully held data deleted;</li>
+  <li>object to some uses of your data, or ask us to restrict them;</li>
+  <li>receive your data in a portable format.</li>
+</ul>
+<p>Landlords can exercise these rights by contacting us. Tenants should contact their landlord first, or us if they
+cannot. We will respond within the time the law allows. You may also complain to the
+<strong>Office of the Data Protection Commissioner</strong> (<a href="https://www.odpc.go.ke" target="_blank" rel="noopener">www.odpc.go.ke</a>).</p>
+
+<h2>9. Cookies</h2>
+<p>We only use cookies needed to run the site: one to keep you signed in, and one to protect forms against
+forgery. Your light/dark theme choice is stored in your browser. We do not use advertising or tracking cookies.</p>
+
+<h2>10. Children</h2>
+<p>{{ APP_NAME }} is for adults. Landlord accounts are for people aged 18 or over.</p>
+
+<h2>11. Changes to this policy</h2>
+<p>If we make important changes we will tell landlords in the app or by email before they take effect. The date
+at the top shows when this policy last changed.</p>
+{% endblock %}

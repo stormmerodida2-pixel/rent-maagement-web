@@ -552,3 +552,16 @@ html:root .doc .logo { background-image: url("../img/logo-transparent.png"); asp
   .site-nav .btn { padding: 7px 10px; font-size: 13px; }
   .site-nav .logo { height: 48px; }
 }
+
+/* ---- Legal pages --------------------------------------------------------------------------- */
+
+.legal { max-width: 780px; margin: 0 auto; padding: 8px 16px 48px; }
+.prose { padding: 32px 36px; line-height: 1.65; }
+.prose h1 { font-size: 28px; margin-bottom: 4px; }
+.prose h2 { font-size: 18px; margin: 28px 0 8px; }
+.prose p, .prose ul { margin: 0 0 12px; color: var(--text-2); }
+.prose ul { padding-left: 20px; }
+.prose li { margin-bottom: 6px; }
+.prose strong { color: var(--text); }
+.legal-links { text-align: center; margin-top: 18px; }
+@media (max-width: 640px) { .prose { padding: 22px 18px; } }
