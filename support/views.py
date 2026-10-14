@@ -2,11 +2,13 @@ from django.contrib import messages
 from django.contrib.auth.decorators import login_required
 from django.db import transaction
 from django.shortcuts import get_object_or_404, redirect, render
+from django.utils.translation import gettext
 from django.views.generic import ListView
 
 from accounts import ratelimit
 from audit import log as audit
 from rentals.mixins import OwnedMixin
+from rentals.i18n import tenant_page
 from rentals.models import Tenant
 
 from . import notify
@@ -25,11 +27,12 @@ def _tenant(token):
 
 def _tenant_limited(request, tenant):
     if ratelimit.hit('tenant-msg', tenant.pk, 24 * 60 * 60) > TENANT_MESSAGES_PER_DAY:
-        messages.error(request, "You've sent a lot of messages today. Please try again tomorrow.")
+        messages.error(request, gettext("You've sent a lot of messages today. Please try again tomorrow."))
         return True
     return False
 
 
+@tenant_page
 def tenant_messages(request, token):
     tenant = _tenant(token)
     form = ComplaintForm(request.POST or None)
@@ -43,13 +46,14 @@ def tenant_messages(request, token):
             ComplaintMessage.objects.create(complaint=complaint, author=ComplaintMessage.Author.TENANT,
                                             body=form.cleaned_data['message'])
         notify.landlord_new_message(complaint, form.cleaned_data['message'], is_new=True)
-        messages.success(request, 'Sent. Your landlord has been notified, and you will get an SMS when they reply.')
+        messages.success(request, gettext('Sent. Your landlord has been notified, and you will get an SMS when they reply.'))
         return redirect('support:tenant_complaint', token=token, pk=complaint.pk)
     return render(request, 'support/tenant_messages.html', {
         'tenant': tenant, 'form': form, 'complaints': tenant.complaints.all(),
     })
 
 
+@tenant_page
 def tenant_complaint(request, token, pk):
     tenant = _tenant(token)
     complaint = get_object_or_404(tenant.complaints, pk=pk)
@@ -62,7 +66,7 @@ def tenant_complaint(request, token, pk):
             complaint.status, complaint.resolved_at = Complaint.Status.OPEN, None  # re-opened by the tenant
         complaint.save()
         notify.landlord_new_message(complaint, form.cleaned_data['body'], is_new=False)
-        messages.success(request, 'Reply sent.')
+        messages.success(request, gettext('Reply sent.'))
         return redirect('support:tenant_complaint', token=token, pk=pk)
     return render(request, 'support/tenant_complaint.html', {
         'tenant': tenant, 'complaint': complaint, 'form': form,

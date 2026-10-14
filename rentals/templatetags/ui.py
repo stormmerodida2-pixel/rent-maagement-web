@@ -74,3 +74,14 @@ BADGE_CLASSES = {
 def badge(value, label=None):
     css = BADGE_CLASSES.get(str(value), '')
     return format_html('<span class="badge{}">{}</span>', f' badge-{css}' if css else '', label or value)
+
+
+@register.filter
+def notice_title(announcement, language):
+    """An announcement's title in the tenant's language, when the landlord wrote one."""
+    return announcement.title_in(language)
+
+
+@register.filter
+def notice_body(announcement, language):
+    return announcement.body_in(language)

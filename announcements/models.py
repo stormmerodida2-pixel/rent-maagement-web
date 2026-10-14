@@ -2,7 +2,8 @@ import math
 
 from django.conf import settings
 from django.db import models
-from django.utils import timezone
+from django.utils import timezone, translation
+from django.utils.translation import gettext
 
 from rentals.models import Lease, Property, Tenant, Unit
 
@@ -24,6 +25,9 @@ class Announcement(models.Model):
     owner = models.ForeignKey(settings.AUTH_USER_MODEL, on_delete=models.CASCADE, related_name='announcements')
     title = models.CharField(max_length=120)
     body = models.TextField('message', max_length=1000)
+    # Optional Kiswahili version for tenants whose language is Kiswahili (others get the English).
+    title_sw = models.CharField('title in Kiswahili', max_length=120, blank=True)
+    body_sw = models.TextField('message in Kiswahili', max_length=1000, blank=True)
     audience = models.CharField(max_length=12, choices=Audience.choices, default=Audience.ALL)
     properties = models.ManyToManyField(Property, blank=True, related_name='announcements')
     units = models.ManyToManyField(Unit, blank=True, related_name='announcements')
@@ -65,22 +69,43 @@ class Announcement(models.Model):
 
     SMS_LIMIT = 306  # two SMS parts; longer notices point to the portal for the rest
 
-    def sms_text(self):
-        text = f'{settings.APP_NAME}: {self.title}. {self.body}'.strip()
+    # --- Language -----------------------------------------------------------------------------
+
+    @property
+    def has_swahili(self):
+        return bool(self.title_sw and self.body_sw)
+
+    def version_for(self, language):
+        """The language this notice is shown/sent in for a tenant reading `language`."""
+        return 'sw' if language == 'sw' and self.has_swahili else 'en'
+
+    def title_in(self, language):
+        return self.title_sw if self.version_for(language) == 'sw' else self.title
+
+    def body_in(self, language):
+        return self.body_sw if self.version_for(language) == 'sw' else self.body
+
+    # --- SMS ----------------------------------------------------------------------------------
+
+    def sms_text(self, language='en'):
+        version = self.version_for(language)
+        text = f'{settings.APP_NAME}: {self.title_in(version)}. {self.body_in(version)}'.strip()
         if len(text) <= self.SMS_LIMIT:
             return text
-        tail = '... Full notice on your rent page.'
+        with translation.override(version):
+            tail = gettext('... Full notice on your rent page.')
         return text[:self.SMS_LIMIT - len(tail)].rstrip() + tail
 
-    def sms_parts(self):
-        text = self.sms_text()
+    def sms_parts(self, language='en'):
+        text = self.sms_text(language)
         gsm = all(ord(c) < 128 for c in text)  # emoji/accents switch phones to 70-char parts
         single, multi = (160, 153) if gsm else (70, 67)
         return 1 if len(text) <= single else math.ceil(len(text) / multi)
 
-    def estimated_cost(self, recipients=None):
-        count = len(self.recipient_leases()) if recipients is None else recipients
-        return round(count * self.sms_parts() * settings.SMS_COST_PER_PART, 2)
+    def estimated_cost(self, leases=None):
+        leases = self.recipient_leases() if leases is None else leases
+        parts = sum(self.sms_parts(lease.tenant.language) for lease in leases)
+        return round(parts * settings.SMS_COST_PER_PART, 2)
 
     @property
     def is_visible(self):

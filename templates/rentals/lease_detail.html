@@ -92,6 +92,7 @@
       <div class="card-body profile">
         <dl>
           <dt>Phone</dt><dd>{{ lease.tenant.phone }}</dd>
+          <dt>Language</dt><dd>{{ lease.tenant.get_language_display }} <span class="muted small">(SMS, receipts, rent page)</span></dd>
           {% if lease.tenant.email %}<dt>Email</dt><dd>{{ lease.tenant.email }}</dd>{% endif %}
           <dt>Lease</dt><dd>{{ lease.start_date|date:"d M Y" }} – {{ lease.end_date|date:"d M Y"|default:"ongoing" }}</dd>
           <dt>Deposit</dt><dd>{{ lease.deposit|kes }}{% if deposit_held %} <span class="muted small">({{ deposit_held|kes }} held)</span>{% endif %}</dd>

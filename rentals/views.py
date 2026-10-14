@@ -9,6 +9,7 @@ from django.template.loader import render_to_string
 from django.urls import reverse
 from django.utils import timezone
 from django.utils.http import url_has_allowed_host_and_scheme
+from django.utils.translation import gettext
 from django.views.decorators.http import require_POST
 
 from accounts.views import setup_steps
@@ -20,6 +21,7 @@ from payments import mpesa
 from payments.forms import StkPushForm
 from payments.models import C2BPayment, MpesaAccount, Payment
 
+from .i18n import tenant_page
 from .models import Lease, RentCharge, Tenant, Unit
 
 
@@ -152,7 +154,8 @@ def statement(lease, limit=24):
         {
             'date': timezone.localdate(p.paid_at), 'kind': 'payment', 'payment': p.amount, 'payment_id': p.pk,
             'is_mpesa': p.method == Payment.Method.MPESA,
-            'description': f'{p.get_method_display()} payment' + (f' · {p.reference}' if p.reference else ''),
+            'description': gettext('%(method)s payment') % {'method': p.get_method_display()}
+                           + (f' · {p.reference}' if p.reference else ''),
         }
         for p in lease.payments.all()
     ]
@@ -207,6 +210,7 @@ def send_reminder(request, pk):
     return redirect('rentals:lease_detail', pk=lease.pk)
 
 
+@tenant_page
 def tenant_portal(request, token):
     """Public self-service page for one tenant, reached via the secret link sent by SMS."""
     tenant = get_object_or_404(Tenant, portal_token=token)
@@ -219,17 +223,19 @@ def tenant_portal(request, token):
             lease = next((l for l in leases if str(l.pk) == request.POST.get('lease')), None)
             form = StkPushForm(request.POST)
             if lease is None or not form.is_valid():
-                messages.error(request, 'Enter a valid amount.')
+                messages.error(request, gettext('Enter a valid amount.'))
             else:
                 try:
                     # Always the tenant's own number, so the link can't be used to prompt strangers.
                     txn = mpesa.stk_push(lease, form.cleaned_data['amount'])
                 except mpesa.MpesaError as exc:
-                    messages.error(request, str(exc))
+                    # Problems with the landlord's M-Pesa setup aren't the tenant's to fix.
+                    messages.error(request, str(exc) if exc.code in mpesa.TENANT_ERRORS else gettext(
+                        "We couldn't send the M-Pesa prompt. Please try again later, or pay from the M-Pesa menu."))
                 else:
-                    messages.success(
-                        request, f'Check your phone ({txn.phone}) and enter your M-Pesa PIN to pay KES {txn.amount}.'
-                    )
+                    messages.success(request, gettext(
+                        'Check your phone (%(phone)s) and enter your M-Pesa PIN to pay KES %(amount)s.'
+                    ) % {'phone': txn.phone, 'amount': txn.amount})
             return redirect('rentals:tenant_portal', token=token)
 
         if request.POST.get('action') == 'maintenance':
@@ -238,7 +244,7 @@ def tenant_portal(request, token):
                 req = maintenance_form.save(commit=False)
                 req.reported_by = tenant
                 req.save()
-                messages.success(request, 'Thanks, your request has been sent to your landlord.')
+                messages.success(request, gettext('Thanks, your request has been sent to your landlord.'))
                 return redirect('rentals:tenant_portal', token=token)
 
     return render(request, 'rentals/tenant_portal.html', {

@@ -1,7 +1,7 @@
-<ol class="thread">
+{% load i18n %}<ol class="thread">
   {% for m in thread %}
   <li class="bubble-msg {% if m.author == viewer %}mine{% endif %}">
-    <div class="who-line">{% if m.author == 'tenant' %}{{ complaint.tenant.full_name }}{% else %}Landlord{% endif %} · {{ m.created_at|date:"d M Y, H:i" }}</div>
+    <div class="who-line">{% if m.author == 'tenant' %}{{ complaint.tenant.full_name }}{% else %}{% translate "Landlord" %}{% endif %} · {{ m.created_at|date:"d M Y, H:i" }}</div>
     <div class="body">{{ m.body|linebreaksbr }}</div>
   </li>
   {% endfor %}

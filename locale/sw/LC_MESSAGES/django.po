@@ -1,0 +1,472 @@
+# Kiswahili translations for tenant-facing text (SMS, rent page, receipts).
+# Update with:  python manage.py makemessages -l sw --ignore='venv/*' --no-location --no-wrap
+# then fill in new msgstr lines and run:  python manage.py compilemessages  (needs GNU gettext)
+msgid ""
+msgstr ""
+"Project-Id-Version: Liskodi\n"
+"Report-Msgid-Bugs-To: \n"
+"POT-Creation-Date: 2026-10-14 16:58+0300\n"
+"PO-Revision-Date: YEAR-MO-DA HO:MI+ZONE\n"
+"Last-Translator: FULL NAME <EMAIL@ADDRESS>\n"
+"Language-Team: Kiswahili\n"
+"Language: sw\n"
+"MIME-Version: 1.0\n"
+"Content-Type: text/plain; charset=UTF-8\n"
+"Content-Transfer-Encoding: 8bit\n"
+"Plural-Forms: nplurals=2; plural=(n != 1);\n"
+
+msgid "... Full notice on your rent page."
+msgstr "... Tangazo kamili liko kwenye ukurasa wako wa kodi."
+
+msgid "My rent"
+msgstr "Kodi yangu"
+
+#, python-format
+msgid "Rent, payments and repairs for %(name)s."
+msgstr "Kodi, malipo na marekebisho ya %(name)s."
+
+msgid "Unit"
+msgstr "Nyumba"
+
+msgid "What needs fixing?"
+msgstr "Nini kinahitaji kurekebishwa?"
+
+msgid "Details"
+msgstr "Maelezo"
+
+msgid "How urgent is it?"
+msgstr "Ni ya haraka kiasi gani?"
+
+msgid "Low"
+msgstr "Si ya haraka"
+
+msgid "Medium"
+msgstr "Wastani"
+
+msgid "High"
+msgstr "Ya haraka"
+
+msgid "Urgent"
+msgstr "Dharura"
+
+msgid "Open"
+msgstr "Inasubiri"
+
+msgid "In progress"
+msgstr "Inashughulikiwa"
+
+msgid "Resolved"
+msgstr "Imetatuliwa"
+
+msgid "Cancelled"
+msgstr "Imeghairiwa"
+
+#, python-format
+msgid ", due %(date)s"
+msgstr ", ilipwe kufikia %(date)s"
+
+msgid ", now overdue"
+msgstr ", muda wa kulipa umepita"
+
+msgid "Pay online"
+msgstr "Lipa mtandaoni"
+
+#, python-format
+msgid "Pay via M-Pesa Till %(till)s, or online"
+msgstr "Lipa kupitia M-Pesa Till %(till)s, au mtandaoni"
+
+#, python-format
+msgid "Pay via M-Pesa Paybill %(paybill)s, account %(account)s, or online"
+msgstr "Lipa kupitia M-Pesa Paybill %(paybill)s, akaunti %(account)s, au mtandaoni"
+
+#, python-format
+msgid "Hi %(name)s, your rent balance for %(unit)s is %(balance)s%(when)s. %(how)s: %(link)s"
+msgstr "Habari %(name)s, salio la kodi yako ya %(unit)s ni %(balance)s%(when)s. %(how)s: %(link)s"
+
+#, python-format
+msgid "Balance: %(amount)s."
+msgstr "Salio: %(amount)s."
+
+#, python-format
+msgid "You are %(amount)s in credit."
+msgstr "Una ziada ya %(amount)s."
+
+msgid "You are fully paid up."
+msgstr "Umelipa kodi yote."
+
+#, python-format
+msgid "Received %(amount)s (M-Pesa %(reference)s) for %(unit)s. Thank you! %(status)s"
+msgstr "Tumepokea %(amount)s (M-Pesa %(reference)s) kwa %(unit)s. Asante! %(status)s"
+
+msgid "M-Pesa"
+msgstr "M-Pesa"
+
+msgid "Cash"
+msgstr "Pesa taslimu"
+
+msgid "Bank transfer"
+msgstr "Benki"
+
+msgid "Amount must be at least KES 1."
+msgstr "Kiasi lazima kiwe angalau KES 1."
+
+msgid "A payment prompt was just sent. Wait a couple of minutes and try again."
+msgstr "Ombi la malipo limetumwa sasa hivi. Subiri dakika chache kisha ujaribu tena."
+
+msgid "Deposit"
+msgstr "Amana"
+
+msgid "Move-out deduction"
+msgstr "Makato ya kuhama"
+
+msgid "Deposit applied at move-out"
+msgstr "Amana iliyotumika wakati wa kuhama"
+
+msgid "Deposit refund paid to tenant"
+msgstr "Amana iliyorudishwa kwa mpangaji"
+
+#, python-format
+msgid "Water %(used)s units (%(start)s → %(end)s) @ KES %(rate)s"
+msgstr "Maji uniti %(used)s (%(start)s → %(end)s) @ KES %(rate)s"
+
+#, python-format
+msgid "Move-out deduction: %(reason)s"
+msgstr "Makato ya kuhama: %(reason)s"
+
+msgid "Rent"
+msgstr "Kodi"
+
+msgid "Service charge"
+msgstr "Ada ya huduma"
+
+msgid "Water"
+msgstr "Maji"
+
+msgid "Late fee"
+msgstr "Faini ya kuchelewa"
+
+msgid "Deposit applied"
+msgstr "Amana iliyotumika"
+
+msgid "Refund paid to tenant"
+msgstr "Pesa iliyorudishwa kwa mpangaji"
+
+msgid "Other"
+msgstr "Nyingine"
+
+#, python-format
+msgid "Rent for %(month)s"
+msgstr "Kodi ya %(month)s"
+
+#, python-format
+msgid "%(kind)s for %(month)s"
+msgstr "%(kind)s ya %(month)s"
+
+#, python-format
+msgid "%(method)s payment"
+msgstr "Malipo ya %(method)s"
+
+msgid "Enter a valid amount."
+msgstr "Weka kiasi sahihi."
+
+msgid "We couldn't send the M-Pesa prompt. Please try again later, or pay from the M-Pesa menu."
+msgstr "Hatukuweza kutuma ombi la M-Pesa. Tafadhali jaribu tena baadaye, au lipa kupitia menyu ya M-Pesa."
+
+#, python-format
+msgid "Check your phone (%(phone)s) and enter your M-Pesa PIN to pay KES %(amount)s."
+msgstr "Angalia simu yako (%(phone)s) na uweke PIN yako ya M-Pesa ili kulipa KES %(amount)s."
+
+msgid "Thanks, your request has been sent to your landlord."
+msgstr "Asante, ombi lako limetumwa kwa mwenye nyumba."
+
+msgid "Message"
+msgstr "Ujumbe"
+
+msgid "Your landlord will reply here. You will get an SMS when they do."
+msgstr "Mwenye nyumba atajibu hapa. Utapata SMS akijibu."
+
+msgid "What is it about?"
+msgstr "Inahusu nini?"
+
+msgid "Subject"
+msgstr "Kichwa"
+
+msgid "Your reply"
+msgstr "Jibu lako"
+
+msgid "Rent or billing"
+msgstr "Kodi au malipo"
+
+msgid "Noise or neighbours"
+msgstr "Kelele au majirani"
+
+msgid "Security"
+msgstr "Usalama"
+
+msgid "Water, power or garbage"
+msgstr "Maji, umeme au taka"
+
+msgid "Something else"
+msgstr "Jambo lingine"
+
+#, python-format
+msgid "Your landlord replied to \"%(subject)s\". Read it here: %(link)s"
+msgstr "Mwenye nyumba amejibu \"%(subject)s\". Soma hapa: %(link)s"
+
+msgid "You've sent a lot of messages today. Please try again tomorrow."
+msgstr "Umetuma jumbe nyingi leo. Tafadhali jaribu tena kesho."
+
+msgid "Sent. Your landlord has been notified, and you will get an SMS when they reply."
+msgstr "Umetumwa. Mwenye nyumba amearifiwa, na utapata SMS akijibu."
+
+msgid "Reply sent."
+msgstr "Jibu limetumwa."
+
+msgid "Django site admin"
+msgstr "Usimamizi wa tovuti"
+
+msgid "optional"
+msgstr "si lazima"
+
+msgid "Colour theme"
+msgstr "Rangi za ukurasa"
+
+msgid "Match my device"
+msgstr "Kama kifaa changu"
+
+msgid "System"
+msgstr "Kifaa"
+
+msgid "Light"
+msgstr "Mwanga"
+
+msgid "Dark"
+msgstr "Giza"
+
+#, python-format
+msgid "Hi %(name)s"
+msgstr "Habari %(name)s"
+
+msgid "Your rent, payments and repair requests."
+msgstr "Kodi yako, malipo na maombi ya marekebisho."
+
+msgid "<strong>Add this page to your phone</strong> for one-tap access to your rent."
+msgstr "<strong>Weka ukurasa huu kwenye simu yako</strong> ili kuona kodi yako kwa mguso mmoja."
+
+msgid "Install"
+msgstr "Weka"
+
+msgid "Tap <strong>Share</strong>"
+msgstr "Gusa <strong>Share</strong>"
+
+msgid "at the bottom of Safari, then <strong>Add to Home Screen</strong>."
+msgstr "chini ya Safari, kisha <strong>Add to Home Screen</strong>."
+
+msgid "Notices from your landlord"
+msgstr "Matangazo kutoka kwa mwenye nyumba"
+
+msgid "Important"
+msgstr "Muhimu"
+
+msgid "Balance due"
+msgstr "Unadaiwa"
+
+msgid "Paid up"
+msgstr "Umelipa"
+
+msgid "View statement"
+msgstr "Angalia taarifa ya akaunti"
+
+msgid "You owe"
+msgstr "Unadaiwa"
+
+msgid "You're in credit"
+msgstr "Una ziada"
+
+msgid "Balance"
+msgstr "Salio"
+
+#, python-format
+msgid "Rent %(rent)s a month, due on day %(day)s"
+msgstr "Kodi %(rent)s kwa mwezi, hulipwa tarehe %(day)s"
+
+msgid "Amount to pay (KES)"
+msgstr "Kiasi cha kulipa (KES)"
+
+msgid "Pay with M-Pesa"
+msgstr "Lipa kwa M-Pesa"
+
+#, python-format
+msgid "An M-Pesa prompt will appear on %(phone)s. Enter your PIN to pay."
+msgstr "Ombi la M-Pesa litatokea kwenye %(phone)s. Weka PIN yako ili kulipa."
+
+msgid "Or pay from the M-Pesa menu"
+msgstr "Au lipa kupitia menyu ya M-Pesa"
+
+msgid "Till no."
+msgstr "Nambari ya Till"
+
+msgid "Business no."
+msgstr "Nambari ya biashara"
+
+msgid "Account no."
+msgstr "Nambari ya akaunti"
+
+msgid "Online payment isn't available yet. Please pay your landlord as usual."
+msgstr "Malipo ya mtandaoni bado hayapatikani. Tafadhali mlipe mwenye nyumba kama kawaida."
+
+msgid "No active lease"
+msgstr "Hakuna mkataba unaoendelea"
+
+msgid "Contact your landlord if this looks wrong."
+msgstr "Wasiliana na mwenye nyumba ikiwa hili si sahihi."
+
+msgid "Report a problem"
+msgstr "Ripoti tatizo"
+
+msgid "Send request"
+msgstr "Tuma ombi"
+
+msgid "Need to tell your landlord something?"
+msgstr "Unahitaji kumweleza mwenye nyumba jambo?"
+
+msgid "Complaints or questions about rent, neighbours, security or services."
+msgstr "Malalamiko au maswali kuhusu kodi, majirani, usalama au huduma."
+
+msgid "Messages"
+msgstr "Jumbe"
+
+msgid "My requests"
+msgstr "Maombi yangu"
+
+#, python-format
+msgid "Reported %(date)s"
+msgstr "Iliripotiwa %(date)s"
+
+#, python-format
+msgid "fixed %(date)s"
+msgstr "ilirekebishwa %(date)s"
+
+msgid "You haven't reported anything."
+msgstr "Hujaripoti chochote."
+
+msgid "Recent payments"
+msgstr "Malipo ya hivi karibuni"
+
+msgid "Receipt"
+msgstr "Risiti"
+
+msgid "No payments yet."
+msgstr "Bado hakuna malipo."
+
+msgid "This page is private to you. Please don't share the link."
+msgstr "Ukurasa huu ni wako peke yako. Tafadhali usimpe mtu mwingine kiungo hiki."
+
+msgid "How your data is used"
+msgstr "Jinsi taarifa zako zinavyotumika"
+
+msgid "Back"
+msgstr "Rudi"
+
+msgid "Print / Save as PDF"
+msgstr "Chapisha / Hifadhi kama PDF"
+
+msgid "Landlord"
+msgstr "Mwenye nyumba"
+
+#, python-format
+msgid "Pay via M-Pesa Till <strong>%(till)s</strong>."
+msgstr "Lipa kupitia M-Pesa Till <strong>%(till)s</strong>."
+
+#, python-format
+msgid "Pay via M-Pesa Paybill <strong>%(paybill)s</strong>, account <strong>%(account)s</strong>."
+msgstr "Lipa kupitia M-Pesa Paybill <strong>%(paybill)s</strong>, akaunti <strong>%(account)s</strong>."
+
+#, python-format
+msgid "Generated by %(APP_NAME)s."
+msgstr "Imetolewa na %(APP_NAME)s."
+
+msgid "No."
+msgstr "Nambari"
+
+msgid "Amount received"
+msgstr "Kiasi kilichopokelewa"
+
+msgid "Received from"
+msgstr "Imepokelewa kutoka kwa"
+
+msgid "For"
+msgstr "Kwa ajili ya"
+
+msgid "Date"
+msgstr "Tarehe"
+
+msgid "Method"
+msgstr "Njia ya malipo"
+
+msgid "Balance still due"
+msgstr "Salio linalodaiwa"
+
+msgid "In credit"
+msgstr "Ziada"
+
+msgid "Account balance"
+msgstr "Salio la akaunti"
+
+msgid "Balance shown is as of today."
+msgstr "Salio lililoonyeshwa ni la leo."
+
+msgid "Statement"
+msgstr "Taarifa ya akaunti"
+
+#, python-format
+msgid "As at %(date)s"
+msgstr "Kufikia %(date)s"
+
+msgid "Tenant"
+msgstr "Mpangaji"
+
+msgid "Lease"
+msgstr "Mkataba"
+
+msgid "ongoing"
+msgstr "unaendelea"
+
+msgid "Monthly rent"
+msgstr "Kodi ya mwezi"
+
+msgid "Description"
+msgstr "Maelezo"
+
+msgid "Charged"
+msgstr "Kilichotozwa"
+
+msgid "Paid / credit"
+msgstr "Kilicholipwa / ziada"
+
+msgid "No activity yet."
+msgstr "Bado hakuna shughuli."
+
+msgid "Amount due"
+msgstr "Kiasi kinachodaiwa"
+
+msgid "Back to my rent"
+msgstr "Rudi kwenye kodi yangu"
+
+msgid "Send reply"
+msgstr "Tuma jibu"
+
+msgid "Your landlord marked this resolved. Replying opens it again."
+msgstr "Mwenye nyumba ameweka hili kuwa limetatuliwa. Ukijibu, litafunguliwa tena."
+
+msgid "Message your landlord"
+msgstr "Mtumie mwenye nyumba ujumbe"
+
+msgid "For complaints and questions about rent, neighbours, security or services. For repairs, use \"Report a problem\" on your rent page."
+msgstr "Kwa malalamiko na maswali kuhusu kodi, majirani, usalama au huduma. Kwa marekebisho, tumia \"Ripoti tatizo\" kwenye ukurasa wako wa kodi."
+
+msgid "Send message"
+msgstr "Tuma ujumbe"
+
+msgid "My messages"
+msgstr "Jumbe zangu"

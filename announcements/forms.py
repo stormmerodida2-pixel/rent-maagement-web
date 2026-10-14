@@ -11,15 +11,17 @@ DATETIME = forms.DateTimeInput(attrs={'type': 'datetime-local'}, format='%Y-%m-%
 class AnnouncementForm(forms.ModelForm):
     class Meta:
         model = Announcement
-        fields = ['title', 'body', 'audience', 'properties', 'units', 'send_sms', 'show_on_portal', 'pinned',
+        fields = ['title', 'body', 'title_sw', 'body_sw', 'audience', 'properties', 'units', 'send_sms', 'show_on_portal', 'pinned',
                   'expires_at', 'scheduled_for']
         labels = {'scheduled_for': 'Send later'}
         help_texts = {
             'scheduled_for': 'Leave blank to send as soon as you confirm.',
             'body': 'Up to 1,000 characters. SMS shows the first ~300; the rest is on their rent page.',
+            'title_sw': 'Optional. Tenants set to Kiswahili get this version; if you leave it blank they get the English.',
         }
         widgets = {
             'body': forms.Textarea(attrs={'rows': 5, 'maxlength': 1000}),
+            'body_sw': forms.Textarea(attrs={'rows': 5, 'maxlength': 1000}),
             'properties': forms.CheckboxSelectMultiple,
             'units': forms.CheckboxSelectMultiple,
             'expires_at': DATETIME,
@@ -40,6 +42,9 @@ class AnnouncementForm(forms.ModelForm):
             self.add_error('properties', 'Choose at least one property.')
         if audience == Announcement.Audience.UNITS and not cleaned.get('units'):
             self.add_error('units', 'Choose at least one unit.')
+        if bool(cleaned.get('title_sw')) != bool(cleaned.get('body_sw')):
+            missing = 'body_sw' if cleaned.get('title_sw') else 'title_sw'
+            self.add_error(missing, 'Fill in both the Kiswahili title and message, or leave both blank.')
         if not cleaned.get('send_sms') and not cleaned.get('show_on_portal'):
             raise forms.ValidationError("Choose at least one way to reach tenants: SMS or their rent page.")
         when = cleaned.get('scheduled_for')

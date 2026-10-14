@@ -1,16 +1,16 @@
 {% extends 'reports/print_base.html' %}
-{% load ui %}
-{% block title %}Statement · {{ lease.tenant }}{% endblock %}
-{% block doc_title %}<h1>Statement</h1><div class="muted small">As at {{ generated|date:"d M Y, H:i" }}</div>{% endblock %}
+{% load i18n ui %}
+{% block title %}{% translate "Statement" %} · {{ lease.tenant }}{% endblock %}
+{% block doc_title %}<h1>{% translate "Statement" %}</h1><div class="muted small">{% blocktranslate with date=generated|date:"d M Y, H:i" %}As at {{ date }}{% endblocktranslate %}</div>{% endblock %}
 {% block doc %}
 <dl class="doc-meta">
-  <div><dt>Tenant</dt><dd>{{ lease.tenant.full_name }}<br><span class="muted">{{ lease.tenant.phone }}</span></dd></div>
-  <div><dt>Unit</dt><dd>{{ lease.unit.label }}</dd></div>
-  <div><dt>Lease</dt><dd>{{ lease.start_date|date:"d M Y" }} – {{ lease.end_date|date:"d M Y"|default:"ongoing" }}</dd></div>
-  <div><dt>Monthly rent</dt><dd>{{ lease.monthly_rent|kes }}</dd></div>
+  <div><dt>{% translate "Tenant" %}</dt><dd>{{ lease.tenant.full_name }}<br><span class="muted">{{ lease.tenant.phone }}</span></dd></div>
+  <div><dt>{% translate "Unit" %}</dt><dd>{{ lease.unit.label }}</dd></div>
+  <div><dt>{% translate "Lease" %}</dt><dd>{{ lease.start_date|date:"d M Y" }} – {{ lease.end_date|date:"d M Y"|default:_("ongoing") }}</dd></div>
+  <div><dt>{% translate "Monthly rent" %}</dt><dd>{{ lease.monthly_rent|kes }}</dd></div>
 </dl>
 <table class="table doc-table">
-  <thead><tr><th>Date</th><th>Description</th><th class="num">Charged</th><th class="num">Paid / credit</th><th class="num">Balance</th></tr></thead>
+  <thead><tr><th>{% translate "Date" %}</th><th>{% translate "Description" %}</th><th class="num">{% translate "Charged" %}</th><th class="num">{% translate "Paid / credit" %}</th><th class="num">{% translate "Balance" %}</th></tr></thead>
   <tbody>
   {% for e in entries %}
   <tr>
@@ -19,12 +19,12 @@
     <td class="num">{% if e.payment %}{{ e.payment|kes }}{% endif %}</td>
     <td class="num">{{ e.balance|kes }}</td>
   </tr>
-  {% empty %}<tr><td colspan="5" class="muted">No activity yet.</td></tr>
+  {% empty %}<tr><td colspan="5" class="muted">{% translate "No activity yet." %}</td></tr>
   {% endfor %}
   </tbody>
 </table>
 <div class="doc-total">
-  <span>{% if balance > 0 %}Amount due{% elif balance < 0 %}In credit{% else %}Balance{% endif %}</span>
+  <span>{% if balance > 0 %}{% translate "Amount due" %}{% elif balance < 0 %}{% translate "In credit" %}{% else %}{% translate "Balance" %}{% endif %}</span>
   <strong>{% if balance < 0 %}{{ balance|kes|cut:"-" }}{% else %}{{ balance|kes }}{% endif %}</strong>
 </div>
 {% endblock %}

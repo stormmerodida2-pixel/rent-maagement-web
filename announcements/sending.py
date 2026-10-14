@@ -1,7 +1,7 @@
 """Sending announcements: once only, one delivery per tenant, SMS in bulk."""
 
 import logging
-from collections import Counter
+from collections import Counter, defaultdict
 
 from django.db import transaction
 from django.utils import timezone
@@ -34,8 +34,14 @@ def send(announcement):
     )
     stats = Counter(recipients=len(leases))
     if a.send_sms and leases:
-        messages = send_bulk_sms([(lease, lease.tenant.phone) for lease in leases], a.sms_text(),
-                                 kind=SmsMessage.Kind.ANNOUNCEMENT)
+        # One bulk send per version, so Kiswahili readers get the Kiswahili text when there is one.
+        by_version = defaultdict(list)
+        for lease in leases:
+            by_version[a.version_for(lease.tenant.language)].append(lease)
+        messages = []
+        for version, group in by_version.items():
+            messages += send_bulk_sms([(lease, lease.tenant.phone) for lease in group], a.sms_text(version),
+                                      kind=SmsMessage.Kind.ANNOUNCEMENT)
         by_lease = {m.lease_id: m for m in messages}
         deliveries = list(a.deliveries.all())
         for delivery in deliveries:

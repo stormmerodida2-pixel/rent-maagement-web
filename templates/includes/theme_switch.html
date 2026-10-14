@@ -1,5 +1,5 @@
-{% load ui %}<div class="theme-switch" role="group" aria-label="Colour theme">
-  <button type="button" data-theme-choice="auto" aria-pressed="false" title="Match my device">{% icon 'monitor' %}<span class="visually-hidden">System</span></button>
-  <button type="button" data-theme-choice="light" aria-pressed="false" title="Light">{% icon 'sun' %}<span class="visually-hidden">Light</span></button>
-  <button type="button" data-theme-choice="dark" aria-pressed="false" title="Dark">{% icon 'moon' %}<span class="visually-hidden">Dark</span></button>
+{% load i18n ui %}<div class="theme-switch" role="group" aria-label="{% translate 'Colour theme' %}">
+  <button type="button" data-theme-choice="auto" aria-pressed="false" title="{% translate 'Match my device' %}">{% icon 'monitor' %}<span class="visually-hidden">{% translate "System" %}</span></button>
+  <button type="button" data-theme-choice="light" aria-pressed="false" title="{% translate 'Light' %}">{% icon 'sun' %}<span class="visually-hidden">{% translate "Light" %}</span></button>
+  <button type="button" data-theme-choice="dark" aria-pressed="false" title="{% translate 'Dark' %}">{% icon 'moon' %}<span class="visually-hidden">{% translate "Dark" %}</span></button>
 </div>

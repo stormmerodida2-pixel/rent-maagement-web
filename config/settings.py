@@ -150,6 +150,10 @@ LOGOUT_REDIRECT_URL = 'rentals:home'
 # --- Internationalization -------------------------------------------------------------------
 
 LANGUAGE_CODE = 'en-us'
+# The landlord side is in English. Tenant-facing SMS and pages use each tenant's language
+# (Tenant.language), switched on per request/message rather than by LocaleMiddleware.
+LANGUAGES = [('en', 'English'), ('sw', 'Kiswahili')]
+LOCALE_PATHS = [BASE_DIR / 'locale']
 TIME_ZONE = 'Africa/Nairobi'
 USE_I18N = True
 USE_TZ = True

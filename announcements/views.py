@@ -77,7 +77,9 @@ def announcement_detail(request, pk):
     return render(request, 'announcements/detail.html', {
         'a': a, 'recipients': recipients, 'deliveries': deliveries, 'sms_stats': sms_stats,
         'sms_text': a.sms_text(), 'sms_parts': a.sms_parts(),
-        'estimated_cost': a.estimated_cost(len(recipients)) if recipients else 0,
+        'sms_text_sw': a.sms_text('sw') if a.has_swahili else '', 'sms_parts_sw': a.sms_parts('sw'),
+        'swahili_readers': sum(lease.tenant.language == 'sw' for lease in recipients),
+        'estimated_cost': a.estimated_cost(recipients) if recipients else 0,
     })
 
 
