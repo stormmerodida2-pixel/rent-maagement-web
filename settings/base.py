@@ -1,10 +1,12 @@
 """
-Django settings for the rental manager.
+Settings shared by every environment. Don't point DJANGO_SETTINGS_MODULE here; use one of:
 
-Everything that differs between a laptop and a server comes from environment variables
-(loaded from .env if present). Defaults are safe for production: DEBUG is off unless
-DJANGO_DEBUG=1, and a real DJANGO_SECRET_KEY is required when it is off.
-See .env.example and the "Deploying" section of README.md.
+- settings.local        your computer (the default for manage.py)
+- settings.development  a test copy online, for trying changes before they go live
+- settings.production   the live site (the default for the server: wsgi.py and the Docker image)
+
+Secrets and anything that differs between servers come from environment variables (loaded from .env
+if present). See .env.example and the "Deploying" section of README.md.
 """
 
 import os
@@ -16,9 +18,14 @@ from django.core.exceptions import ImproperlyConfigured
 from django.utils.csp import CSP
 from dotenv import load_dotenv
 
-BASE_DIR = Path(__file__).resolve().parent.parent
+BASE_DIR = Path(__file__).resolve().parent.parent  # the project folder
 
-load_dotenv(BASE_DIR / '.env')
+# Each settings file reads its own env file: local -> .env_local, development -> .env_dev,
+# production -> .env_prod (ENV_FILE=path overrides). Variables already in the environment win, so on the
+# server the values docker compose passes in are used as they are.
+ENV_FILES = {'local': '.env_local', 'development': '.env_dev', 'production': '.env_prod'}
+_settings_name = os.environ.get('DJANGO_SETTINGS_MODULE', 'settings.local').rsplit('.', 1)[-1]
+load_dotenv(os.environ.get('ENV_FILE') or BASE_DIR / ENV_FILES.get(_settings_name, '.env_local'))
 
 
 def env_bool(name, default=False):
@@ -29,18 +36,18 @@ def env_list(name, default=''):
     return [item.strip() for item in os.environ.get(name, default).split(',') if item.strip()]
 
 
+def require(name, why):
+    """Stop with a clear message when a setting the server can't run without is missing."""
+    if not os.environ.get(name):
+        raise ImproperlyConfigured(f'{name} must be set: {why} See .env.production.example.')
+    return os.environ[name]
+
+
 # --- Core -----------------------------------------------------------------------------------
 
-DEBUG = env_bool('DJANGO_DEBUG')
+DEBUG = False  # local.py turns it on
 
-SECRET_KEY = os.environ.get('DJANGO_SECRET_KEY', '')
-if not SECRET_KEY:
-    if not DEBUG:
-        raise ImproperlyConfigured(
-            'DJANGO_SECRET_KEY must be set when DJANGO_DEBUG is off. Generate one with: '
-            'python -c "import secrets; print(secrets.token_urlsafe(50))"'
-        )
-    SECRET_KEY = 'django-insecure-dev-only-change-me'
+SECRET_KEY = os.environ.get('DJANGO_SECRET_KEY', '')  # required in production.py
 
 # Public base URL of this site, used in links sent to tenants (SMS, portal, emails).
 SITE_URL = os.environ.get('SITE_URL', 'http://localhost:8000').rstrip('/')
@@ -170,30 +177,20 @@ STORAGES = {
     'default': {'BACKEND': 'django.core.files.storage.FileSystemStorage'},
     'staticfiles': {
         # Hashed, compressed files that browsers can cache forever. Needs `collectstatic`, so
-        # plain local development (DEBUG on) keeps the simple storage.
-        'BACKEND': 'django.contrib.staticfiles.storage.StaticFilesStorage' if DEBUG
-        else 'whitenoise.storage.CompressedManifestStaticFilesStorage',
+        # local.py uses the simple storage instead.
+        'BACKEND': 'whitenoise.storage.CompressedManifestStaticFilesStorage',
     },
 }
 
 
-# --- Security (production) ----------------------------------------------------------------------
+# --- Security ---------------------------------------------------------------------------------
+# (HTTPS-only cookies, redirects and HSTS are in production.py.)
 
 # Behind a reverse proxy (Caddy, nginx, a load balancer) that terminates HTTPS:
 SECURE_PROXY_SSL_HEADER = ('HTTP_X_FORWARDED_PROTO', 'https')
 # How many trusted proxies sit in front of the app. Client IPs (used for login/sign-up limits)
 # are read from X-Forwarded-For only up to this many hops; 0 means use the direct connection.
 TRUSTED_PROXY_COUNT = int(os.environ.get('TRUSTED_PROXY_COUNT', '0'))
-
-if not DEBUG:
-    SECURE_SSL_REDIRECT = env_bool('DJANGO_SECURE_SSL_REDIRECT', True)
-    SECURE_REDIRECT_EXEMPT = [r'^healthz/$']  # load balancers probe over plain HTTP
-    SESSION_COOKIE_SECURE = True
-    CSRF_COOKIE_SECURE = True
-    # Start small; raise to 31536000 (a year) once HTTPS is confirmed working.
-    SECURE_HSTS_SECONDS = int(os.environ.get('DJANGO_HSTS_SECONDS', '3600'))
-    SECURE_HSTS_INCLUDE_SUBDOMAINS = env_bool('DJANGO_HSTS_INCLUDE_SUBDOMAINS')
-    SECURE_HSTS_PRELOAD = env_bool('DJANGO_HSTS_PRELOAD')
 
 # Content-Security-Policy: the browser only runs our own scripts (plus the one inline theme
 # script, marked with a per-request nonce), so injected <script> tags and onclick= handlers do
@@ -283,14 +280,9 @@ MPESA = {
     ])),
 }
 
-# Fernet key for encrypting landlords' Daraja credentials at rest.
+# Fernet key for encrypting landlords' Daraja credentials at rest (required in production.py).
 # Generate with: python -c "from cryptography.fernet import Fernet; print(Fernet.generate_key().decode())"
 FIELD_ENCRYPTION_KEY = os.environ.get('FIELD_ENCRYPTION_KEY', '')
-if not DEBUG and not FIELD_ENCRYPTION_KEY:
-    raise ImproperlyConfigured(
-        'FIELD_ENCRYPTION_KEY must be set when DJANGO_DEBUG is off, so stored M-Pesa credentials '
-        "don't depend on DJANGO_SECRET_KEY. See .env.example for how to generate one."
-    )
 
 # SMS via Africa's Talking. 'console' just logs messages (development).
 SMS = {
@@ -309,12 +301,7 @@ BACKUP_KEEP_DAYS = int(os.environ.get('BACKUP_KEEP_DAYS', '14'))
 # Fernet key that encrypts every backup file. Keep it somewhere other than the server (a password
 # manager): it's what lets you read a backup after losing the server. Separate from
 # FIELD_ENCRYPTION_KEY so backups can be stored by someone who can't read M-Pesa credentials.
-BACKUP_ENCRYPTION_KEY = os.environ.get('BACKUP_ENCRYPTION_KEY', '')
-if not DEBUG and not BACKUP_ENCRYPTION_KEY:
-    raise ImproperlyConfigured(
-        'BACKUP_ENCRYPTION_KEY must be set when DJANGO_DEBUG is off, so backups are encrypted. '
-        'Generate it the same way as FIELD_ENCRYPTION_KEY (see .env.example).'
-    )
+BACKUP_ENCRYPTION_KEY = os.environ.get('BACKUP_ENCRYPTION_KEY', '')  # required in production.py
 
 
 # --- Logging & error alerts ---------------------------------------------------------------------
@@ -333,13 +320,16 @@ LOGGING = {
     },
 }
 
-# Error alerts: set SENTRY_DSN to get an email/notification for every server error.
-if os.environ.get('SENTRY_DSN'):
-    import sentry_sdk
 
-    sentry_sdk.init(
-        dsn=os.environ['SENTRY_DSN'],
-        environment=os.environ.get('SENTRY_ENVIRONMENT', 'production'),
-        traces_sample_rate=float(os.environ.get('SENTRY_TRACES_SAMPLE_RATE', '0')),
-        send_default_pii=False,  # don't send tenants' personal data to a third party
-    )
+
+def init_error_alerts(environment):
+    """Set SENTRY_DSN to get an email/notification for every server error (called by the server settings)."""
+    if os.environ.get('SENTRY_DSN'):
+        import sentry_sdk
+
+        sentry_sdk.init(
+            dsn=os.environ['SENTRY_DSN'],
+            environment=os.environ.get('SENTRY_ENVIRONMENT', environment),
+            traces_sample_rate=float(os.environ.get('SENTRY_TRACES_SAMPLE_RATE', '0')),
+            send_default_pii=False,  # don't send tenants' personal data to a third party
+        )

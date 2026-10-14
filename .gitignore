@@ -9,8 +9,8 @@ db.sqlite3
 *.sqlite3
 .env
 .env.*
-!.env.example
-!.env.production.example
+.env_*
+!.env_*.example
 
 # Generated
 staticfiles/
