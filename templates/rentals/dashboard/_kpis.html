@@ -1,4 +1,25 @@
-{% load ui %}<div class="kpis" style="margin-bottom:20px">
+{% load ui %}{% if occupied_count %}<section class="card rentday" style="margin-bottom:20px">
+  <div class="rentday-ring" role="img" aria-label="{% if collection_rate is not None %}{{ collection_rate }}% of this month's rent collected{% else %}Nothing billed yet this month{% endif %}">
+    <svg viewBox="0 0 120 120" aria-hidden="true">
+      <circle class="ring-track" cx="60" cy="60" r="52"/>
+      <circle class="ring-fill{% if collection_rate == 100 %} ring-done{% endif %}" cx="60" cy="60" r="52" pathLength="100"
+              stroke-dasharray="100" stroke-dashoffset="{{ ring_offset }}" transform="rotate(-90 60 60)"/>
+    </svg>
+    <div class="ring-center"><strong>{% if collection_rate is not None %}{{ collection_rate }}%{% else %}—{% endif %}</strong><span>collected</span></div>
+  </div>
+  <div class="rentday-text">
+    <div class="label">Rent day · {{ today|date:"F" }}</div>
+    {% if not tenants_owing %}
+      <div class="rentday-headline">Everyone has paid 🎉</div>
+      <p class="muted">{{ tenants_paid }} of {{ occupied_count }} tenant{{ occupied_count|pluralize }} are fully paid up.</p>
+    {% else %}
+      <div class="rentday-headline">{{ tenants_paid }} of {{ occupied_count }} tenant{{ occupied_count|pluralize }} paid up</div>
+      <p class="muted">{{ collected_this_month|kes }}{% if billed_this_month %} of {{ billed_this_month|kes }}{% endif %} collected so far.
+        {{ tenants_owing }} still to pay · <a href="{% url 'rentals:remind_all' %}">Remind them</a></p>
+    {% endif %}
+  </div>
+</section>
+{% endif %}<div class="kpis" style="margin-bottom:20px">
   <div class="card kpi">
     <div class="label">Collected this month</div>
     <div class="value text-success">{{ collected_this_month|kes }}</div>

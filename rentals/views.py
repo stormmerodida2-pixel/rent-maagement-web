@@ -1,5 +1,7 @@
 import datetime
+import math
 
+from django.conf import settings
 from django.contrib import messages
 from django.contrib.auth.decorators import login_required
 from django.db.models import Max, Sum
@@ -15,7 +17,9 @@ from accounts.views import setup_steps
 from announcements.models import current_notices
 from maintenance.forms import TenantMaintenanceForm
 from maintenance.models import MaintenanceRequest
-from notifications.sms import send_rent_reminder
+from audit import log as audit
+from notifications.models import SmsMessage
+from notifications.sms import reminder_text, send_personal_sms, send_rent_reminder
 from payments import mpesa
 from payments.forms import StkPushForm
 from payments.models import C2BPayment, MpesaAccount, Payment
@@ -55,8 +59,13 @@ def dashboard_numbers(user):
         .select_related('unit__property')
         .order_by('-created_at')
     )
+    rate = min(100, round(collected * 100 / billed)) if billed else None
     return {
         'today': today,
+        # Rent-day ring: how much of this month's billing is in, and how many tenants are fully paid up.
+        'tenants_paid': sum(1 for _, bal in lease_rows if bal <= 0),
+        'tenants_owing': len(arrears),
+        'ring_offset': 100 - (rate or 0),
         'open_requests': open_requests,
         'open_count': open_requests.count(),
         'urgent_count': open_requests.filter(
@@ -65,7 +74,7 @@ def dashboard_numbers(user):
         'unit_count': unit_count,
         'vacant_count': unit_count - len(lease_rows),
         'billed_this_month': billed,
-        'collection_rate': min(100, round(collected * 100 / billed)) if billed else None,
+        'collection_rate': rate,
         'occupied_count': len(lease_rows),
         'collected_this_month': collected,
         'total_arrears': sum(bal for _, bal in arrears),
@@ -205,6 +214,64 @@ def send_reminder(request, pk):
     if next_url and url_has_allowed_host_and_scheme(next_url, {request.get_host()}, request.is_secure()):
         return redirect(next_url)
     return redirect('rentals:lease_detail', pk=lease.pk)
+
+
+RECENT_REMINDER = datetime.timedelta(hours=24)
+
+
+def _sms_parts(text):
+    gsm = all(ord(c) < 128 for c in text)  # emoji/accents switch phones to 70-char parts
+    single, multi = (160, 153) if gsm else (70, 67)
+    return 1 if len(text) <= single else math.ceil(len(text) / multi)
+
+
+@login_required
+def remind_all(request):
+    """Preview, then send, a rent reminder to every tenant who owes (one tap from the dashboard)."""
+    leases = (Lease.objects.filter(unit__property__owner=request.user, is_active=True)
+              .select_related('tenant', 'unit__property').order_by('unit__property__name', 'unit__label'))
+    owing = [(lease, balance) for lease in leases if (balance := lease.balance) > 0]
+    last_reminded = dict(
+        SmsMessage.objects.filter(kind=SmsMessage.Kind.REMINDER, lease__in=[lease for lease, _ in owing],
+                                  created_at__gte=timezone.now() - RECENT_REMINDER)
+        .exclude(status=SmsMessage.Status.FAILED)
+        .values_list('lease_id').annotate(last=Max('created_at'))
+    )
+
+    if request.method == 'POST':
+        chosen = set(request.POST.getlist('lease'))
+        targets = [(lease, balance) for lease, balance in owing if str(lease.pk) in chosen]
+        if not targets:
+            messages.error(request, 'Choose at least one tenant to remind.')
+            return redirect('rentals:remind_all')
+        sent = send_personal_sms(
+            [(lease, lease.tenant.phone, reminder_text(lease, balance)) for lease, balance in targets],
+            kind=SmsMessage.Kind.REMINDER,
+        )
+        failed = sum(m.status == SmsMessage.Status.FAILED for m in sent)
+        ok = len(sent) - failed
+        audit.record(owner=request.user, actor=request.user, action='reminders.sent',
+                     summary=f'Sent rent reminders to {ok} tenant(s)' + (f', {failed} failed.' if failed else '.'))
+        if failed:
+            messages.warning(request, f'Sent {ok} reminder{"s" if ok != 1 else ""}; {failed} failed. '
+                                      'See the SMS log for why.')
+        else:
+            messages.success(request, f'Sent {ok} reminder{"s" if ok != 1 else ""}.')
+        return redirect('rentals:dashboard')
+
+    rows = []
+    for lease, balance in owing:
+        text = reminder_text(lease, balance)
+        rows.append({'lease': lease, 'balance': balance, 'text': text, 'parts': _sms_parts(text),
+                     'reminded_at': last_reminded.get(lease.pk)})
+    selected = [r for r in rows if not r['reminded_at']]
+    return render(request, 'rentals/remind_all.html', {
+        'rows': rows,
+        'selected_count': len(selected),
+        'total_owed': sum(r['balance'] for r in rows),
+        'cost_each': settings.SMS_COST_PER_PART,
+        'estimated_cost': round(sum(r['parts'] for r in selected) * settings.SMS_COST_PER_PART, 2),
+    })
 
 
 def tenant_portal(request, token):

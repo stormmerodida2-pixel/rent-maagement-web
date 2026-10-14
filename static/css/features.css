@@ -34,3 +34,22 @@
 .install-card { display: flex; align-items: center; gap: 10px; padding: 12px 14px; border-radius: var(--radius);
   background: var(--brand-soft); border: 1px solid var(--border); cursor: pointer; font-size: 14px; }
 .install-card span:first-of-type { flex: 1; }
+
+/* --- Rent-day ring (dashboard) ----------------------------------------------------------- */
+.rentday { display: flex; align-items: center; gap: 22px; padding: 18px 22px; }
+.rentday-ring { position: relative; width: 112px; height: 112px; flex: none; }
+.rentday-ring svg { width: 100%; height: 100%; }
+.ring-track, .ring-fill { fill: none; stroke-width: 11; }
+.ring-track { stroke: var(--brand-soft); }
+.ring-fill { stroke: var(--brand); stroke-linecap: round; transition: stroke-dashoffset 1.2s cubic-bezier(.2, .8, .2, 1); }
+.ring-fill[stroke-dashoffset="100"] { stroke-linecap: butt; }  /* no dot at 0% */
+.ring-center { position: absolute; inset: 0; display: flex; flex-direction: column; align-items: center; justify-content: center; }
+.ring-center strong { font-size: 24px; line-height: 1; }
+.ring-center span { font-size: 12px; color: var(--muted); margin-top: 3px; }
+.rentday-text .label { font-size: 12px; font-weight: 600; text-transform: uppercase; letter-spacing: .04em; color: var(--muted); }
+.rentday-headline { font-size: 22px; font-weight: 700; margin: 2px 0 4px; }
+.rentday-text p { margin: 0; }
+@media (max-width: 520px) {
+  .rentday { flex-direction: column; text-align: center; }
+}
+@media (prefers-reduced-motion: reduce) { .ring-fill { transition: none; } }
