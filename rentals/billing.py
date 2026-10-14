@@ -12,7 +12,7 @@ class BillingError(Exception):
     pass
 
 
-def _num(value):
+def format_number(value):
     """Format a Decimal without trailing zeros: 1212.50 -> '1212.5', 1200.00 -> '1200'."""
     return f'{Decimal(value).normalize():f}'
 
@@ -45,7 +45,8 @@ def record_water_reading(unit, reading_date, value):
             reading.charge = RentCharge.objects.create(
                 lease=lease, kind=RentCharge.Kind.WATER, period=reading_date.replace(day=1),
                 amount=amount, due_date=reading_date,
-                description=f'Water {_num(used)} units ({_num(previous.value)} → {_num(value)}) @ KES {_num(rate)}',
+                description=(f'Water {format_number(used)} units ({format_number(previous.value)} → '
+                             f'{format_number(value)}) @ KES {format_number(rate)}'),
             )
     reading.save()
     return reading
@@ -88,3 +89,23 @@ def apply_late_fees(leases, today=None):
     """Add late fees across leases. Returns the charges created."""
     today = today or datetime.date.today()
     return [c for c in (lease.apply_late_fee(today) for lease in leases) if c]
+
+
+@transaction.atomic
+def void_reading(reading, user, reason):
+    """Void a unit's latest meter reading and the water charge it created.
+
+    Only the latest reading can be voided: each charge is worked out from the reading before it,
+    so voiding an older one would leave the next charge wrong. Void back from the newest instead.
+    """
+    latest = last_reading(reading.unit)
+    if latest is None or latest.pk != reading.pk:
+        raise BillingError(
+            f'{reading.unit.label}: only the latest reading can be voided. Void the newer readings first.'
+        )
+    reading.void(user, reason)
+    if reading.charge_id:
+        charge = RentCharge.all_objects.get(pk=reading.charge_id)
+        if not charge.is_voided:
+            charge.void(user, f'Meter reading voided: {reason}')
+    return reading

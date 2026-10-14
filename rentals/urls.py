@@ -33,4 +33,5 @@ urlpatterns = [
     path('leases/<int:pk>/charges/new/', crud.ChargeCreate.as_view(), name='charge_create'),
     path('charges/<int:pk>/void/', crud.charge_void, name='charge_void'),
     path('properties/<int:pk>/water/', crud.WaterReadings.as_view(), name='water_readings'),
+    path('readings/<int:pk>/void/', crud.reading_void, name='reading_void'),
 ]

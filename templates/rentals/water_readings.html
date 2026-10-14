@@ -6,7 +6,7 @@
   <div>
     <h1>Water readings</h1>
     <p class="sub">{{ property.name }}{% if property.water_rate %} · KES {{ property.water_rate|floatformat:"-2" }} per unit{% endif %}.
-      Enter today's meter readings. Each tenant is billed for what they used since the last reading.</p>
+      Enter today's meter readings. Each tenant is billed for what they used since the last reading. Typed one wrong? Void it and enter it again.</p>
   </div>
 </div>
 
@@ -33,7 +33,7 @@
         <tr>
           <td><strong>{{ unit.label }}</strong></td>
           <td>{% if lease %}{{ lease.tenant }}{% else %}<span class="badge badge-warn">Vacant</span>{% endif %}</td>
-          <td class="num">{% if last %}{{ last.value|floatformat:"-2" }}<div class="muted small">{{ last.reading_date|date:"d M Y" }}</div>{% else %}<span class="muted small">First reading sets the baseline</span>{% endif %}</td>
+          <td class="num">{% if last %}{{ last.value|floatformat:"-2" }}<div class="muted small">{{ last.reading_date|date:"d M Y" }} · <a href="{% url 'rentals:reading_void' last.pk %}">Void</a></div>{% else %}<span class="muted small">First reading sets the baseline</span>{% endif %}</td>
           <td style="max-width:180px">{{ field }}{{ field.errors }}</td>
         </tr>
         {% endfor %}

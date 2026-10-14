@@ -9,6 +9,7 @@ from django.core.management import call_command
 from django.test import TestCase
 from django.urls import reverse
 
+from audit.models import AuditEntry
 from payments.models import Payment
 
 from .billing import BillingError, record_water_reading, settle_move_out
@@ -193,3 +194,44 @@ class LeaseFormMoneyTests(TestCase):
         self.assertEqual(sorted(lease.charges.values_list('kind', flat=True)), ['deposit', 'rent', 'service'])
         self.assertEqual((lease.late_fee, lease.late_fee_grace_days), (0, 3))
         self.assertEqual(lease.balance, D('20300'))
+
+
+class VoidReadingTests(TestCase):
+    def setUp(self):
+        self.owner = get_user_model().objects.create_user('landlord')
+        self.lease = make_lease(self.owner)
+        self.unit = self.lease.unit
+        self.unit.property.water_rate = D('100')
+        self.unit.property.save()
+        record_water_reading(self.unit, datetime.date(2026, 2, 1), '1000')
+        self.client.force_login(self.owner)
+
+    def test_typo_can_be_voided_and_re_entered(self):
+        typo = record_water_reading(self.unit, datetime.date(2026, 3, 1), '10010')  # meant 1010
+        self.assertEqual(self.lease.balance, D('901000'))
+        # Without the fix, every later reading is "lower than the last reading".
+        with self.assertRaises(BillingError):
+            record_water_reading(self.unit, datetime.date(2026, 3, 1), '1010')
+
+        resp = self.client.post(reverse('rentals:reading_void', args=[typo.pk]), {'reason': 'Typo'}, follow=True)
+        self.assertContains(resp, 'You can now enter the correct one')
+        self.assertEqual(self.lease.balance, 0)
+        typo = MeterReading.all_objects.get(pk=typo.pk)
+        self.assertTrue(typo.is_voided)
+        self.assertTrue(RentCharge.all_objects.get(pk=typo.charge_id).is_voided)
+
+        fixed = record_water_reading(self.unit, datetime.date(2026, 3, 1), '1010')
+        self.assertEqual(fixed.charge.amount, D('1000.00'))  # 10 units × 100, from the 1000 baseline
+        self.assertTrue(AuditEntry.objects.filter(action='reading.voided', lease=self.lease).exists())
+
+    def test_only_latest_reading_can_be_voided(self):
+        first = MeterReading.objects.get()
+        record_water_reading(self.unit, datetime.date(2026, 3, 1), '1010')
+        resp = self.client.post(reverse('rentals:reading_void', args=[first.pk]), {'reason': 'x'}, follow=True)
+        self.assertContains(resp, 'only the latest reading can be voided')
+        self.assertFalse(MeterReading.all_objects.get(pk=first.pk).is_voided)
+
+    def test_other_landlord_cannot_void(self):
+        reading = MeterReading.objects.get()
+        self.client.force_login(get_user_model().objects.create_user('intruder'))
+        self.assertEqual(self.client.post(reverse('rentals:reading_void', args=[reading.pk]), {'reason': 'x'}).status_code, 404)

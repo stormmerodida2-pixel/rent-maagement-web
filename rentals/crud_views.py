@@ -13,10 +13,12 @@ from django.views.generic import CreateView, DeleteView, DetailView, FormView, L
 from audit import log as audit
 from payments.forms import VoidForm
 
-from .billing import BillingError, last_reading, record_water_reading, settle_move_out
+from .billing import (
+    BillingError, format_number, last_reading, record_water_reading, settle_move_out, void_reading,
+)
 from .forms import ChargeForm, EndLeaseForm, LeaseForm, PropertyForm, TenantForm, UnitForm, WaterReadingsForm
 from .mixins import OwnedMixin, SafeDeleteMixin
-from .models import Lease, Property, RentCharge, Tenant, Unit
+from .models import Lease, MeterReading, Property, RentCharge, Tenant, Unit
 
 
 class NextUrlMixin:
@@ -488,4 +490,36 @@ def charge_void(request, pk):
         'form': form, 'page_title': 'Void charge', 'submit_label': 'Void charge', 'cancel_url': back,
         'intro': f'"{charge.label}", KES {charge.amount:,.2f}, for {charge.lease.tenant}. '
                  f'It will no longer count towards their balance.{note}',
+    })
+
+
+@login_required
+def reading_void(request, pk):
+    """Void a mistyped meter reading (and its water charge) so the correct one can be entered."""
+    reading = get_object_or_404(
+        MeterReading.objects.select_related('unit__property'), pk=pk, unit__property__owner=request.user,
+    )
+    back = reverse('rentals:water_readings', args=[reading.unit.property_id])
+    form = VoidForm(request.POST or None)
+    if request.method == 'POST' and form.is_valid():
+        try:
+            void_reading(reading, request.user, form.cleaned_data['reason'])
+        except BillingError as exc:
+            messages.error(request, str(exc))
+            return redirect(back)
+        charge = RentCharge.all_objects.filter(pk=reading.charge_id).select_related('lease').first()
+        audit.record(
+            owner=request.user, actor=request.user, lease=charge.lease if charge else None, action='reading.voided',
+            summary=f'Voided water reading {format_number(reading.value)} for {reading.unit} ({reading.reading_date:%d %b %Y})'
+                    + (f' and its charge of KES {charge.amount:,.2f}' if charge else '')
+                    + f': {form.cleaned_data["reason"]}',
+        )
+        messages.success(request, f'Voided the reading for {reading.unit.label}. You can now enter the correct one.')
+        return redirect(back)
+    charge = RentCharge.objects.filter(pk=reading.charge_id).first()
+    return render(request, 'form_page.html', {
+        'form': form, 'page_title': 'Void meter reading', 'submit_label': 'Void reading', 'cancel_url': back,
+        'intro': f'Reading {format_number(reading.value)} for {reading.unit} on {reading.reading_date:%d %b %Y}.'
+                 + (f' Its water charge of KES {charge.amount:,.2f} will be voided too.' if charge else '')
+                 + ' The previous reading becomes the starting point again.',
     })

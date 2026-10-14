@@ -314,8 +314,11 @@ class RentCharge(Voidable):
         return self.due_date < datetime.date.today()
 
 
-class MeterReading(models.Model):
-    """A water meter reading. Each reading after the first bills the consumption since the last one."""
+class MeterReading(Voidable):
+    """A water meter reading. Each reading after the first bills the consumption since the last one.
+
+    Voided readings are ignored, so the reading before a voided one becomes the baseline again.
+    """
 
     unit = models.ForeignKey(Unit, on_delete=models.CASCADE, related_name='meter_readings')
     reading_date = models.DateField()

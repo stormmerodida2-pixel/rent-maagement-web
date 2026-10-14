@@ -304,18 +304,32 @@ STK_QUERY_AFTER = datetime.timedelta(minutes=2)  # give the callback a chance fi
 STK_EXPIRE_AFTER = datetime.timedelta(hours=24)
 
 
+def _expire(txn, reason):
+    """Give up on a pending prompt. Returns the transaction."""
+    with transaction.atomic():
+        txn = MpesaTransaction.objects.select_for_update().get(pk=txn.pk)
+        if txn.status == MpesaTransaction.Status.PENDING:
+            txn.status = MpesaTransaction.Status.FAILED
+            txn.result_desc = reason[:255]
+            txn.save()
+    return txn
+
+
 def query_stk_status(txn):
     """Ask Safaricom what happened to a pending STK prompt and apply the answer.
 
-    Returns the (possibly updated) transaction. Raises MpesaError if Safaricom can't be asked.
+    Prompts still unresolved 24 hours after they were sent are marked failed, whatever stopped
+    the check (still processing, credentials changed, account removed), so nothing is retried forever.
+    Returns the (possibly updated) transaction. Raises MpesaError if Safaricom can't be asked yet.
     """
     if txn.status != MpesaTransaction.Status.PENDING:
         return txn
-    account = txn.account
-    if account is None or not account.is_complete():
-        raise MpesaError('This prompt was sent from an M-Pesa account that is no longer set up.')
-    password, timestamp = _stk_password(account)
+    too_old = timezone.now() - txn.created_at > STK_EXPIRE_AFTER
     try:
+        account = txn.account
+        if account is None or not account.is_complete():
+            raise MpesaError('This prompt was sent from an M-Pesa account that is no longer set up.')
+        password, timestamp = _stk_password(account)
         data = _post(account, '/mpesa/stkpushquery/v1/query', {
             'BusinessShortCode': account.shortcode,
             'Password': password,
@@ -323,16 +337,14 @@ def query_stk_status(txn):
             'CheckoutRequestID': txn.checkout_request_id,
         })
     except MpesaError as exc:
-        if exc.code != STK_STILL_PROCESSING:
-            raise
-        if timezone.now() - txn.created_at > STK_EXPIRE_AFTER:
-            with transaction.atomic():
-                txn = MpesaTransaction.objects.select_for_update().get(pk=txn.pk)
-                if txn.status == MpesaTransaction.Status.PENDING:
-                    txn.status = MpesaTransaction.Status.FAILED
-                    txn.result_desc = 'No answer from Safaricom within 24 hours'
-                    txn.save()
-        return txn
+        if too_old:
+            reason = 'No answer from Safaricom within 24 hours'
+            if exc.code != STK_STILL_PROCESSING:
+                reason += f'; last check failed: {exc}'
+            return _expire(txn, reason)
+        if exc.code == STK_STILL_PROCESSING:
+            return txn
+        raise
 
     result_code = int(data.get('ResultCode', -1))
     with transaction.atomic():

@@ -76,6 +76,7 @@ A tenant's balance is everything charged minus everything paid. Charges can be:
 Money records are never deleted, so the history always adds up:
 
 - **Void** a cash/bank payment or a charge from the lease statement, giving a reason. It stops counting towards the balance and reports, and is listed under **Voided** on the lease page. A voided monthly charge (rent, service charge, late fee) isn't billed again for that month. To bill a corrected amount, use **Add charge**.
+- **A mistyped water reading** can be voided from the Water readings page; its water charge is voided with it and the previous reading becomes the baseline again. Only a unit's latest reading can be voided, because each charge is worked out from the one before it, so void back from the newest.
 - **M-Pesa payments can't be voided**, because the money really arrived. **Move** them to the tenant who actually paid.
 - Every change is recorded in the **Activity** log with who did it, when, and the before/after values. M-Pesa secrets are masked. The log can't be edited.
 
@@ -85,7 +86,7 @@ If Safaricom's STK callback never arrives, `check_pending_stk` (every 5 minutes)
 
 - **Paid:** the tenant is credited. Safaricom's status answer doesn't include the receipt number, so the payment shows "receipt pending" until the callback or Paybill confirmation arrives. That later confirmation fills in the receipt on the same payment instead of crediting the tenant twice.
 - **Cancelled or failed:** the prompt is marked failed with Safaricom's reason.
-- **No answer after 24 hours:** marked failed.
+- **Still unresolved after 24 hours, for any reason:** marked failed. That covers Safaricom never answering, changed M-Pesa keys, and a removed M-Pesa account, so nothing is retried forever.
 
 ### Statements, receipts and exports
 

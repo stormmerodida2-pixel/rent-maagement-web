@@ -205,6 +205,28 @@ class StkStatusCheckTests(TestCase):
         self.assertIn('24 hours', txn.result_desc)
 
     @mock.patch('payments.mpesa.requests')
+    def test_other_errors_retry_until_24_hours_then_expire(self, req):
+        bad_keys = {'errorCode': '400.002.02', 'errorMessage': 'Bad Request - Invalid BusinessShortCode'}
+        with self.assertRaises(mpesa.MpesaError):
+            self.query(req, bad_keys, status=400)  # recent: report the error, keep trying
+        self.assertEqual(MpesaTransaction.objects.get(pk=self.txn.pk).status, 'pending')
+        MpesaTransaction.objects.filter(pk=self.txn.pk).update(created_at=timezone.now() - datetime.timedelta(hours=25))
+        self.txn.refresh_from_db()
+        txn = self.query(req, bad_keys, status=400)
+        self.assertEqual(txn.status, 'failed')
+        self.assertIn('Invalid BusinessShortCode', txn.result_desc)
+
+    def test_removed_account_expires_after_24_hours(self):
+        self.account.passkey = ''
+        self.account.save()
+        MpesaTransaction.objects.filter(pk=self.txn.pk).update(created_at=timezone.now() - datetime.timedelta(hours=25))
+        self.txn.refresh_from_db()
+        out = StringIO()
+        call_command('check_pending_stk', stdout=out)
+        self.assertIn('1 failed', out.getvalue())
+        self.assertIn('no longer set up', MpesaTransaction.objects.get(pk=self.txn.pk).result_desc)
+
+    @mock.patch('payments.mpesa.requests')
     def test_callback_that_already_arrived_wins(self, req):
         self.client.post(reverse('payments:stk_callback', args=[self.account.callback_token]),
                          json.dumps(success_callback('ws_CO_7', amount=7500, receipt='SCB1')),
