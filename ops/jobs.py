@@ -36,6 +36,7 @@ class Job:
 
 JOBS = [
     Job('check_pending_stk', 'check_pending_stk', every=datetime.timedelta(minutes=5)),
+    Job('send_announcements', 'send_announcements', every=datetime.timedelta(minutes=1)),
     Job('backup_db', 'backup_db', daily_at=datetime.time(2, 0)),
     Job('clearsessions', 'clearsessions', daily_at=datetime.time(3, 0)),
     Job('generate_rent_charges', 'generate_rent_charges', daily_at=datetime.time(6, 0)),

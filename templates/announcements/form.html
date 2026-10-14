@@ -1,0 +1,35 @@
+{% extends 'app_base.html' %}
+{% block page_title %}{% if object %}Edit announcement{% else %}New announcement{% endif %}{% endblock %}
+{% block content %}
+<div class="form-page">
+<div class="page-header"><div>
+  <h1>{% if object %}Edit announcement{% else %}New announcement{% endif %}</h1>
+  <p class="sub">Tell your tenants about water or power cuts, maintenance, rent changes or meetings. You'll see who gets it and the SMS cost before anything is sent.</p>
+</div></div>
+<section class="card form-card">
+  <div class="card-body">
+    <form method="post" novalidate>
+      {% csrf_token %}
+      {% if form.non_field_errors %}<div class="alert alert-error" style="margin-bottom:14px">{{ form.non_field_errors|join:" " }}</div>{% endif %}
+      {% for field in form.visible_fields %}
+      <div class="field{% if field.errors %} has-error{% endif %}{% if field.widget_type == 'checkbox' %} field-check{% endif %}"
+           {% if field.name == 'properties' %}data-show-when="id_audience=properties"{% elif field.name == 'units' %}data-show-when="id_audience=units"{% endif %}>
+        {% if field.widget_type == 'checkbox' %}
+          {{ field }}<label for="{{ field.id_for_label }}">{{ field.label }}</label>
+        {% else %}
+          <label for="{{ field.id_for_label }}">{{ field.label }}{% if not field.field.required %} <span class="muted" style="font-weight:400">(optional)</span>{% endif %}</label>
+          <div class="{% if field.widget_type == 'checkboxselectmultiple' %}checkbox-list{% endif %}">{{ field }}</div>
+        {% endif %}
+        {% if field.help_text %}<span class="helptext">{{ field.help_text }}</span>{% endif %}
+        {{ field.errors }}
+      </div>
+      {% endfor %}
+      <div class="form-actions">
+        <button type="submit" class="btn btn-primary">Preview</button>
+        <a class="btn btn-ghost" href="{% if object %}{% url 'announcements:detail' object.pk %}{% else %}{% url 'announcements:list' %}{% endif %}">Cancel</a>
+      </div>
+    </form>
+  </div>
+</section>
+</div>
+{% endblock %}

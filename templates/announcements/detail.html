@@ -1,0 +1,62 @@
+{% extends 'app_base.html' %}
+{% load ui %}
+{% block page_title %}{{ a.title }}{% endblock %}
+{% block content %}
+<div class="page-header">
+  <div><h1>{{ a.title }}</h1>
+    <p class="sub">{{ a.get_audience_display }}{% if a.audience == 'properties' %}: {{ a.properties.all|join:", " }}{% elif a.audience == 'units' %}: {{ a.units.all|join:", " }}{% endif %}
+      · {% if a.status == 'sent' %}sent {{ a.sent_at|date:"d M Y, H:i" }}{% elif a.status == 'scheduled' %}scheduled for {{ a.scheduled_for|date:"d M Y, H:i" }}{% elif a.status == 'cancelled' %}removed from tenants' pages{% else %}draft{% endif %}</p></div>
+  <div class="actions"><a class="btn" href="{% url 'announcements:list' %}">All announcements</a></div>
+</div>
+
+<div class="grid-2">
+  <div class="stack">
+    <section class="card">
+      <div class="card-header"><h2>On tenants' rent page</h2>{% if not a.show_on_portal %}<span class="muted">not shown</span>{% endif %}</div>
+      <div class="card-body"><div class="notice-card{% if a.pinned %} pinned{% endif %}"><strong>{{ a.title }}</strong><p>{{ a.body|linebreaksbr }}</p></div>
+        {% if a.expires_at %}<p class="helptext">Hidden after {{ a.expires_at|date:"d M Y, H:i" }}.</p>{% endif %}</div>
+    </section>
+    <section class="card">
+      <div class="card-header"><h2>SMS</h2>{% if not a.send_sms %}<span class="muted">not sent by SMS</span>{% endif %}</div>
+      <div class="card-body"><div class="bubble-msg" style="max-width:100%"><div class="body">{{ sms_text }}</div></div>
+        <p class="helptext">{{ sms_text|length }} characters · {{ sms_parts }} SMS part{{ sms_parts|pluralize }} per tenant.</p></div>
+    </section>
+  </div>
+
+  <div class="stack">
+    {% if a.status == 'draft' or a.status == 'scheduled' %}
+    <section class="card">
+      <div class="card-header"><h2>Ready to send?</h2></div>
+      <div class="card-body stack">
+        <p><strong>{{ recipients|length }} tenant{{ recipients|length|pluralize }}</strong> will get this{% if a.send_sms %}, about <strong>{{ recipients|length }} × {{ sms_parts }} SMS ≈ KES {{ estimated_cost|floatformat:2 }}</strong>{% endif %}.</p>
+        {% if not recipients %}<div class="alert alert-warning small">No active tenants match. Check who it's for.</div>{% endif %}
+        {% if a.status == 'draft' %}
+        <form method="post" class="row">{% csrf_token %}
+          <button name="action" value="send" class="btn btn-primary" {% if not recipients %}disabled{% endif %}>
+            {% if a.scheduled_for %}Schedule for {{ a.scheduled_for|date:"d M, H:i" }}{% else %}Send to {{ recipients|length }} tenant{{ recipients|length|pluralize }} now{% endif %}</button>
+          <a class="btn" href="{% url 'announcements:update' a.pk %}">Edit</a>
+          <button name="action" value="delete" class="btn btn-ghost text-danger">Delete draft</button>
+        </form>
+        {% else %}
+        <form method="post">{% csrf_token %}<button name="action" value="cancel" class="btn">Unschedule</button></form>
+        {% endif %}
+        <details><summary class="small">Who gets it</summary>
+          <ul class="small" style="margin:8px 0 0;padding-left:18px">{% for lease in recipients %}<li>{{ lease.tenant }} · {{ lease.unit }}</li>{% endfor %}</ul></details>
+      </div>
+    </section>
+    {% else %}
+    <section class="card">
+      <div class="card-header"><h2>Delivery</h2></div>
+      <div class="card-body stack">
+        <p><strong>{{ deliveries|length }} tenant{{ deliveries|length|pluralize }}</strong> received this{% if a.show_on_portal and a.status == 'sent' %} on their rent page{% endif %}.</p>
+        {% if sms_stats %}<p class="small">SMS: {% for status, n in sms_stats.items %}{% badge status status|capfirst %} {{ n }}{% if not forloop.last %} · {% endif %}{% endfor %}
+          {% if sms_stats.failed %}<a href="{% url 'notifications:sms_list' %}">see why</a>{% endif %}</p>{% endif %}
+        {% if a.status == 'sent' and a.show_on_portal %}
+        <form method="post">{% csrf_token %}<button name="action" value="unpublish" class="btn">Remove from tenants' pages</button></form>
+        {% endif %}
+      </div>
+    </section>
+    {% endif %}
+  </div>
+</div>
+{% endblock %}

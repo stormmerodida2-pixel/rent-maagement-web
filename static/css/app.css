@@ -507,3 +507,12 @@ html:root .doc .logo { background-image: url("../img/logo-transparent.png"); asp
 .bubble-msg.mine { justify-self: end; border-radius: 14px 14px 4px 14px; background: var(--brand-soft); }
 .bubble-msg .who-line { font-size: 12px; color: var(--muted); margin-bottom: 4px; }
 .bubble-msg .body { font-size: 14px; overflow-wrap: anywhere; }
+
+/* ---- Announcements ------------------------------------------------------------------------ */
+
+.notice-card { padding: 12px 14px; border-radius: var(--radius-sm); background: var(--surface-2); border-left: 3px solid var(--border); }
+.notice-card.pinned { border-left-color: var(--brand); background: var(--brand-soft); }
+.notice-card p { margin: 6px 0 0; font-size: 14px; color: var(--text-2); overflow-wrap: anywhere; }
+.checkbox-list > div { display: grid; grid-template-columns: repeat(auto-fill, minmax(170px, 1fr)); gap: 6px 14px; }
+.checkbox-list label { display: flex; gap: 8px; align-items: center; margin: 0; font-weight: 400; color: var(--text); }
+.checkbox-list input { width: 16px; height: 16px; accent-color: var(--brand); }

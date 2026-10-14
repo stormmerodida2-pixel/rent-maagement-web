@@ -9,6 +9,7 @@ from django.utils.http import url_has_allowed_host_and_scheme
 from django.views.decorators.http import require_POST
 
 from accounts.views import setup_steps
+from announcements.models import current_notices
 from maintenance.forms import TenantMaintenanceForm
 from maintenance.models import MaintenanceRequest
 from notifications.sms import send_rent_reminder
@@ -198,6 +199,7 @@ def tenant_portal(request, token):
         'payments': Payment.objects.filter(lease__tenant=tenant).select_related('lease__unit')[:10],
         'requests': tenant.maintenance_requests.select_related('unit')[:10],
         'open_complaints': tenant.complaints.exclude(status='resolved').count(),
+        'notices': current_notices(tenant),
         'maintenance_form': maintenance_form,
         'mpesa_account': MpesaAccount.objects.filter(owner=tenant.owner).first(),
     })
