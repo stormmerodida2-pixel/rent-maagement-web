@@ -89,7 +89,7 @@ class UnitAdmin(OwnerScopedAdmin):
 class TenantAdmin(OwnerScopedAdmin):
     owner_path = 'owner'
     list_display = ['full_name', 'phone', 'email']
-    search_fields = ['full_name', 'phone', 'email', 'id_number']
+    search_fields = ['full_name', 'phone', 'email']  # id_number is encrypted, so not searchable
     readonly_fields = ['portal_link']
     actions = ['reset_portal_links']
 

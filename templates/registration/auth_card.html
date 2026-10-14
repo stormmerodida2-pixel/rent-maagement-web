@@ -1,12 +1,13 @@
 {% extends 'base.html' %}
 {% block body %}
 <header class="topbar">
-  <a class="brand" href="{% url 'rentals:home' %}" style="padding:0">{% include 'includes/logo.html' %}{{ APP_NAME }}</a>
+  <a class="brand" href="{% url 'rentals:home' %}" style="padding:0">{% include 'includes/logo.html' %}</a>
   <span class="spacer"></span>
   {% include 'includes/theme_switch.html' %}
 </header>
 <main>
   <div class="card auth-card">
+    <div class="auth-logo">{% include 'includes/logo_full.html' %}</div>
     {% block card %}{% endblock %}
   </div>
   {% block below %}{% endblock %}

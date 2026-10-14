@@ -28,7 +28,7 @@
         <input type="hidden" name="action" value="save">
         {% if form.non_field_errors %}<div class="alert alert-error" style="margin-bottom:14px">{{ form.non_field_errors|join:" " }}</div>{% endif %}
         {% for field in form %}
-        <div class="field" data-field="{{ field.name }}">
+        <div class="field" data-field="{{ field.name }}"{% if field.name == 'till_number' %} data-show-when="id_payment_type=till"{% endif %}>
           <label for="{{ field.id_for_label }}">{{ field.label }}</label>
           {{ field }}
           {% if field.help_text %}<span class="helptext" style="word-break:break-all">{{ field.help_text }}</span>{% endif %}
@@ -111,22 +111,11 @@
         <p class="muted" style="margin-bottom:10px">Registered with Safaricom automatically. They're shown here for reference. Keep them private.</p>
         {% for name, url in hooks.items %}
         <label style="margin-top:8px">{{ name }}</label>
-        <div class="copy"><input type="text" readonly value="{{ url }}" onclick="this.select()"></div>
+        <div class="copy"><input type="text" readonly value="{{ url }}" data-select-on-click></div>
         {% endfor %}
       </div>
     </section>
     {% endif %}
   </div>
 </div>
-
-<script>
-  // Only show the till number field for Till accounts.
-  (function () {
-    var type = document.getElementById('id_payment_type');
-    var till = document.querySelector('[data-field="till_number"]');
-    if (!type || !till) return;
-    function sync() { till.style.display = type.value === 'till' ? '' : 'none'; }
-    type.addEventListener('change', sync); sync();
-  })();
-</script>
 {% endblock %}

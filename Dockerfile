@@ -17,7 +17,8 @@ RUN pip install -r requirements.txt
 COPY . .
 # Collect static files into the image. These placeholder values only satisfy the settings checks;
 # the real ones come from the environment at runtime.
-RUN DJANGO_SECRET_KEY=build-only FIELD_ENCRYPTION_KEY=build-only python manage.py collectstatic --noinput
+RUN DJANGO_SECRET_KEY=build-only FIELD_ENCRYPTION_KEY=build-only BACKUP_ENCRYPTION_KEY=build-only \
+    python manage.py collectstatic --noinput
 
 RUN useradd --create-home --uid 1000 app && mkdir -p /backups && chown app /backups
 USER app

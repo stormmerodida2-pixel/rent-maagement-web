@@ -66,6 +66,7 @@ jobs:
           DJANGO_DEBUG: "0"
           DJANGO_SECRET_KEY: ci-only-not-secret-0123456789abcdefghijklmnopqrstuvwxyzABCDEFG
           FIELD_ENCRYPTION_KEY: ci-only
+          BACKUP_ENCRYPTION_KEY: ci-only
           SITE_URL: https://rent.example.com
           EMAIL_HOST: smtp.example.com
           DJANGO_HSTS_SECONDS: "31536000"
@@ -89,6 +90,7 @@ jobs:
           HTTPS_PORT=8443
           DJANGO_SECRET_KEY=$(python3 -c 'import secrets; print(secrets.token_urlsafe(50))')
           FIELD_ENCRYPTION_KEY=$(python3 -c 'import base64, os; print(base64.urlsafe_b64encode(os.urandom(32)).decode())')
+          BACKUP_ENCRYPTION_KEY=$(python3 -c 'import base64, os; print(base64.urlsafe_b64encode(os.urandom(32)).decode())')
           POSTGRES_PASSWORD=$(python3 -c 'import secrets; print(secrets.token_urlsafe(24))')
           ENV_FILE=ci.env
           EOF
@@ -109,8 +111,13 @@ jobs:
           curl -skf https://localhost:8443/login/ > /dev/null
           code=$(curl -s -o /dev/null -w '%{http_code}' http://localhost:8080/)
           test "$code" = "308" -o "$code" = "301"
-      - name: PostgreSQL backup works
-        run: docker compose --env-file ci.env exec -T scheduler python manage.py backup_db
+      - name: Encrypted PostgreSQL backup works and can be decrypted
+        run: |
+          docker compose --env-file ci.env exec -T scheduler python manage.py backup_db | tee backup.log
+          grep -q 'encrypted' backup.log
+          file=$(grep -o '/backups/rentals-[^ ]*\.enc' backup.log)
+          docker compose --env-file ci.env exec -T scheduler python manage.py decrypt_backup "$file" -o /tmp/restore.dump
+          docker compose --env-file ci.env exec -T scheduler pg_restore --list /tmp/restore.dump | grep -q rentals_tenant
       - name: Logs on failure
         if: failure()
         run: docker compose --env-file ci.env logs --no-color --tail 200

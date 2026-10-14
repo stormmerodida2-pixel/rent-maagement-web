@@ -25,7 +25,7 @@
     </nav>
     <span class="spacer"></span>
     <form method="get"><input type="hidden" name="method" value="{{ method }}">
-      <input type="month" name="month" value="{{ month }}" aria-label="Month" onchange="this.form.submit()">
+      <input type="month" name="month" value="{{ month }}" aria-label="Month" data-autosubmit>
       {% if month %}<a class="small" href="?method={{ method }}">All time</a>{% endif %}</form>
     <span class="muted small">Total <strong style="color:var(--text)">{{ total|kes }}</strong></span>
   </div>

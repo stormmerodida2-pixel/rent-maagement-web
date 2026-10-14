@@ -80,6 +80,7 @@ class TenantForm(OwnedForm):
         model = Tenant
         fields = ['full_name', 'phone', 'email', 'id_number']
         labels = {'phone': 'M-Pesa phone number'}
+        help_texts = {'id_number': 'Stored encrypted.'}
         widgets = {'phone': forms.TextInput(attrs={'inputmode': 'tel', 'placeholder': '0712 345 678'})}
 
     def __init__(self, *args, **kwargs):

@@ -77,6 +77,12 @@
   }
 }
 
+/* Dark-mode logo artwork, with the same rules as the colour tokens. */
+:root[data-theme="dark"] .logo { background-image: url("../img/logo-dark.jpeg"); }
+@media (prefers-color-scheme: dark) {
+  :root:not([data-theme="light"]):not([data-theme="dark"]) .logo { background-image: url("../img/logo-dark.jpeg"); }
+}
+
 /* ---- Base ---------------------------------------------------------------- */
 
 *, *::before, *::after { box-sizing: border-box; }
@@ -214,8 +220,18 @@ label, .label { display: block; font-size: 13px; font-weight: 500; color: var(--
 }
 .brand { display: flex; align-items: center; gap: 10px; font-weight: 650; font-size: 16px; color: var(--text); padding: 4px 8px 18px; }
 .brand:hover { text-decoration: none; }
-.logo { width: 30px; height: 30px; border-radius: 8px; background: var(--brand); color: var(--brand-ink); display: grid; place-items: center; flex: none; }
-.logo svg { width: 18px; height: 18px; }
+/* The logo is the brand artwork exactly as supplied (static/img/logo-light.jpeg / logo-dark.jpeg).
+   It's a background image so the browser downloads only the file for the current theme. */
+.logo {
+  display: inline-block; flex: none; height: 56px; aspect-ratio: 609 / 567; border-radius: 8px;
+  background: url("../img/logo-light.jpeg") center / contain no-repeat;
+}
+.logo-lg { height: 150px; border-radius: 14px; }
+.auth-logo { text-align: center; margin: -8px 0 18px; }
+.footer-logo .logo { height: 72px; }
+.topbar .logo, .site-nav .logo { height: 48px; }
+.sidebar .logo { height: 112px; }
+@media (max-width: 900px) { .sidebar .logo { height: 48px; } }
 .nav-section { font-size: 11px; text-transform: uppercase; letter-spacing: .06em; color: var(--muted); padding: 14px 10px 6px; }
 .nav a {
   display: flex; align-items: center; gap: 10px; padding: 8px 10px; border-radius: var(--radius-sm);
@@ -430,7 +446,9 @@ label, .label { display: block; font-size: 13px; font-weight: 500; color: var(--
 .doc .muted { color: #667085; }
 .doc .table th { background: #f2f4f7; color: #667085; }
 .doc .table td, .doc .table th { border-color: #e4e7ec; padding: 9px 10px; }
-.doc .logo { background: #0e7a4b; color: #fff; }
+/* Printed documents are white paper: always the light logo, and print it (backgrounds often aren't). */
+html:root .doc .logo { background-image: url("../img/logo-light.jpeg"); height: 64px;
+  -webkit-print-color-adjust: exact; print-color-adjust: exact; }
 .doc-head { display: flex; justify-content: space-between; gap: 24px; flex-wrap: wrap; padding-bottom: 20px; border-bottom: 2px solid #101828; margin-bottom: 24px; }
 .doc-title { text-align: right; }
 .doc-title h1 { font-size: 28px; letter-spacing: .02em; text-transform: uppercase; }
