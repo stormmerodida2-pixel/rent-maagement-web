@@ -1,0 +1,84 @@
+# Production stack: Caddy (HTTPS) -> web (gunicorn) + scheduler, with PostgreSQL and Redis.
+# Usage on a server:  cp .env.production.example .env  (fill it in)  &&  docker compose up -d --build
+
+x-app: &app
+  build: .
+  env_file: ${ENV_FILE:-.env}
+  environment:
+    DATABASE_URL: postgres://rentals:${POSTGRES_PASSWORD:?set POSTGRES_PASSWORD in .env}@db:5432/rentals
+    REDIS_URL: redis://redis:6379/0
+    TRUSTED_PROXY_COUNT: "1"
+    BACKUP_DIR: /backups
+  depends_on:
+    db:
+      condition: service_healthy
+    redis:
+      condition: service_healthy
+  restart: unless-stopped
+
+services:
+  web:
+    <<: *app
+    command: sh -c "python manage.py migrate --noinput && exec gunicorn config.wsgi -c gunicorn.conf.py"
+    healthcheck:
+      test: ["CMD", "python", "-c", "import urllib.request; urllib.request.urlopen('http://localhost:8000/healthz/', timeout=5)"]
+      interval: 30s
+      timeout: 10s
+      start_period: 30s
+      retries: 3
+
+  scheduler:
+    <<: *app
+    command: python manage.py run_scheduler
+    volumes:
+      - backups:/backups
+    depends_on:
+      web:
+        condition: service_healthy  # web runs the migrations first
+
+  db:
+    image: postgres:17-alpine
+    environment:
+      POSTGRES_DB: rentals
+      POSTGRES_USER: rentals
+      POSTGRES_PASSWORD: ${POSTGRES_PASSWORD:?set POSTGRES_PASSWORD in .env}
+    volumes:
+      - pgdata:/var/lib/postgresql/data
+    healthcheck:
+      test: ["CMD-SHELL", "pg_isready -U rentals -d rentals"]
+      interval: 10s
+      timeout: 5s
+      retries: 5
+    restart: unless-stopped
+
+  redis:
+    image: redis:7-alpine
+    command: redis-server --save "" --appendonly no  # cache only; nothing here needs to survive restarts
+    healthcheck:
+      test: ["CMD", "redis-cli", "ping"]
+      interval: 10s
+      timeout: 5s
+      retries: 5
+    restart: unless-stopped
+
+  caddy:
+    image: caddy:2-alpine
+    ports:
+      - "${HTTP_PORT:-80}:80"
+      - "${HTTPS_PORT:-443}:443"
+    environment:
+      DOMAIN: ${DOMAIN:?set DOMAIN in .env}
+    volumes:
+      - ./Caddyfile:/etc/caddy/Caddyfile:ro
+      - caddy_data:/data
+      - caddy_config:/config
+    depends_on:
+      web:
+        condition: service_healthy
+    restart: unless-stopped
+
+volumes:
+  pgdata:
+  backups:
+  caddy_data:
+  caddy_config:

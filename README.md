@@ -33,7 +33,7 @@ Styles live in `static/css/app.css`, which uses colour tokens. Every page has a 
 ```bash
 python3 -m venv venv && source venv/bin/activate
 pip install -r requirements.txt
-cp .env.example .env          # fill in the M-Pesa values
+cp .env.example .env          # local development settings (DJANGO_DEBUG=1)
 python manage.py migrate
 python manage.py createsuperuser
 python manage.py runserver
@@ -165,6 +165,69 @@ By default `SMS_BACKEND=console`: messages are only logged and stored, and appea
 Reminders name the landlord's own Paybill/account or Till. If a landlord hasn't connected M-Pesa, reminders only include the portal link.
 
 Each SMS is logged, including any failures, on the lease page and under **SMS log**. Set `SMS_PAYMENT_RECEIPTS=0` to turn off payment receipts.
+
+## Deploying
+
+The app ships as a Docker Compose stack:
+
+| Service | What it does |
+| --- | --- |
+| **caddy** | HTTPS front door; gets and renews certificates automatically |
+| **web** | the app on gunicorn (runs migrations on start); static files are served by WhiteNoise |
+| **scheduler** | runs the jobs below. Run exactly one. |
+| **db** | PostgreSQL 17 |
+| **redis** | shared cache (login limits, M-Pesa tokens) |
+
+Scheduled jobs (no cron needed; times are Nairobi time, and a job missed during downtime runs on restart):
+
+| Job | When |
+| --- | --- |
+| `check_pending_stk` | every 5 minutes |
+| `backup_db` | 02:00, keeps `BACKUP_KEEP_DAYS` days |
+| `clearsessions` | 03:00 |
+| `generate_rent_charges` | 06:00 (rent, service charges, late fees) |
+| `send_rent_reminders` | 09:00 |
+
+### First deploy (any Linux VPS, 2 GB RAM is plenty to start)
+
+1. Install Docker. Point your domain's DNS **A record** at the server, and open ports **80 and 443**.
+2. On the server:
+   ```bash
+   git clone git@github.com:stormmerodida2-pixel/rent-maagement-web.git rentals && cd rentals
+   cp .env.production.example .env
+   nano .env        # fill in every Required value; the commands to generate secrets are in the file
+   docker compose up -d --build
+   docker compose exec web python manage.py createsuperuser
+   ```
+3. Open `https://your-domain/healthz/`. It should say `"status": "ok"` with `"scheduler": "ok"`, and the site should load over HTTPS.
+4. **Keep a copy of `FIELD_ENCRYPTION_KEY` somewhere safe** (a password manager). Without it, the M-Pesa credentials saved in a backup can't be decrypted.
+5. M-Pesa webhooks use `SITE_URL` automatically. Each landlord clicks **Register** under Settings → M-Pesa.
+
+### Day to day
+
+```bash
+docker compose logs -f web scheduler          # logs
+git pull && docker compose up -d --build      # deploy an update (migrations run automatically)
+docker compose exec web python manage.py check --deploy
+```
+
+- **Backups** go to the `backups` volume every night. **Copy them off the server**, because a backup on the same disk won't survive losing the server. For example:
+  - `docker compose cp scheduler:/backups ./backups-copy`, or
+  - sync to cloud storage with rclone from the host's crontab.
+- **Restore** a backup with:
+  `docker compose exec -T db pg_restore --clean --no-owner -U rentals -d rentals < rentals-YYYYMMDD-HHMMSS.dump`
+- **Error alerts:** set `SENTRY_DSN` (free at sentry.io) to be notified of every server error. Tenants' personal data isn't sent.
+- **Monitoring:** point an uptime monitor at `/healthz/`. It returns 503 if the database or cache is down.
+- After a few days of confirmed HTTPS, raise `DJANGO_HSTS_SECONDS` to `31536000`.
+
+### Security defaults
+
+- With `DJANGO_DEBUG` off, the app refuses to start without `DJANGO_SECRET_KEY` and `FIELD_ENCRYPTION_KEY`.
+- HTTP redirects to HTTPS. Cookies are secure-only, HSTS is on, and the security headers are set.
+- Only the domain in `SITE_URL` is accepted as a host.
+- Behind Caddy, `TRUSTED_PROXY_COUNT=1` makes the login and sign-up limits see each visitor's real IP. Without it, every visitor would look like the proxy and share one limit.
+
+To try the stack on your own computer, add yourself to the docker group first (`sudo usermod -aG docker $USER`, then log out and in).
 
 ## Tests
 

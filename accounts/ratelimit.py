@@ -5,13 +5,23 @@ Use a shared cache (Redis/Memcached) in production; the default local-memory cac
 
 import hashlib
 
+from django.conf import settings
 from django.core.cache import cache
 from django.shortcuts import render
 
 
 def client_ip(request):
-    # Behind a reverse proxy, make sure REMOTE_ADDR is the real client (e.g. set it from
-    # X-Forwarded-For in the proxy or a trusted middleware); never trust that header blindly here.
+    """The visitor's IP. Behind TRUSTED_PROXY_COUNT proxies, read it from X-Forwarded-For.
+
+    Each proxy appends the address it received the request from, so the client is the entry
+    TRUSTED_PROXY_COUNT places from the right. Anything further left was supplied by the client
+    and can't be trusted (it could be forged to dodge the limits).
+    """
+    proxies = settings.TRUSTED_PROXY_COUNT
+    if proxies > 0:
+        hops = [h.strip() for h in request.META.get('HTTP_X_FORWARDED_FOR', '').split(',') if h.strip()]
+        if len(hops) >= proxies:
+            return hops[-proxies]
     return request.META.get('REMOTE_ADDR', 'unknown')
 
 
