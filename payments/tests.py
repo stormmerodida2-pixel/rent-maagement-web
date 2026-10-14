@@ -208,9 +208,12 @@ class CallbackTests(TestCase):
         self.assertFalse(Payment.objects.exists())
 
     def test_unknown_checkout_and_malformed_bodies_are_acknowledged(self):
-        self.assertEqual(self.post(success_callback('ws_CO_unknown')).status_code, 200)
-        self.assertEqual(self.post({'junk': True}).status_code, 200)
+        with self.assertLogs('payments', level='WARNING') as logs:
+            self.assertEqual(self.post(success_callback('ws_CO_unknown')).status_code, 200)
+            self.assertEqual(self.post({'junk': True}).status_code, 200)
         self.assertFalse(Payment.objects.exists())
+        self.assertTrue(any('unknown CheckoutRequestID' in line for line in logs.output))
+        self.assertTrue(any('Malformed STK callback' in line for line in logs.output))
 
 
 @override_settings(MPESA=MPESA_SETTINGS)

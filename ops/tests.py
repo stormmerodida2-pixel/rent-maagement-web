@@ -61,8 +61,10 @@ class ScheduleTests(TestCase):
             if name == 'backup_db':
                 raise RuntimeError('disk full')
 
-        with mock.patch('ops.jobs.call_command', side_effect=flaky):
+        with mock.patch('ops.jobs.call_command', side_effect=flaky), \
+                self.assertLogs('ops.jobs', level='ERROR') as logs:
             ran = run_due_jobs(now=at(10))
+        self.assertIn('Scheduled job backup_db failed', logs.output[0])
         self.assertFalse(JobRun.objects.get(name='backup_db').last_ok)
         self.assertEqual(len(ran), len(JOBS))
 
