@@ -1,6 +1,7 @@
 from django.conf import settings
 from django.db import models
 from django.utils import timezone
+from django.utils.translation import gettext_lazy as _
 
 from rentals.models import Lease, Tenant
 
@@ -9,16 +10,16 @@ class Complaint(models.Model):
     """A message from a tenant to their landlord (anything that isn't a repair)."""
 
     class Category(models.TextChoices):
-        BILLING = 'billing', 'Rent or billing'
-        NEIGHBOURS = 'neighbours', 'Noise or neighbours'
-        SECURITY = 'security', 'Security'
-        SERVICES = 'services', 'Water, power or garbage'
-        OTHER = 'other', 'Something else'
+        BILLING = 'billing', _('Rent or billing')
+        NEIGHBOURS = 'neighbours', _('Noise or neighbours')
+        SECURITY = 'security', _('Security')
+        SERVICES = 'services', _('Water, power or garbage')
+        OTHER = 'other', _('Something else')
 
     class Status(models.TextChoices):
-        OPEN = 'open', 'Open'
-        IN_PROGRESS = 'in_progress', 'In progress'
-        RESOLVED = 'resolved', 'Resolved'
+        OPEN = 'open', _('Open')
+        IN_PROGRESS = 'in_progress', _('In progress')
+        RESOLVED = 'resolved', _('Resolved')
 
     owner = models.ForeignKey(settings.AUTH_USER_MODEL, on_delete=models.CASCADE, related_name='complaints')
     tenant = models.ForeignKey(Tenant, on_delete=models.CASCADE, related_name='complaints')

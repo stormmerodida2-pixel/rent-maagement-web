@@ -1,21 +1,21 @@
 {% extends 'reports/print_base.html' %}
-{% load ui %}
-{% block title %}Receipt {{ payment.reference|default:payment.pk }}{% endblock %}
-{% block doc_title %}<h1>Receipt</h1><div class="muted small">No. R-{{ payment.pk|stringformat:"06d" }}</div>{% endblock %}
+{% load i18n ui %}
+{% block title %}{% translate "Receipt" %} {{ payment.reference|default:payment.pk }}{% endblock %}
+{% block doc_title %}<h1>{% translate "Receipt" %}</h1><div class="muted small">{% translate "No." %} R-{{ payment.pk|stringformat:"06d" }}</div>{% endblock %}
 {% block doc %}
 <div class="receipt-amount">
-  <div class="muted small">Amount received</div>
+  <div class="muted small">{% translate "Amount received" %}</div>
   <div class="big">{{ payment.amount|kes:2 }}</div>
 </div>
 <dl class="doc-meta">
-  <div><dt>Received from</dt><dd>{{ lease.tenant.full_name }}</dd></div>
-  <div><dt>For</dt><dd>{{ lease.unit }}</dd></div>
-  <div><dt>Date</dt><dd>{{ payment.paid_at|date:"d M Y, H:i" }}</dd></div>
-  <div><dt>Method</dt><dd>{{ payment.get_method_display }}{% if payment.reference %} · {{ payment.reference }}{% endif %}</dd></div>
+  <div><dt>{% translate "Received from" %}</dt><dd>{{ lease.tenant.full_name }}</dd></div>
+  <div><dt>{% translate "For" %}</dt><dd>{{ lease.unit }}</dd></div>
+  <div><dt>{% translate "Date" %}</dt><dd>{{ payment.paid_at|date:"d M Y, H:i" }}</dd></div>
+  <div><dt>{% translate "Method" %}</dt><dd>{{ payment.get_method_display }}{% if payment.reference %} · {{ payment.reference }}{% endif %}</dd></div>
 </dl>
 <div class="doc-total">
-  <span>{% if balance_after > 0 %}Balance still due{% elif balance_after < 0 %}In credit{% else %}Account balance{% endif %}</span>
+  <span>{% if balance_after > 0 %}{% translate "Balance still due" %}{% elif balance_after < 0 %}{% translate "In credit" %}{% else %}{% translate "Account balance" %}{% endif %}</span>
   <strong>{% if balance_after < 0 %}{{ balance_after|kes|cut:"-" }}{% else %}{{ balance_after|kes }}{% endif %}</strong>
 </div>
-<p class="muted small" style="margin-top:8px">Balance shown is as of today.</p>
+<p class="muted small" style="margin-top:8px">{% translate "Balance shown is as of today." %}</p>
 {% endblock %}

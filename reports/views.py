@@ -14,6 +14,7 @@ from django.urls import reverse
 from django.utils import timezone
 
 from payments.models import MpesaAccount, Payment
+from rentals.i18n import tenant_language
 from rentals.models import Lease, Property, RentCharge, Tenant
 from rentals.views import statement
 
@@ -163,18 +164,25 @@ def _landlord_details(owner):
     }
 
 
-def render_statement(request, lease, back_url):
-    return render(request, 'reports/print_statement.html', {
-        'lease': lease, 'entries': statement(lease, limit=None)[::-1], 'balance': lease.balance,
-        'generated': timezone.localtime(), 'back_url': back_url, **_landlord_details(lease.unit.property.owner),
-    })
+# Receipts and statements are documents for the tenant, so they're always in the tenant's language,
+# even when the landlord prints one. Only the toolbar (Back / Print) follows whoever is viewing.
+
+def render_statement(request, lease, back_url, viewer_language='en'):
+    with tenant_language(lease.tenant):
+        return render(request, 'reports/print_statement.html', {
+            'lease': lease, 'entries': statement(lease, limit=None)[::-1], 'balance': lease.balance,
+            'generated': timezone.localtime(), 'back_url': back_url, 'viewer_language': viewer_language,
+            **_landlord_details(lease.unit.property.owner),
+        })
 
 
-def render_receipt(request, payment, back_url):
-    return render(request, 'reports/print_receipt.html', {
-        'payment': payment, 'lease': payment.lease, 'balance_after': payment.lease.balance,
-        'back_url': back_url, **_landlord_details(payment.lease.unit.property.owner),
-    })
+def render_receipt(request, payment, back_url, viewer_language='en'):
+    with tenant_language(payment.lease.tenant):
+        return render(request, 'reports/print_receipt.html', {
+            'payment': payment, 'lease': payment.lease, 'balance_after': payment.lease.balance,
+            'back_url': back_url, 'viewer_language': viewer_language,
+            **_landlord_details(payment.lease.unit.property.owner),
+        })
 
 
 @login_required
@@ -194,11 +202,11 @@ def payment_receipt(request, pk):
 def tenant_statement(request, token, lease_pk):
     tenant = get_object_or_404(Tenant, portal_token=token)
     lease = get_object_or_404(tenant.leases.select_related('unit__property'), pk=lease_pk)
-    return render_statement(request, lease, reverse('rentals:tenant_portal', args=[token]))
+    return render_statement(request, lease, reverse('rentals:tenant_portal', args=[token]), tenant.language)
 
 
 def tenant_receipt(request, token, payment_pk):
     tenant = get_object_or_404(Tenant, portal_token=token)
-    payment = get_object_or_404(Payment.objects.select_related('lease__unit__property'),
+    payment = get_object_or_404(Payment.objects.select_related('lease__tenant', 'lease__unit__property'),
                                 pk=payment_pk, lease__tenant=tenant)
-    return render_receipt(request, payment, reverse('rentals:tenant_portal', args=[token]))
+    return render_receipt(request, payment, reverse('rentals:tenant_portal', args=[token]), tenant.language)

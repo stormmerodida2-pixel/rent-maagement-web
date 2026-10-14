@@ -5,9 +5,11 @@ import logging
 from django.conf import settings
 from django.core.mail import EmailMessage, send_mail
 from django.urls import reverse
+from django.utils.translation import gettext as _
 
 from notifications.models import SmsMessage
 from notifications.sms import send_sms
+from rentals.i18n import tenant_language
 
 logger = logging.getLogger(__name__)
 
@@ -35,11 +37,10 @@ def landlord_new_message(complaint, body, is_new):
 
 def tenant_reply(complaint):
     url = _site(reverse('support:tenant_complaint', args=[complaint.tenant.portal_token, complaint.pk]))
-    return send_sms(
-        complaint.tenant.phone,
-        f'Your landlord replied to "{complaint.subject[:40]}". Read it here: {url}',
-        complaint.lease, SmsMessage.Kind.OTHER,
-    )
+    with tenant_language(complaint.tenant):
+        body = _('Your landlord replied to "%(subject)s". Read it here: %(link)s') % {
+            'subject': complaint.subject[:40], 'link': url}
+    return send_sms(complaint.tenant.phone, body, complaint.lease, SmsMessage.Kind.OTHER)
 
 
 def support_message(msg):

@@ -1,21 +1,22 @@
 from django.db import models
 from django.utils import timezone
+from django.utils.translation import gettext_lazy as _
 
 from rentals.models import Tenant, Unit
 
 
 class MaintenanceRequest(models.Model):
     class Priority(models.TextChoices):
-        LOW = 'low', 'Low'
-        MEDIUM = 'medium', 'Medium'
-        HIGH = 'high', 'High'
-        URGENT = 'urgent', 'Urgent'
+        LOW = 'low', _('Low')
+        MEDIUM = 'medium', _('Medium')
+        HIGH = 'high', _('High')
+        URGENT = 'urgent', _('Urgent')
 
     class Status(models.TextChoices):
-        OPEN = 'open', 'Open'
-        IN_PROGRESS = 'in_progress', 'In progress'
-        RESOLVED = 'resolved', 'Resolved'
-        CANCELLED = 'cancelled', 'Cancelled'
+        OPEN = 'open', _('Open')
+        IN_PROGRESS = 'in_progress', _('In progress')
+        RESOLVED = 'resolved', _('Resolved')
+        CANCELLED = 'cancelled', _('Cancelled')
 
     unit = models.ForeignKey(Unit, on_delete=models.CASCADE, related_name='maintenance_requests')
     reported_by = models.ForeignKey(

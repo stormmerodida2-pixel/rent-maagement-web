@@ -1,4 +1,5 @@
 from django import forms
+from django.utils.translation import gettext_lazy as _
 
 from rentals.models import Tenant, Unit
 
@@ -11,7 +12,8 @@ class TenantMaintenanceForm(forms.ModelForm):
     class Meta:
         model = MaintenanceRequest
         fields = ['unit', 'title', 'description', 'priority']
-        labels = {'title': 'What needs fixing?', 'description': 'Details'}
+        labels = {'unit': _('Unit'), 'title': _('What needs fixing?'), 'description': _('Details'),
+                  'priority': _('How urgent is it?')}
         widgets = {'description': forms.Textarea(attrs={'rows': 3})}
 
     def __init__(self, *args, units, **kwargs):

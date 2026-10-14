@@ -1,4 +1,4 @@
-{% if form.non_field_errors %}<div class="alert alert-error" style="margin-bottom:14px">{{ form.non_field_errors|join:" " }}</div>{% endif %}
+{% load i18n %}{% if form.non_field_errors %}<div class="alert alert-error" style="margin-bottom:14px">{{ form.non_field_errors|join:" " }}</div>{% endif %}
 {% for field in form.hidden_fields %}{{ field }}{% endfor %}
 {% for field in form.visible_fields %}
   {% if field.widget_type == 'checkbox' %}
@@ -9,7 +9,7 @@
   </div>
   {% else %}
   <div class="field{% if field.errors %} has-error{% endif %}" data-field="{{ field.name }}">
-    <label for="{{ field.id_for_label }}">{{ field.label }}{% if not field.field.required %} <span class="muted" style="font-weight:400">(optional)</span>{% endif %}</label>
+    <label for="{{ field.id_for_label }}">{{ field.label }}{% if not field.field.required %} <span class="muted" style="font-weight:400">({% translate "optional" %})</span>{% endif %}</label>
     {{ field }}
     {% if field.help_text %}<span class="helptext">{{ field.help_text }}</span>{% endif %}
     {{ field.errors }}

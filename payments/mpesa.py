@@ -16,6 +16,7 @@ from django.core.cache import cache
 from django.db import transaction
 from django.urls import reverse
 from django.utils import timezone
+from django.utils.translation import gettext
 
 from rentals import phone
 from rentals.models import Lease
@@ -29,6 +30,10 @@ BASE_URLS = {
     MpesaAccount.Environment.PRODUCTION: 'https://api.safaricom.co.ke',
 }
 TIMEOUT = 30
+
+
+# Errors a tenant can act on; anything else is the landlord's setup and is hidden from tenants.
+TENANT_ERRORS = {'amount', 'busy'}
 
 
 class MpesaError(Exception):
@@ -196,13 +201,13 @@ def stk_push(lease, amount, phone_number=None):
     # M-Pesa only accepts whole shillings.
     amount = Decimal(amount).to_integral_value(rounding=ROUND_CEILING)
     if amount < 1:
-        raise MpesaError('Amount must be at least KES 1.')
+        raise MpesaError(gettext('Amount must be at least KES 1.'), code='amount')
     msisdn = normalize_phone(phone_number or lease.tenant.phone)
     if lease.mpesa_transactions.filter(
         status=MpesaTransaction.Status.PENDING,
         created_at__gte=timezone.now() - PENDING_PUSH_COOLDOWN,
     ).exists():
-        raise MpesaError('A payment prompt was just sent for this lease. Wait a couple of minutes and try again.')
+        raise MpesaError(gettext('A payment prompt was just sent. Wait a couple of minutes and try again.'), code='busy')
 
     password, timestamp = _stk_password(account)
     data = _post(account, '/mpesa/stkpush/v1/processrequest', {
