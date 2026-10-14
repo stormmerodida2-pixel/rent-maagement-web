@@ -25,9 +25,10 @@ from payments import mpesa
 from payments.forms import StkPushForm
 from payments.models import C2BPayment, MpesaAccount, Payment
 
-from .forms import NoticeForm
+from . import rent_changes
+from .forms import BulkRentChangeForm, NoticeForm, RentChangeForm
 from .i18n import tenant_page
-from .models import Lease, RentCharge, Tenant, Unit
+from .models import Lease, Property, RentCharge, Tenant, Unit
 
 
 def home(request):
@@ -250,6 +251,50 @@ def lease_notice(request, pk):
                                   f'{lease.end_date:%B}; you\'ll get a reminder a few days before.')
         return redirect('rentals:lease_detail', pk=lease.pk)
     return render(request, 'rentals/lease_notice.html', {'form': form, 'lease': lease})
+
+
+@login_required
+def lease_rent_change(request, pk):
+    """Plan (or cancel) a rent change for one tenant."""
+    lease = get_object_or_404(Lease.objects.select_related('tenant', 'unit__property'), pk=pk,
+                              unit__property__owner=request.user, is_active=True)
+    pending = lease.pending_rent_change()
+    if request.method == 'POST' and request.POST.get('action') == 'cancel' and pending:
+        rent_changes.cancel(pending, actor=request.user)
+        messages.success(request, 'Planned rent change cancelled. Their rent stays the same.')
+        return redirect('rentals:lease_detail', pk=lease.pk)
+    form = RentChangeForm(request.POST or None, lease=lease)
+    if request.method == 'POST' and form.is_valid():
+        data = form.cleaned_data
+        (change,), sms = rent_changes.plan([(lease, data['new_rent'])], data['effective_from'],
+                                           notify=data['notify'], actor=request.user)
+        told = ' They have been sent an SMS.' if sms and sms[0].status != SmsMessage.Status.FAILED else ''
+        messages.success(request, f'Rent changes to KES {change.new_rent:,.0f} from {change.starts_on:%d %b %Y}.{told}')
+        return redirect('rentals:lease_detail', pk=lease.pk)
+    return render(request, 'rentals/rent_change.html', {'form': form, 'lease': lease, 'pending': pending})
+
+
+@login_required
+def property_rent_change(request, pk):
+    """Change rent for several tenants in a property: choose, preview old → new, then confirm."""
+    prop = get_object_or_404(Property, pk=pk, owner=request.user)
+    form = BulkRentChangeForm(request.POST or None, property=prop)
+    preview = None
+    if request.method == 'POST' and form.is_valid():
+        data = form.cleaned_data
+        rows = [(lease, rent_changes.new_rent_for(lease.monthly_rent, data['mode'], data['value']))
+                for lease in data['leases']]
+        rows = [(lease, rent) for lease, rent in rows if rent != lease.monthly_rent]
+        if request.POST.get('confirm') and rows:
+            changes, sms = rent_changes.plan(rows, data['effective_from'], notify=data['notify'], actor=request.user)
+            failed = sum(m.status == SmsMessage.Status.FAILED for m in sms)
+            messages.success(request, f'Planned new rent for {len(changes)} tenant{"s" if len(changes) != 1 else ""}.'
+                             + (f' SMS sent to {len(sms) - failed}.' if sms else '')
+                             + (f' {failed} SMS failed: see the SMS log.' if failed else ''))
+            return redirect('rentals:property_detail', pk=prop.pk)
+        preview = [{'lease': lease, 'new': rent, 'starts': lease.first_rent_day_from(data['effective_from'])}
+                   for lease, rent in rows]
+    return render(request, 'rentals/rent_change_bulk.html', {'form': form, 'property': prop, 'preview': preview})
 
 
 RECENT_REMINDER = datetime.timedelta(hours=24)

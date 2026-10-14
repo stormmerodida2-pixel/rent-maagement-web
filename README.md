@@ -261,6 +261,7 @@ docker compose exec web python manage.py check --deploy
 
 - **Rent day = move-in day.** A tenant who moves in on the 12th pays a full month every 12th; each payment covers 12th to 11th. Statements show "Rent 12 Oct – 11 Nov 2026". Rent days of the 29th–31st fall back to the last day of shorter months. You can set a different rent day on the lease; existing leases keep theirs.
 - Each tenant's rent is billed **5 days before their rent day**, by the daily 06:00 job, so nobody shows as owing before it's nearly due.
+- **Rent changes:** **Change rent** on a lease, or on a property for several tenants at once (by a percentage, by an amount, or to a set rent, with a preview first). The new rent starts on each tenant's first rent day on or after the date you choose, and billing switches automatically. Tenants get an SMS in their language, and the change shows on their rent page. Percentage rises round to the nearest KES 50. You can cancel a change before it starts.
 - **Move-out notice:** "Record move-out notice" on a lease. The date defaults to the end of a rent month at least a month away. No new rent month is billed after it. A reminder email goes out 3 days before, and "Finish move-out" settles the deposit.
 
 ### Search engines

@@ -251,11 +251,38 @@ class Lease(models.Model):
                 lease=self, period=period, kind=RentCharge.Kind.SERVICE,
                 defaults={'amount': self.service_charge, 'due_date': due_date},
             )
+        rent = self.rent_for(due_date)
         # all_objects: a voided monthly charge means "don't bill this month", not "bill it again".
-        return RentCharge.all_objects.get_or_create(
+        result = RentCharge.all_objects.get_or_create(
             lease=self, period=period, kind=RentCharge.Kind.RENT,
-            defaults={'amount': self.monthly_rent, 'due_date': due_date},
+            defaults={'amount': rent, 'due_date': due_date},
         )
+        self._apply_rent_change(due_date)
+        return result
+
+    def pending_rent_change(self):
+        return self.rent_changes.filter(applied_at__isnull=True).first()
+
+    def rent_for(self, cycle_start):
+        """Rent for the month starting `cycle_start`, counting a planned change that has started by then."""
+        change = self.rent_changes.filter(applied_at__isnull=True, effective_from__lte=cycle_start).first()
+        return change.new_rent if change else self.monthly_rent
+
+    def _apply_rent_change(self, cycle_start):
+        """Once a planned change has been billed, it becomes the lease's rent."""
+        change = self.rent_changes.filter(applied_at__isnull=True, effective_from__lte=cycle_start).first()
+        if change:
+            self.monthly_rent = change.new_rent
+            self.save(update_fields=['monthly_rent'])
+            change.applied_at = timezone.now()
+            change.save(update_fields=['applied_at'])
+
+    def first_rent_day_from(self, day):
+        """The first rent day on or after `day` (when a change starting `day` first shows up in billing)."""
+        start = self.cycle_start(day.replace(day=1))
+        if start >= day:
+            return start
+        return self.cycle_start((day.replace(day=1) + datetime.timedelta(days=32)).replace(day=1))
 
     def cycle_start(self, month):
         """The rent day in the month containing `month` (the 31st becomes the 30th, 28th… in short months)."""
@@ -333,6 +360,31 @@ def translate_description(text):
     if m := _DEDUCTION_DESCRIPTION.match(text):
         return gettext('Move-out deduction: %(reason)s') % m.groupdict()
     return text
+
+
+class RentChange(models.Model):
+    """A planned rent change for a month-to-month lease, starting with the first rent day on or after
+    `effective_from`. Applied automatically when that month is billed."""
+
+    lease = models.ForeignKey(Lease, on_delete=models.CASCADE, related_name='rent_changes')
+    old_rent = models.DecimalField(max_digits=10, decimal_places=2)
+    new_rent = models.DecimalField(max_digits=10, decimal_places=2)
+    effective_from = models.DateField()
+    notified_at = models.DateTimeField(null=True, blank=True)
+    applied_at = models.DateTimeField(null=True, blank=True)
+    created_at = models.DateTimeField(auto_now_add=True)
+
+    class Meta:
+        ordering = ['-effective_from', '-pk']
+        constraints = [models.UniqueConstraint(fields=['lease'], condition=Q(applied_at__isnull=True),
+                                               name='one_pending_rent_change_per_lease')]
+
+    def __str__(self):
+        return f'{self.lease}: KES {self.old_rent:,.0f} → {self.new_rent:,.0f} from {self.effective_from}'
+
+    @property
+    def starts_on(self):
+        return self.lease.first_rent_day_from(self.effective_from)
 
 
 class RentCharge(Voidable):

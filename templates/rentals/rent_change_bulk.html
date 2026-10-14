@@ -1,0 +1,42 @@
+{% extends 'app_base.html' %}
+{% load ui %}
+{% block page_title %}Change rent · {{ property.name }}{% endblock %}
+{% block content %}
+<div class="form-page">
+<div class="page-header"><div>
+  <h1>Change rent at {{ property.name }}</h1>
+  <p class="sub">Choose the change and who it applies to, check the preview, then confirm. Tenants who are moving out aren't listed.</p>
+</div></div>
+<section class="card form-card">
+  <div class="card-body">
+    <form method="post" novalidate>
+      {% csrf_token %}
+      {% include 'includes/form_fields.html' %}
+
+      {% if preview is not None %}
+      <h2 style="margin:20px 0 8px;font-size:16px">Preview</h2>
+      {% if preview %}
+      <div class="table-wrap"><table class="table">
+        <thead><tr><th>Tenant</th><th class="num">Now</th><th class="num">New</th><th>From</th></tr></thead>
+        <tbody>
+        {% for r in preview %}
+        <tr><td><strong>{{ r.lease.tenant }}</strong><div class="muted small">{{ r.lease.unit.label }}</div></td>
+          <td class="num muted">{{ r.lease.monthly_rent|kes }}</td>
+          <td class="num"><strong>{{ r.new|kes }}</strong></td>
+          <td class="nowrap">{{ r.starts|date:"d M Y" }}</td></tr>
+        {% endfor %}
+        </tbody>
+      </table></div>
+      {% else %}<div class="alert alert-info">Nobody's rent would change with these settings.</div>{% endif %}
+      {% endif %}
+
+      <div class="form-actions">
+        <button type="submit" name="preview" value="1" class="btn {% if preview is None %}btn-primary{% endif %}">Preview</button>
+        {% if preview %}<button type="submit" name="confirm" value="1" class="btn btn-primary">Plan {{ preview|length }} change{{ preview|length|pluralize }}{% if form.notify.value %} and send SMS{% endif %}</button>{% endif %}
+        <a class="btn btn-ghost" href="{% url 'rentals:property_detail' property.pk %}">Cancel</a>
+      </div>
+    </form>
+  </div>
+</section>
+</div>
+{% endblock %}
