@@ -16,11 +16,29 @@
   </a>
 
   <a class="card settings-item" href="{% url 'notifications:preferences' %}">
-    <span class="settings-icon">{% icon 'bell' %}</span>
+    <span class="settings-icon">{% icon 'chart' %}</span>
     <span class="settings-text"><strong>Notifications</strong>
       <span class="muted small">Monthly report card: {% if prefs.report_email and prefs.report_sms %}email and SMS{% elif prefs.report_email %}email{% elif prefs.report_sms %}SMS{% else %}off{% endif %}{% if prefs.report_email and not email_verified %} (confirm your email to receive it){% endif %}</span></span>
     {% icon 'arrow-right' %}
   </a>
+
+  <div class="card settings-group">
+    <div class="settings-item">
+      <span class="settings-icon">{% icon 'bell' %}</span>
+      <span class="settings-text"><strong>Payment alerts</strong>
+        <span class="muted small">When rent arrives, a "💚 Wanjiku just paid KES 18,000" notice pops up in the app.</span></span>
+    </div>
+    <div class="settings-row">
+      <span class="settings-text"><strong>Sound</strong><span class="muted small">A soft chime with each payment. Plays once you've tapped the page.</span></span>
+      <button type="button" class="switch" data-chime-toggle role="switch" aria-checked="true" aria-label="Payment sound">
+        <span class="switch-knob"></span><span class="switch-label" data-chime-label>On</span></button>
+    </div>
+    <div class="settings-row">
+      <span class="settings-text"><strong>Phone and computer notifications</strong>
+        <span class="muted small" data-alerts-status>Get alerts even when the app is in the background.</span></span>
+      <button type="button" class="btn btn-sm btn-primary" data-enable-alerts hidden>Turn on</button>
+    </div>
+  </div>
 
   <div class="card settings-item">
     <span class="settings-icon">{% icon 'sun' %}</span>

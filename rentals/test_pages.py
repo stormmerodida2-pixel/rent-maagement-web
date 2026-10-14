@@ -232,6 +232,12 @@ class MobileTests(TestCase):
                      'theme-switch', 'Install the app', 'Help &amp; support', 'Log out', 'l@example.com'):
             self.assertContains(page, item)
         self.assertNotContains(page, 'Site administration')  # admins only
+        # Payment alert controls live here, not on the dashboard.
+        self.assertContains(page, 'data-chime-toggle')
+        self.assertContains(page, 'data-enable-alerts')
+        dashboard = self.client.get(reverse('rentals:dashboard'))
+        self.assertNotContains(dashboard, 'data-chime-toggle')
+        self.assertNotContains(dashboard, 'data-enable-alerts')
         # The sidebar's one Settings link stays highlighted on the pages it leads to.
         mpesa = self.client.get(reverse('payments:mpesa_settings')).content.decode()
         self.assertIn('href="/settings/" class="active"', mpesa)
