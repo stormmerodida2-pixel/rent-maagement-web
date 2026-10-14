@@ -77,6 +77,13 @@
   }
 }
 
+/* Dark mode: logo-on-dark.png, the same logo (same shapes, size and framing, transparent background)
+   recoloured to read on dark pages: navy and grey become light, greens stay green. */
+:root[data-theme="dark"] .logo { background-image: url("../img/logo-on-dark.png"); }
+@media (prefers-color-scheme: dark) {
+  :root:not([data-theme="light"]):not([data-theme="dark"]) .logo { background-image: url("../img/logo-on-dark.png"); }
+}
+
 /* ---- Base ---------------------------------------------------------------- */
 
 *, *::before, *::after { box-sizing: border-box; }
@@ -214,8 +221,19 @@ label, .label { display: block; font-size: 13px; font-weight: 500; color: var(--
 }
 .brand { display: flex; align-items: center; gap: 10px; font-weight: 650; font-size: 16px; color: var(--text); padding: 4px 8px 18px; }
 .brand:hover { text-decoration: none; }
-.logo { width: 30px; height: 30px; border-radius: 8px; background: var(--brand); color: var(--brand-ink); display: grid; place-items: center; flex: none; }
-.logo svg { width: 18px; height: 18px; }
+/* The logo is logo-transparent.png: logo.jpeg (same size and framing, nothing cropped or stretched)
+   with its grey background made transparent, so it blends into any light page. The box takes the
+   image's own proportions. Dark mode uses a recoloured copy (see the dark-mode rules above). */
+.logo {
+  display: inline-block; flex: none; height: 56px; aspect-ratio: 1408 / 768;
+  background: url("../img/logo-transparent.png") center / contain no-repeat;
+}
+.logo-lg { height: 150px; }
+.auth-logo { text-align: center; margin: -8px 0 18px; }
+.footer-logo .logo { height: 72px; }
+.topbar .logo, .site-nav .logo { height: 64px; }
+.sidebar .logo { height: 118px; }
+@media (max-width: 900px) { .sidebar .logo { height: 48px; } }
 .nav-section { font-size: 11px; text-transform: uppercase; letter-spacing: .06em; color: var(--muted); padding: 14px 10px 6px; }
 .nav a {
   display: flex; align-items: center; gap: 10px; padding: 8px 10px; border-radius: var(--radius-sm);
@@ -370,7 +388,8 @@ label, .label { display: block; font-size: 13px; font-weight: 500; color: var(--
 
 /* ---- Forms pages, tabs, toolbars --------------------------------------------- */
 
-.form-card { max-width: 640px; }
+/* Single-form pages: heading and form centred together in one column. */
+.form-page { max-width: 640px; margin: 0 auto; }
 .form-actions { display: flex; gap: 10px; align-items: center; margin-top: 22px; flex-wrap: wrap; }
 .field-check { display: grid; grid-template-columns: auto 1fr; gap: 2px 10px; align-items: center; }
 .field-check input { width: 18px; height: 18px; accent-color: var(--brand); }
@@ -430,7 +449,9 @@ label, .label { display: block; font-size: 13px; font-weight: 500; color: var(--
 .doc .muted { color: #667085; }
 .doc .table th { background: #f2f4f7; color: #667085; }
 .doc .table td, .doc .table th { border-color: #e4e7ec; padding: 9px 10px; }
-.doc .logo { background: #0e7a4b; color: #fff; }
+/* Printed documents are white paper: always the light logo, and print it (backgrounds often aren't). */
+html:root .doc .logo { background-image: url("../img/logo-transparent.png"); aspect-ratio: 1408 / 768; height: 64px;
+  -webkit-print-color-adjust: exact; print-color-adjust: exact; }
 .doc-head { display: flex; justify-content: space-between; gap: 24px; flex-wrap: wrap; padding-bottom: 20px; border-bottom: 2px solid #101828; margin-bottom: 24px; }
 .doc-title { text-align: right; }
 .doc-title h1 { font-size: 28px; letter-spacing: .02em; text-transform: uppercase; }

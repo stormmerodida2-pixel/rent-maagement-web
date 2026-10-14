@@ -13,6 +13,7 @@ from urllib.parse import urlsplit
 
 import dj_database_url
 from django.core.exceptions import ImproperlyConfigured
+from django.utils.csp import CSP
 from dotenv import load_dotenv
 
 BASE_DIR = Path(__file__).resolve().parent.parent
@@ -76,6 +77,7 @@ INSTALLED_APPS = [
 
 MIDDLEWARE = [
     'django.middleware.security.SecurityMiddleware',
+    'django.middleware.csp.ContentSecurityPolicyMiddleware',
     'whitenoise.middleware.WhiteNoiseMiddleware',
     'django.contrib.sessions.middleware.SessionMiddleware',
     'django.middleware.common.CommonMiddleware',
@@ -95,6 +97,7 @@ TEMPLATES = [
         'OPTIONS': {
             'context_processors': [
                 'django.template.context_processors.request',
+                'django.template.context_processors.csp',
                 'django.contrib.auth.context_processors.auth',
                 'django.contrib.messages.context_processors.messages',
                 'rentals.context_processors.branding',
@@ -184,7 +187,33 @@ if not DEBUG:
     SECURE_HSTS_INCLUDE_SUBDOMAINS = env_bool('DJANGO_HSTS_INCLUDE_SUBDOMAINS')
     SECURE_HSTS_PRELOAD = env_bool('DJANGO_HSTS_PRELOAD')
 
+# Content-Security-Policy: the browser only runs our own scripts (plus the one inline theme
+# script, marked with a per-request nonce), so injected <script> tags and onclick= handlers do
+# nothing. Inline style attributes are allowed: they can't run code. Set CSP_REPORT_ONLY=1 to
+# trial a change: violations are reported in the browser console but nothing is blocked.
+_csp = {
+    'default-src': [CSP.SELF],
+    'script-src': [CSP.SELF, CSP.NONCE],
+    'style-src': [CSP.SELF, CSP.UNSAFE_INLINE, 'https://fonts.googleapis.com'],
+    'font-src': [CSP.SELF, 'https://fonts.gstatic.com'],
+    'img-src': [CSP.SELF, 'data:'],
+    'connect-src': [CSP.SELF],
+    'object-src': [CSP.NONE],
+    'base-uri': [CSP.SELF],
+    'form-action': [CSP.SELF],
+    'frame-ancestors': [CSP.NONE],
+}
+if env_bool('CSP_REPORT_ONLY'):
+    SECURE_CSP_REPORT_ONLY = _csp
+else:
+    SECURE_CSP = _csp
+
 SESSION_COOKIE_HTTPONLY = True
+# Log people out after a period of inactivity (default 60 minutes). Every request pushes the
+# expiry back, so active users are never interrupted. Sessions are cached to keep that cheap.
+SESSION_COOKIE_AGE = int(os.environ.get('SESSION_IDLE_MINUTES', '60')) * 60
+SESSION_SAVE_EVERY_REQUEST = True
+SESSION_ENGINE = 'django.contrib.sessions.backends.cached_db'
 SECURE_CONTENT_TYPE_NOSNIFF = True
 SECURE_REFERRER_POLICY = 'same-origin'
 X_FRAME_OPTIONS = 'DENY'
@@ -211,14 +240,14 @@ else:
     MAILERS = {'default': {'BACKEND': 'django.core.mail.backends.console.EmailBackend'}}
 # Where Contact-page messages are emailed (the people running the site).
 SUPPORT_EMAIL = os.environ.get('SUPPORT_EMAIL', '')
-DEFAULT_FROM_EMAIL = os.environ.get('DEFAULT_FROM_EMAIL', 'Rental Manager <no-reply@localhost>')
+DEFAULT_FROM_EMAIL = os.environ.get('DEFAULT_FROM_EMAIL', 'Liskodi <no-reply@localhost>')
 SERVER_EMAIL = DEFAULT_FROM_EMAIL
 
 
 # --- App settings ---------------------------------------------------------------------------
 
 # Product name shown across the site, home page and emails/SMS footers.
-APP_NAME = os.environ.get('APP_NAME', 'Rental Manager')
+APP_NAME = os.environ.get('APP_NAME', 'Liskodi')
 
 # M-Pesa Daraja. Each landlord connects their own Paybill/Till and Daraja app in the
 # app (Settings -> M-Pesa); only platform-wide values live here.
@@ -257,6 +286,15 @@ SMS = {
 # Database backups written by the scheduler (`python manage.py backup_db`).
 BACKUP_DIR = Path(os.environ.get('BACKUP_DIR', BASE_DIR / 'backups'))
 BACKUP_KEEP_DAYS = int(os.environ.get('BACKUP_KEEP_DAYS', '14'))
+# Fernet key that encrypts every backup file. Keep it somewhere other than the server (a password
+# manager): it's what lets you read a backup after losing the server. Separate from
+# FIELD_ENCRYPTION_KEY so backups can be stored by someone who can't read M-Pesa credentials.
+BACKUP_ENCRYPTION_KEY = os.environ.get('BACKUP_ENCRYPTION_KEY', '')
+if not DEBUG and not BACKUP_ENCRYPTION_KEY:
+    raise ImproperlyConfigured(
+        'BACKUP_ENCRYPTION_KEY must be set when DJANGO_DEBUG is off, so backups are encrypted. '
+        'Generate it the same way as FIELD_ENCRYPTION_KEY (see .env.example).'
+    )
 
 
 # --- Logging & error alerts ---------------------------------------------------------------------

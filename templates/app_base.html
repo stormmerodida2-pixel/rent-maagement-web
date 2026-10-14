@@ -5,11 +5,12 @@
 {% with url_name=request.resolver_match.url_name %}
 <div class="app">
   <aside class="sidebar">
-    <a class="brand" href="{% url 'rentals:dashboard' %}">{% include 'includes/logo.html' %}{{ APP_NAME }}</a>
+    <a class="brand" href="{% url 'rentals:dashboard' %}">{% include 'includes/logo.html' %}</a>
 
     <nav class="nav" aria-label="Main">
       {% with app=request.resolver_match.app_name %}
       <div class="nav-section">Overview</div>
+      <a href="{% url 'rentals:home' %}">{% icon 'home' %}Home page</a>
       <a href="{% url 'rentals:dashboard' %}" class="{% if url_name == 'dashboard' %}active{% endif %}">{% icon 'grid' %}Dashboard</a>
       {% if nav_setup_incomplete %}<a href="{% url 'accounts:welcome' %}" class="{% if url_name == 'welcome' %}active{% endif %}">{% icon 'arrow-right' %}Getting started</a>{% endif %}
 

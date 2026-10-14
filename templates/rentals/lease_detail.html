@@ -117,7 +117,7 @@
         {% endif %}
         <label style="margin-top:14px">Tenant's self-service link</label>
         <div class="copy">
-          <input type="text" readonly value="{{ lease.tenant.portal_url }}" onclick="this.select()" aria-label="Tenant self-service link">
+          <input type="text" readonly value="{{ lease.tenant.portal_url }}" data-select-on-click aria-label="Tenant self-service link">
           <a class="btn btn-sm" href="{{ lease.tenant.portal_url }}" target="_blank" rel="noopener" title="Open">{% icon 'external' %}</a>
         </div>
       </div>

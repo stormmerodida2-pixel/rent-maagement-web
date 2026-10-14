@@ -2,7 +2,7 @@
 {% block head %}<meta name="robots" content="noindex, nofollow">{% endblock %}
 {% block body %}
 <header class="topbar" style="border-bottom:1px solid var(--border);background:var(--surface)">
-  <a class="brand" href="{% url 'rentals:tenant_portal' tenant.portal_token %}" style="padding:0">{% include 'includes/logo.html' %}{{ APP_NAME }}</a>
+  <a class="brand" href="{% url 'rentals:tenant_portal' tenant.portal_token %}" style="padding:0">{% include 'includes/logo.html' %}</a>
   <span class="spacer"></span>
   {% include 'includes/theme_switch.html' %}
 </header>

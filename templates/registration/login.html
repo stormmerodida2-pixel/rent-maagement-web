@@ -2,12 +2,13 @@
 {% block title %}Log in · {{ APP_NAME }}{% endblock %}
 {% block body %}
 <header class="topbar">
-  <a class="brand" href="{% url 'rentals:home' %}" style="padding:0">{% include 'includes/logo.html' %}{{ APP_NAME }}</a>
+  <a class="brand" href="{% url 'rentals:home' %}" style="padding:0">{% include 'includes/logo.html' %}</a>
   <span class="spacer"></span>
   {% include 'includes/theme_switch.html' %}
 </header>
 <main>
   <div class="card auth-card">
+    <div class="auth-logo">{% include 'includes/logo_full.html' %}</div>
     <h1>Welcome back</h1>
     <p class="muted">Log in to manage your properties.</p>
 

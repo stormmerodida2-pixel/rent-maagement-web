@@ -12,6 +12,8 @@ from django.db.models import Q, Sum
 from django.urls import reverse
 from django.utils import timezone
 
+from payments.fields import EncryptedTextField
+
 from .phone import normalize_phone
 
 
@@ -98,7 +100,8 @@ class Tenant(models.Model):
     full_name = models.CharField(max_length=200)
     phone = models.CharField(max_length=20, help_text='M-Pesa number, e.g. 0712345678')
     email = models.EmailField(blank=True)
-    id_number = models.CharField('national ID / passport', max_length=50, blank=True)
+    # Encrypted at rest (personal data under the Data Protection Act); can't be searched.
+    id_number = EncryptedTextField('national ID / passport', blank=True)
     portal_token = models.CharField(
         max_length=32, unique=True, default=new_portal_token, editable=False,
         help_text='Secret part of the tenant\'s self-service link.',

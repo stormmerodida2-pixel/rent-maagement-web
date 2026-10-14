@@ -4,7 +4,7 @@
 {% block body %}
 <header class="site-nav">
   <div class="inner">
-    <a class="brand" href="{% url 'rentals:home' %}">{% include 'includes/logo.html' %}{{ APP_NAME }}</a>
+    <a class="brand" href="{% url 'rentals:home' %}">{% include 'includes/logo.html' %}</a>
     <nav class="links" aria-label="Sections">
       <a href="#features">Features</a>
       <a href="#how-it-works">How it works</a>
@@ -179,7 +179,7 @@
 
 <footer class="site-footer">
   <div class="wrap">
-    <span class="row">{% include 'includes/logo.html' %}<strong style="color:var(--text)">{{ APP_NAME }}</strong></span>
+    <span class="footer-logo">{% include 'includes/logo_full.html' %}</span>
     <span>Rent collection for Kenyan landlords.</span>
     <span class="spacer"></span>
     <a href="{% url 'support:contact' %}">Contact us</a>
