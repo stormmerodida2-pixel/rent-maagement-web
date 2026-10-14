@@ -1,6 +1,6 @@
 from django.core.management.base import BaseCommand
 
-from announcements.sending import send_due
+from announcements.utils import send_due
 
 
 class Command(BaseCommand):

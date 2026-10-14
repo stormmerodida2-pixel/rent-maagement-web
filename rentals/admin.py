@@ -138,7 +138,7 @@ class LeaseAdmin(OwnerScopedAdmin):
 
     @admin.action(description='Send SMS reminder to tenants with a balance')
     def send_reminders(self, request, queryset):
-        from notifications.sms import send_rent_reminder
+        from notifications.utils import send_rent_reminder
 
         sent = failed = 0
         for lease in queryset.select_related('tenant', 'unit'):

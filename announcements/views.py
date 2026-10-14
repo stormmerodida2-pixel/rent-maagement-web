@@ -6,9 +6,9 @@ from django.views.decorators.http import require_POST
 from django.views.generic import CreateView, ListView, UpdateView
 
 from rentals.crud_views import NextUrlMixin
-from rentals.mixins import OwnedMixin
+from rentals.utils import OwnedMixin
 
-from . import sending
+from . import utils as sending
 from .forms import AnnouncementForm
 from .models import Announcement, PlatformNotice
 

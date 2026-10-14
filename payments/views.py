@@ -14,11 +14,11 @@ from django.views.decorators.csrf import csrf_exempt
 from django.views.decorators.http import require_POST
 from django.views.generic import CreateView, ListView
 
-from accounts import ratelimit
-from accounts.verification import is_verified
-from audit import log as audit
+from accounts import utils as ratelimit
+from accounts.utils import is_verified
+from audit import utils as audit
 from rentals.crud_views import FormPageMixin
-from rentals.mixins import OwnedMixin
+from rentals.utils import OwnedMixin
 from rentals.models import Lease
 
 from . import mpesa

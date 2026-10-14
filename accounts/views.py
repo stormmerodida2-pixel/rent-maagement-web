@@ -13,15 +13,15 @@ from django.utils import timezone
 from django.utils.decorators import method_decorator
 from django.views.decorators.http import require_POST
 
-from audit import log as audit
+from audit import utils as audit
 from notifications.models import LandlordPreferences
 from payments.models import MpesaAccount
 from rentals.models import Lease, Property, Tenant, Unit
 
-from . import ratelimit
+from . import utils as ratelimit
 from .forms import ChangePasswordForm, ProfileForm, SignupForm
 from .models import Profile, profile_for
-from .verification import is_verified, mark_verified, send_verification_email, user_from_token
+from .utils import is_verified, mark_verified, send_verification_email, user_from_token
 
 logger = logging.getLogger(__name__)
 

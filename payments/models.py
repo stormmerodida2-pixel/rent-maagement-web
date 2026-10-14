@@ -8,7 +8,7 @@ from django.utils.translation import gettext_lazy as _
 
 from rentals.models import Lease, Voidable
 
-from .fields import EncryptedTextField
+from .utils import EncryptedTextField
 
 
 def new_callback_token():

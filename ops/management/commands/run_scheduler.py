@@ -3,7 +3,7 @@ import time
 
 from django.core.management.base import BaseCommand
 
-from ops.jobs import JOBS, run_due_jobs
+from ops.utils import JOBS, run_due_jobs
 
 
 class Command(BaseCommand):

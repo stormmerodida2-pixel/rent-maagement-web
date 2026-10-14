@@ -18,7 +18,7 @@ from django.urls import reverse
 from django.utils import timezone
 from django.utils.translation import gettext
 
-from rentals import phone
+from rentals import utils as rental_utils
 from rentals.models import Lease
 
 from .models import C2BPayment, MpesaAccount, MpesaTransaction, Payment
@@ -44,7 +44,7 @@ class MpesaError(Exception):
 
 def normalize_phone(value):
     try:
-        return phone.normalize_phone(value)
+        return rental_utils.normalize_phone(value)
     except ValueError as exc:
         raise MpesaError(str(exc)) from exc
 
@@ -164,8 +164,8 @@ def record_mpesa_payment(lease, receipt, amount, paid_at, notes=''):
 
 
 def _payment_received(payment):
-    from audit import log as audit
-    from notifications.sms import send_payment_receipt
+    from audit import utils as audit
+    from notifications.utils import send_payment_receipt
 
     lease = payment.lease
     audit.record(
@@ -430,7 +430,7 @@ def match_lease(account, bill_ref, msisdn):
     if lease:
         return lease
     try:
-        number = phone.normalize_phone(msisdn)
+        number = rental_utils.normalize_phone(msisdn)
     except ValueError:
         return None  # Safaricom now often sends a hashed MSISDN
     leases = list(
@@ -480,7 +480,7 @@ def handle_c2b_confirmation(account, body, trusted=True, source_ip=None):
         if c2b.held_for_review:
             logger.warning('Held C2B %s on account %s: came from %s, not a Safaricom address',
                            c2b.trans_id, account.pk, source_ip)
-            from audit import log as audit
+            from audit import utils as audit
 
             audit.record(
                 owner=account.owner, action='payment.held',

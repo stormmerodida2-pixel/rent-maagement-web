@@ -6,7 +6,7 @@ from django.utils import timezone
 
 from maintenance.models import MaintenanceRequest
 from rentals.models import Property
-from rentals.phone import normalize_phone
+from rentals.utils import normalize_phone
 
 from .models import StaffMember
 

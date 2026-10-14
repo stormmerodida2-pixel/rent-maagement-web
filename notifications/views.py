@@ -3,11 +3,11 @@ from django.contrib.auth.decorators import login_required
 from django.shortcuts import redirect, render
 from django.views.generic import ListView
 
-from rentals.mixins import OwnedMixin
+from rentals.utils import OwnedMixin
 
 from .forms import PreferencesForm
 from .models import LandlordPreferences, SmsMessage
-from .report_cards import previous_month, send_report_card
+from .utils import previous_month, send_report_card
 
 
 class SmsList(OwnedMixin, ListView):

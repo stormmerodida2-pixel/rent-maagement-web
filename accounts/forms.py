@@ -5,7 +5,7 @@ from django.urls import reverse_lazy
 from django.utils.functional import lazy
 from django.utils.html import format_html
 
-from rentals.phone import normalize_phone
+from rentals.utils import normalize_phone
 
 TERMS_LABEL = lazy(lambda: format_html(
     'I agree to the <a href="{}" target="_blank">Terms of service</a> and the '

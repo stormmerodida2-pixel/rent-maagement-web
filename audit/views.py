@@ -1,6 +1,6 @@
 from django.views.generic import ListView
 
-from rentals.mixins import OwnedMixin
+from rentals.utils import OwnedMixin
 
 from .models import AuditEntry
 

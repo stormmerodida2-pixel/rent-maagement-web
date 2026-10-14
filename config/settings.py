@@ -82,11 +82,11 @@ MIDDLEWARE = [
     'django.middleware.security.SecurityMiddleware',
     'django.middleware.csp.ContentSecurityPolicyMiddleware',
     'whitenoise.middleware.WhiteNoiseMiddleware',
-    'ops.middleware.SessionMiddleware',  # Django's, plus passive background requests
+    'ops.utils.SessionMiddleware',  # Django's, plus passive background requests
     'django.middleware.common.CommonMiddleware',
     'django.middleware.csrf.CsrfViewMiddleware',
     'django.contrib.auth.middleware.AuthenticationMiddleware',
-    'staff.middleware.StaffAreaMiddleware',  # staff accounts only reach /staff/
+    'staff.utils.StaffAreaMiddleware',  # staff accounts only reach /staff/
     'django.contrib.messages.middleware.MessageMiddleware',
     'django.middleware.clickjacking.XFrameOptionsMiddleware',
 ]
@@ -104,7 +104,7 @@ TEMPLATES = [
                 'django.template.context_processors.csp',
                 'django.contrib.auth.context_processors.auth',
                 'django.contrib.messages.context_processors.messages',
-                'rentals.context_processors.branding',
+                'rentals.utils.branding',
             ],
         },
     },

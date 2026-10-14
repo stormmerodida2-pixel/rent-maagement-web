@@ -14,31 +14,11 @@ from django.urls import reverse
 from django.utils import timezone
 
 from payments.models import MpesaAccount, Payment
-from rentals.i18n import tenant_language
+from rentals.utils import tenant_language
 from rentals.models import Lease, Property, RentCharge, Tenant
 from rentals.views import statement
 
-# Money that isn't income: deposits held and returned, and credits.
-NON_INCOME_KINDS = [
-    RentCharge.Kind.DEPOSIT, RentCharge.Kind.DEPOSIT_APPLIED, RentCharge.Kind.REFUND,
-]
-
-
-def _month(value):
-    try:
-        return datetime.datetime.strptime(value or '', '%Y-%m').date()
-    except ValueError:
-        return datetime.date.today().replace(day=1)
-
-
-def _add_months(day, n):
-    month = day.month - 1 + n
-    return day.replace(year=day.year + month // 12, month=month % 12 + 1, day=1)
-
-
-def _billed(charges):
-    return charges.exclude(kind__in=NON_INCOME_KINDS).filter(amount__gt=0)
-
+from .utils import _add_months, _billed, _month
 
 @login_required
 def overview(request):

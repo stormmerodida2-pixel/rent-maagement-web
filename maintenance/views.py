@@ -3,7 +3,7 @@ from django.urls import reverse_lazy
 from django.views.generic import CreateView, ListView, UpdateView
 
 from rentals.crud_views import FormPageMixin
-from rentals.mixins import OwnedMixin
+from rentals.utils import OwnedMixin
 
 from .forms import MaintenanceForm
 from .models import MaintenanceRequest

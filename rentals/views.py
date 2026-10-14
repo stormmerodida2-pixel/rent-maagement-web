@@ -16,18 +16,18 @@ from django.views.decorators.http import require_POST
 
 from accounts.views import setup_steps
 from announcements.models import current_notices
-from audit import log as audit
+from audit import utils as audit
 from maintenance.forms import TenantMaintenanceForm
 from maintenance.models import MaintenanceRequest
 from notifications.models import SmsMessage
-from notifications.sms import reminder_text, send_personal_sms, send_rent_reminder
+from notifications.utils import reminder_text, send_personal_sms, send_rent_reminder
 from payments import mpesa
 from payments.forms import StkPushForm
 from payments.models import C2BPayment, MpesaAccount, Payment
 
-from . import rent_changes
+from . import utils as rent_changes
 from .forms import BulkRentChangeForm, NoticeForm, RentChangeForm
-from .i18n import tenant_page
+from .utils import tenant_page
 from .models import Lease, Property, RentCharge, Tenant, Unit
 
 

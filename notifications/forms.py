@@ -1,7 +1,7 @@
 from django import forms
 from django.core.exceptions import ValidationError
 
-from rentals.phone import normalize_phone
+from rentals.utils import normalize_phone
 
 from .models import LandlordPreferences
 
