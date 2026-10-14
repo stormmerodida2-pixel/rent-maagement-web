@@ -115,7 +115,7 @@ class Tenant(models.Model):
         try:
             self.phone = normalize_phone(self.phone)
         except ValueError as exc:
-            raise ValidationError({'phone': str(exc)})
+            raise ValidationError({'phone': str(exc)}) from exc
 
     def save(self, *args, **kwargs):
         try:

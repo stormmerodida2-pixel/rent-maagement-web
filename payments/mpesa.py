@@ -48,7 +48,7 @@ def account_for(lease):
     try:
         account = MpesaAccount.objects.get(owner_id=lease.unit.property.owner_id)
     except MpesaAccount.DoesNotExist:
-        raise MpesaError("M-Pesa isn't connected yet. Add your Paybill or Till under Settings → M-Pesa.")
+        raise MpesaError("M-Pesa isn't connected yet. Add your Paybill or Till under Settings → M-Pesa.") from None
     if not account.is_complete():
         raise MpesaError('Your M-Pesa settings are incomplete. Finish them under Settings → M-Pesa.')
     return account

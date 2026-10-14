@@ -1,0 +1,165 @@
+name: CI/CD
+
+on:
+  push:
+    branches: [main]
+  pull_request:
+  workflow_dispatch:
+
+concurrency:
+  group: ${{ github.workflow }}-${{ github.ref }}
+  cancel-in-progress: ${{ github.event_name == 'pull_request' }}
+
+permissions:
+  contents: read
+
+jobs:
+  lint:
+    name: Lint
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@v4
+      - uses: actions/setup-python@v5
+        with:
+          python-version: "3.14"
+          cache: pip
+          cache-dependency-path: requirements*.txt
+      - run: pip install -r requirements-dev.txt
+      - run: ruff check --output-format github .
+
+  test:
+    name: Tests (PostgreSQL + Redis)
+    runs-on: ubuntu-latest
+    services:
+      postgres:
+        image: postgres:17-alpine
+        env:
+          POSTGRES_DB: rentals
+          POSTGRES_USER: rentals
+          POSTGRES_PASSWORD: rentals
+        ports: ["5432:5432"]
+        options: >-
+          --health-cmd "pg_isready -U rentals" --health-interval 5s --health-timeout 5s --health-retries 10
+      redis:
+        image: redis:7-alpine
+        ports: ["6379:6379"]
+        options: >-
+          --health-cmd "redis-cli ping" --health-interval 5s --health-timeout 5s --health-retries 10
+    env:
+      DJANGO_DEBUG: "1"
+      DATABASE_URL: postgres://rentals:rentals@localhost:5432/rentals
+      REDIS_URL: redis://localhost:6379/0
+    steps:
+      - uses: actions/checkout@v4
+      - uses: actions/setup-python@v5
+        with:
+          python-version: "3.14"
+          cache: pip
+          cache-dependency-path: requirements*.txt
+      - run: pip install -r requirements-dev.txt
+      - name: No missing migrations
+        run: python manage.py makemigrations --check --dry-run
+      - name: Django system checks
+        run: python manage.py check
+      - name: Production deployment checklist
+        env:
+          DJANGO_DEBUG: "0"
+          DJANGO_SECRET_KEY: ci-only-not-secret-0123456789abcdefghijklmnopqrstuvwxyzABCDEFG
+          FIELD_ENCRYPTION_KEY: ci-only
+          SITE_URL: https://rent.example.com
+          EMAIL_HOST: smtp.example.com
+          DJANGO_HSTS_SECONDS: "31536000"
+        run: python manage.py check --deploy --fail-level ERROR
+      - name: Tests
+        # Not --parallel: the rate-limit tests share one Redis, and parallel workers would reset each
+        # other's counters.
+        run: python manage.py test --noinput
+
+  docker:
+    name: Production stack smoke test
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@v4
+      - name: Write throwaway production settings
+        run: |
+          cat > ci.env <<EOF
+          DOMAIN=localhost
+          SITE_URL=https://localhost:8443
+          HTTP_PORT=8080
+          HTTPS_PORT=8443
+          DJANGO_SECRET_KEY=$(python3 -c 'import secrets; print(secrets.token_urlsafe(50))')
+          FIELD_ENCRYPTION_KEY=$(python3 -c 'import base64, os; print(base64.urlsafe_b64encode(os.urandom(32)).decode())')
+          POSTGRES_PASSWORD=$(python3 -c 'import secrets; print(secrets.token_urlsafe(24))')
+          ENV_FILE=ci.env
+          EOF
+      - name: Build and start the stack
+        run: docker compose --env-file ci.env up -d --build --wait --wait-timeout 300
+      - name: Health check through Caddy over HTTPS
+        run: |
+          for i in $(seq 1 20); do
+            body=$(curl -skf https://localhost:8443/healthz/) && echo "$body" | grep -q '"scheduler": "ok"' && break
+            sleep 3
+          done
+          echo "$body"
+          echo "$body" | grep -q '"status": "ok"'
+          echo "$body" | grep -q '"scheduler": "ok"'
+      - name: Pages render, HTTP redirects to HTTPS
+        run: |
+          curl -skf https://localhost:8443/ | grep -q 'Collect rent on'
+          curl -skf https://localhost:8443/login/ > /dev/null
+          code=$(curl -s -o /dev/null -w '%{http_code}' http://localhost:8080/)
+          test "$code" = "308" -o "$code" = "301"
+      - name: PostgreSQL backup works
+        run: docker compose --env-file ci.env exec -T scheduler python manage.py backup_db
+      - name: Logs on failure
+        if: failure()
+        run: docker compose --env-file ci.env logs --no-color --tail 200
+      - name: Tear down
+        if: always()
+        run: docker compose --env-file ci.env down -v
+
+  deploy:
+    name: Deploy to production
+    needs: [lint, test, docker]
+    # Off until a server exists: set the repository variable DEPLOY_ENABLED=true (see README).
+    if: github.event_name == 'push' && github.ref == 'refs/heads/main' && vars.DEPLOY_ENABLED == 'true'
+    runs-on: ubuntu-latest
+    environment:
+      name: production
+      url: ${{ vars.SITE_URL }}
+    concurrency:
+      group: deploy-production
+      cancel-in-progress: false
+    steps:
+      - name: Set up SSH
+        env:
+          SSH_KEY: ${{ secrets.DEPLOY_SSH_KEY }}
+          KNOWN_HOSTS: ${{ secrets.DEPLOY_KNOWN_HOSTS }}
+        run: |
+          install -m 700 -d ~/.ssh
+          printf '%s\n' "$SSH_KEY" > ~/.ssh/deploy_key && chmod 600 ~/.ssh/deploy_key
+          printf '%s\n' "$KNOWN_HOSTS" > ~/.ssh/known_hosts
+      - name: Pull, rebuild and restart
+        env:
+          HOST: ${{ vars.DEPLOY_HOST }}
+          USER: ${{ vars.DEPLOY_USER }}
+          APP_DIR: ${{ vars.DEPLOY_PATH }}
+          SHA: ${{ github.sha }}
+        run: |
+          ssh -i ~/.ssh/deploy_key -o StrictHostKeyChecking=yes "$USER@$HOST" bash -s <<EOF
+          set -euo pipefail
+          cd "$APP_DIR"
+          git fetch --quiet origin main
+          git checkout --quiet --detach "$SHA"
+          docker compose up -d --build --remove-orphans --wait --wait-timeout 300
+          docker image prune -f > /dev/null
+          EOF
+      - name: Verify the live site
+        env:
+          SITE_URL: ${{ vars.SITE_URL }}
+        run: |
+          for i in $(seq 1 20); do
+            curl -sf "$SITE_URL/healthz/" | tee /dev/stderr | grep -q '"status": "ok"' && exit 0
+            sleep 5
+          done
+          echo "Site did not become healthy after deploy" && exit 1

@@ -11,7 +11,7 @@ from rentals.models import Tenant
 
 from . import notify
 from .forms import ComplaintForm, ContactForm, LandlordReplyForm, ReplyForm
-from .models import Complaint, ComplaintMessage, SupportMessage
+from .models import Complaint, ComplaintMessage
 
 TENANT_MESSAGES_PER_DAY = 20
 CONTACTS_PER_IP_PER_HOUR = 5

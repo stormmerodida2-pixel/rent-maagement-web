@@ -1,0 +1,7 @@
+[tool.ruff]
+line-length = 120
+extend-exclude = ["migrations", "venv"]
+
+[tool.ruff.lint]
+# Pyflakes (unused/undefined names), syntax errors, and bugbear (likely bugs). Style is left alone.
+select = ["F", "E9", "B"]

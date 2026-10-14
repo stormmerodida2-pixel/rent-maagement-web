@@ -220,6 +220,45 @@ docker compose exec web python manage.py check --deploy
 - **Monitoring:** point an uptime monitor at `/healthz/`. It returns 503 if the database or cache is down.
 - After a few days of confirmed HTTPS, raise `DJANGO_HSTS_SECONDS` to `31536000`.
 
+### CI/CD (GitHub Actions)
+
+Every push and pull request runs `.github/workflows/ci-cd.yml`:
+
+1. **Lint:** `ruff` looks for likely bugs (unused or undefined names, risky patterns). Style is not checked.
+2. **Tests:** the full suite on **PostgreSQL 17 and Redis**, like production. It also fails on missing migrations and on errors in Django's deployment checklist.
+3. **Production stack smoke test:** builds the Docker image and starts the whole Compose stack. It then checks `/healthz/` through Caddy over HTTPS, confirms pages render and HTTP redirects to HTTPS, and takes a real `pg_dump` backup.
+4. **Deploy:** only on `main`, only after 1–3 pass, and only once you've switched it on. It connects to the server over SSH, checks out exactly the tested commit, and rebuilds with `docker compose up -d --build --wait`. It then fails loudly if the live `/healthz/` doesn't come back healthy.
+
+Dependabot opens weekly pull requests for dependency updates, and CI tests each one.
+
+**Switching deploys on** (once the server is set up as above):
+
+1. On the server, create a deploy key for GitHub Actions and allow it to log in:
+   ```bash
+   ssh-keygen -t ed25519 -f ~/.ssh/github_deploy -N "" -C github-actions
+   cat ~/.ssh/github_deploy.pub >> ~/.ssh/authorized_keys
+   ```
+   The server also needs to be able to `git fetch`, so add a read-only **deploy key** for the server to the repo (repo Settings → Deploy keys).
+2. In the GitHub repo, go to **Settings → Secrets and variables → Actions**.
+   - **Secrets:**
+     - `DEPLOY_SSH_KEY`: the contents of `~/.ssh/github_deploy` (the private key)
+     - `DEPLOY_KNOWN_HOSTS`: the output of `ssh-keyscan your-server` (run it from your own computer, and check the fingerprint)
+   - **Variables:**
+     - `DEPLOY_HOST`: the server's address
+     - `DEPLOY_USER`: the SSH user (must be allowed to run `docker`)
+     - `DEPLOY_PATH`: e.g. `/home/deploy/rentals`
+     - `SITE_URL`: e.g. `https://rent.example.com`
+     - `DEPLOY_ENABLED`: `true`
+3. Optional: under **Settings → Environments → production**, add yourself as a required reviewer, so each deploy waits for your click.
+
+To deploy without pushing, use **Actions → CI/CD → Run workflow**. To roll back, revert the bad commit and push.
+
+Run the same checks locally:
+```bash
+pip install -r requirements-dev.txt
+ruff check . && python manage.py makemigrations --check --dry-run && python manage.py test
+```
+
 ### Security defaults
 
 - With `DJANGO_DEBUG` off, the app refuses to start without `DJANGO_SECRET_KEY` and `FIELD_ENCRYPTION_KEY`.
