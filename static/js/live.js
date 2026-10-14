@@ -75,9 +75,8 @@
   var soundToggle = document.querySelector('[data-chime-toggle]');
   function showSound() {
     if (!soundToggle) return;
-    soundToggle.hidden = false;
-    soundToggle.setAttribute('aria-pressed', soundOn() ? 'true' : 'false');
-    soundToggle.querySelector('[data-chime-label]').textContent = soundOn() ? 'Sound on' : 'Sound off';
+    soundToggle.setAttribute('aria-checked', soundOn() ? 'true' : 'false');
+    soundToggle.querySelector('[data-chime-label]').textContent = soundOn() ? 'On' : 'Off';
   }
   if (soundToggle) {
     soundToggle.addEventListener('click', function () {
@@ -160,14 +159,25 @@
     if (!document.hidden) { unseen = 0; document.title = baseTitle; }
   });
 
-  // "Turn on payment alerts": system notifications need permission, asked on a click.
+  // Settings → Payment alerts: system notifications need the browser's permission, asked on a click.
   var enable = document.querySelector('[data-enable-alerts]');
-  if (enable && 'Notification' in window && Notification.permission === 'default') {
-    enable.hidden = false;
+  var alertsStatus = document.querySelector('[data-alerts-status]');
+  function showAlerts() {
+    if (!alertsStatus) return;
+    var state = 'Notification' in window ? Notification.permission : 'unsupported';
+    alertsStatus.textContent = {
+      granted: 'On. You\u2019ll be alerted even when the app is in the background.',
+      denied: 'Blocked in this browser. Allow notifications for this site in your browser settings.',
+      unsupported: 'This browser doesn\u2019t support notifications.',
+    }[state] || 'Get alerts even when the app is in the background.';
+    if (enable) enable.hidden = state !== 'default';
+  }
+  if (enable) {
     enable.addEventListener('click', function () {
-      Notification.requestPermission().then(function () { enable.hidden = true; });
+      Notification.requestPermission().then(showAlerts);
     });
   }
+  showAlerts();
 
   schedule();
 })();
