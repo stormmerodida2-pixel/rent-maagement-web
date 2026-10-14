@@ -1,0 +1,12 @@
+{% load static %}<meta name="robots" content="index, follow">
+<link rel="canonical" href="{{ SITE_URL }}{{ request.path }}">
+<meta property="og:type" content="website">
+<meta property="og:site_name" content="{{ APP_NAME }}">
+<meta property="og:title" content="{% if seo_title %}{{ seo_title }} · {% endif %}{{ APP_NAME }}">
+<meta property="og:description" content="Collect rent on M-Pesa, track arrears, send SMS reminders and manage repairs for your rental properties.">
+<meta property="og:url" content="{{ SITE_URL }}{{ request.path }}">
+<meta property="og:image" content="{{ SITE_URL }}{% static 'img/logo.jpeg' %}">
+<meta property="og:image:width" content="1408">
+<meta property="og:image:height" content="768">
+<meta property="og:image:alt" content="{{ APP_NAME }}: property management software">
+<meta name="twitter:card" content="summary_large_image">

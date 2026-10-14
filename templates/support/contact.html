@@ -1,4 +1,5 @@
 {% extends 'registration/auth_card.html' %}
+{% block seo %}{% with seo_title="Contact us" %}{% include 'includes/seo_public.html' %}{% endwith %}{% endblock %}
 {% block title %}Contact us · {{ APP_NAME }}{% endblock %}
 {% block card %}
 <h1>Contact us</h1>

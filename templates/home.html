@@ -1,4 +1,5 @@
 {% extends 'base.html' %}
+{% block seo %}{% with seo_title="Collect rent on M-Pesa" %}{% include 'includes/seo_public.html' %}{% endwith %}{% endblock %}
 {% load ui %}
 {% block title %}{{ APP_NAME }} · Rent collection on M-Pesa for Kenyan landlords{% endblock %}
 {% block body %}

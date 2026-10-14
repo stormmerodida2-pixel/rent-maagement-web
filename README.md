@@ -220,6 +220,14 @@ docker compose exec web python manage.py check --deploy
 - **Monitoring:** point an uptime monitor at `/healthz/`. It returns 503 if the database or cache is down.
 - After a few days of confirmed HTTPS, raise `DJANGO_HSTS_SECONDS` to `31536000`.
 
+### Search engines
+
+- **`/sitemap.xml`** lists only the public pages (home, sign-up, login, contact), always with the domain from `SITE_URL`.
+- **`/robots.txt`** points crawlers to the sitemap and keeps them out of private areas: the admin, dashboards and tenants' private links (`/t/…`).
+- **Private by default:** every page is marked `noindex` unless it opts in. Only the four public pages are indexable.
+- **Link previews:** the public pages carry canonical links and link-preview tags, so shared links (WhatsApp, Facebook, X) show the logo and a description.
+- **After going live:** add your domain in [Google Search Console](https://search.google.com/search-console) and submit `https://your-domain/sitemap.xml`.
+
 ### CI/CD (GitHub Actions)
 
 Every push and pull request runs `.github/workflows/ci-cd.yml`:
