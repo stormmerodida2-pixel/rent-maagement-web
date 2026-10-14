@@ -1,5 +1,6 @@
 {% extends 'base.html' %}
 {% load ui %}
+{% block manifest %}<link rel="manifest" href="{% url 'tenant_manifest' tenant.portal_token %}">{% endblock %}
 {% block title %}My rent · {{ APP_NAME }}{% endblock %}
 
 {% block body %}
@@ -19,6 +20,12 @@
   </div>
 
   {% include 'includes/messages.html' %}
+
+  <div class="install-card" data-install hidden>
+    {% icon 'phone' 18 %}<span><strong>Add this page to your phone</strong> for one-tap access to your rent.</span>
+    <span class="btn btn-sm btn-primary">Install</span>
+  </div>
+  <p class="install-hint" data-install-ios hidden>Tap <strong>Share</strong> {% icon 'external' 14 %} at the bottom of Safari, then <strong>Add to Home Screen</strong>.</p>
 
   {% if notices %}
   <section class="card">

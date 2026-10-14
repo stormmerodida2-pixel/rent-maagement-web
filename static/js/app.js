@@ -57,4 +57,39 @@
     });
   }
   document.addEventListener('DOMContentLoaded', labelTables);
+
+  document.addEventListener('click', function (event) {
+    if (event.target.closest('[data-reload]')) window.location.reload();
+  });
+
+  // Installable app: register the service worker, and show "Install app" where the phone allows it.
+  if ('serviceWorker' in navigator) {
+    window.addEventListener('load', function () { navigator.serviceWorker.register('/sw.js').catch(function () {}); });
+  }
+  var installed = window.matchMedia('(display-mode: standalone)').matches || window.navigator.standalone;
+  var isIOS = /iphone|ipad|ipod/i.test(navigator.userAgent);
+  var deferredPrompt = null;
+  function showInstallButtons() {
+    document.querySelectorAll('[data-install]').forEach(function (b) { b.hidden = false; });
+  }
+  window.addEventListener('beforeinstallprompt', function (event) {
+    event.preventDefault();  // show our own button instead of the browser's mini-bar
+    deferredPrompt = event;
+    if (!installed) showInstallButtons();
+  });
+  if (!installed && isIOS) document.addEventListener('DOMContentLoaded', showInstallButtons);
+  document.addEventListener('click', function (event) {
+    var button = event.target.closest('[data-install]');
+    if (!button) return;
+    if (deferredPrompt) {
+      deferredPrompt.prompt();
+      deferredPrompt.userChoice.then(function () { deferredPrompt = null; });
+    } else {
+      // iPhone/iPad have no install prompt: show how to add it from the Share menu.
+      document.querySelectorAll('[data-install-ios]').forEach(function (hint) { hint.hidden = !hint.hidden; });
+    }
+  });
+  window.addEventListener('appinstalled', function () {
+    document.querySelectorAll('[data-install], [data-install-ios]').forEach(function (b) { b.hidden = true; });
+  });
 })();

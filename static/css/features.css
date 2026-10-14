@@ -1,0 +1,36 @@
+/* Live payment alerts, report-card settings and the installable app. Kept apart from app.css. */
+
+.toasts { position: fixed; right: 16px; bottom: 16px; z-index: 50; display: grid; gap: 10px; max-width: min(360px, calc(100vw - 32px)); }
+.toast {
+  display: grid; gap: 2px; padding: 12px 16px; border-radius: 12px; text-decoration: none;
+  background: var(--surface); color: var(--text); border: 1px solid var(--border); border-left: 4px solid var(--brand);
+  box-shadow: var(--shadow-lg); animation: toast-in .25s ease-out;
+}
+.toast:hover { text-decoration: none; border-color: var(--brand); }
+.toast strong { color: var(--brand); }
+.toast span { font-size: 13px; color: var(--text-2); }
+.toast-out { opacity: 0; transform: translateY(8px); transition: opacity .5s, transform .5s; }
+@keyframes toast-in { from { opacity: 0; transform: translateY(12px); } to { opacity: 1; transform: none; } }
+
+.live-updated { animation: live-flash 1.6s ease-out; border-radius: var(--radius); }
+@keyframes live-flash { 0% { box-shadow: 0 0 0 3px var(--brand-soft); } 100% { box-shadow: 0 0 0 0 transparent; } }
+
+.live-dot { display: inline-flex; align-items: center; gap: 6px; font-size: 12px; color: var(--muted); }
+.live-dot::before { content: ""; width: 8px; height: 8px; border-radius: 50%; background: var(--brand); animation: pulse 2s infinite; }
+@keyframes pulse { 0%, 100% { opacity: 1; } 50% { opacity: .35; } }
+
+@media (prefers-reduced-motion: reduce) {
+  .toast, .live-updated, .live-dot::before { animation: none; }
+}
+
+/* Installable app */
+.nav-install { display: flex; align-items: center; gap: 10px; width: 100%; padding: 8px 10px; border: 0; border-radius: var(--radius-sm);
+  background: transparent; color: var(--brand); font: 500 14px/1.4 var(--font); cursor: pointer; text-align: left; }
+.nav-install:hover { background: var(--brand-soft); }
+.nav-install svg { width: 18px; height: 18px; }
+.nav-install[hidden], .install-card[hidden], .install-hint[hidden] { display: none; }
+.install-hint { margin: 4px 10px 8px; padding: 10px 12px; border-radius: var(--radius-sm); background: var(--surface-2); font-size: 13px; color: var(--text-2); }
+.install-hint svg { width: 14px; height: 14px; vertical-align: -2px; }
+.install-card { display: flex; align-items: center; gap: 10px; padding: 12px 14px; border-radius: var(--radius);
+  background: var(--brand-soft); border: 1px solid var(--border); cursor: pointer; font-size: 14px; }
+.install-card span:first-of-type { flex: 1; }

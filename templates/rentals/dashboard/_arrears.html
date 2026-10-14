@@ -1,0 +1,41 @@
+{% load ui %}<section class="card">
+  <div class="card-header">
+    <h2>Tenants in arrears</h2>
+    <span class="spacer"></span>
+    <a class="small" href="{% url 'rentals:lease_list' %}">All leases</a>
+  </div>
+  {% if arrears %}
+  <div class="table-wrap">
+    <table class="table">
+      <thead><tr><th>Tenant</th><th class="num">Owes</th><th></th></tr></thead>
+      <tbody>
+      {% for lease, balance in arrears %}
+      <tr>
+        <td>
+          <a class="who" href="{% url 'rentals:lease_detail' lease.pk %}" style="text-decoration:none">
+            <span class="avatar">{{ lease.tenant.full_name|initials }}</span>
+            <span><span class="name">{{ lease.tenant }}</span><span class="meta" style="display:block">{{ lease.unit }}</span></span>
+          </a>
+        </td>
+        <td class="num text-danger"><strong>{{ balance|kes }}</strong></td>
+        <td class="num">
+          <form method="post" action="{% url 'rentals:send_reminder' lease.pk %}">
+            {% csrf_token %}<input type="hidden" name="next" value="{{ request.get_full_path }}">
+            <button class="btn btn-sm">{% icon 'bell' %}Remind</button>
+          </form>
+        </td>
+      </tr>
+      {% endfor %}
+      </tbody>
+    </table>
+  </div>
+  {% elif occupied_count %}
+    <div class="empty"><strong>Everyone is paid up 🎉</strong>No outstanding balances right now.</div>
+  {% else %}
+    <div class="empty">
+      <strong>No active leases yet</strong>
+      Add a property, a tenant and a lease to start collecting rent.
+      <div style="margin-top:14px"><a class="btn btn-primary btn-sm" href="{% url 'rentals:property_create' %}">{% icon 'plus' %}Add a property</a></div>
+    </div>
+  {% endif %}
+</section>

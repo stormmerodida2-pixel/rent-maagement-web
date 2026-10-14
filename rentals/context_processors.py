@@ -23,6 +23,9 @@ def branding(request):
         ).count()
         account = MpesaAccount.objects.filter(owner=user).first()
         context['nav_mpesa_missing'] = account is None or not account.is_complete()
+        from rentals.views import latest_payment_id
+
+        context['live_cursor'] = latest_payment_id(user)
         from announcements.models import PlatformNotice
 
         context['platform_notices'] = list(PlatformNotice.current_for(user)[:3])

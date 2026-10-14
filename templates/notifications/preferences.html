@@ -1,0 +1,24 @@
+{% extends 'app_base.html' %}
+{% load ui %}
+{% block page_title %}Notification settings{% endblock %}
+{% block content %}
+<div class="form-page">
+<div class="page-header"><div>
+  <h1>Notification settings</h1>
+  <p class="sub">On the 1st of every month we send you a report card for the month before: what you collected, who owes, and how full your properties are.</p>
+</div></div>
+<section class="card form-card">
+  <div class="card-body">
+    <form method="post" novalidate>
+      {% csrf_token %}
+      {% include 'includes/form_fields.html' %}
+      <div class="form-actions">
+        <button type="submit" class="btn btn-primary">Save</button>
+        <button type="submit" name="action" value="preview" class="btn">Send me last month's report now</button>
+      </div>
+    </form>
+  </div>
+</section>
+<p class="muted small" style="margin-top:14px">Payment alerts in the app appear automatically while it's open. To also get them when it's in the background, use <strong>Turn on payment alerts</strong> on your dashboard.</p>
+</div>
+{% endblock %}

@@ -1,0 +1,26 @@
+{% load ui %}<section class="card">
+  <div class="card-header">
+    <h2>Recent payments</h2>
+    <span class="spacer"></span>
+    <a class="small" href="{% url 'payments:payment_list' %}">View all</a>
+  </div>
+  {% if recent_payments %}
+  <div class="table-wrap">
+    <table class="table">
+      <thead><tr><th>Tenant</th><th>Method</th><th>Date</th><th class="num">Amount</th></tr></thead>
+      <tbody>
+      {% for p in recent_payments %}
+      <tr>
+        <td><a href="{% url 'rentals:lease_detail' p.lease_id %}">{{ p.lease.tenant }}</a> <span class="muted small">· {{ p.lease.unit.label }}</span></td>
+        <td><span class="badge{% if p.method == 'mpesa' %} badge-success{% endif %}">{{ p.get_method_display }}</span></td>
+        <td class="muted nowrap">{{ p.paid_at|date:"d M, H:i" }}</td>
+        <td class="num"><strong>{{ p.amount|kes }}</strong></td>
+      </tr>
+      {% endfor %}
+      </tbody>
+    </table>
+  </div>
+  {% else %}
+    <div class="empty"><strong>No payments yet</strong>M-Pesa payments appear here as soon as Safaricom confirms them.</div>
+  {% endif %}
+</section>

@@ -52,7 +52,8 @@ class ScheduleTests(TestCase):
         self.assertTrue(JobRun.objects.get(name='check_pending_stk').last_ok)
         self.assertIsNotNone(cache.get('ops:scheduler-heartbeat'))
         with mock.patch('ops.jobs.call_command'):
-            self.assertEqual(run_due_jobs(now=at(10, 1)), [])  # nothing due a minute later
+            # Nothing due 30 seconds later (the most frequent job runs every minute).
+            self.assertEqual(run_due_jobs(now=at(10) + datetime.timedelta(seconds=30)), [])
 
     def test_failed_job_is_recorded_and_others_still_run(self):
         cache.clear()
