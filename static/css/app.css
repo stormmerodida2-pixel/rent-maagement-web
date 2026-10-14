@@ -519,21 +519,24 @@ html:root .doc .logo { background-image: url("../img/logo-transparent.png"); asp
 
 @media (max-width: 900px) {
   .sidebar {
-    position: sticky; top: 0; z-index: 40; height: auto; flex-direction: row; align-items: center; gap: 6px;
-    padding: 6px 12px; border-right: 0; border-bottom: 1px solid var(--border);
+    position: sticky; top: 0; z-index: 40; height: 64px; flex-direction: row; align-items: center; gap: 8px;
+    padding: 0 12px 0 10px; border-right: 0; border-bottom: 1px solid var(--border);
+    background: var(--surface); box-shadow: 0 1px 3px rgb(16 24 40 / .04);
   }
-  .sidebar > .brand { padding: 0; }
-  .sidebar .logo { height: 46px; }
+  .sidebar > .brand { padding: 0; margin-right: auto; }
+  .sidebar > .brand .logo { height: 60px; }
 
   .nav-toggle {
     display: inline-flex; align-items: center; justify-content: center; position: relative;
-    width: 44px; height: 44px; margin-left: -6px; border: 0; border-radius: var(--radius-sm);
-    background: none; color: var(--text); cursor: pointer;
+    width: 44px; height: 44px; border: 1px solid var(--border); border-radius: 12px;
+    background: var(--surface); color: var(--text); cursor: pointer; box-shadow: var(--shadow);
+    transition: background .15s ease, border-color .15s ease;
   }
-  .nav-toggle:hover, .nav-toggle:focus-visible { background: var(--surface-2); }
+  .nav-toggle:hover, .nav-toggle:focus-visible { background: var(--surface-2); border-color: var(--brand); }
+  .nav-toggle:active { transform: scale(.96); }
   .nav-toggle svg, .nav-close svg { width: 24px; height: 24px; }
   .nav-toggle-dot {
-    position: absolute; top: 9px; right: 8px; width: 9px; height: 9px; border-radius: 50%;
+    position: absolute; top: -3px; right: -3px; width: 11px; height: 11px; border-radius: 50%;
     background: var(--danger); box-shadow: 0 0 0 2px var(--surface);
   }
 
@@ -542,16 +545,17 @@ html:root .doc .logo { background-image: url("../img/logo-transparent.png"); asp
     opacity: 0; pointer-events: none; transition: opacity .2s ease;
   }
   .drawer {
-    position: fixed; top: 0; bottom: 0; left: 0; z-index: 60; width: min(86vw, 320px);
-    padding: 8px 14px 16px; background: var(--surface); box-shadow: 0 10px 40px rgb(0 0 0 / .25);
+    position: fixed; top: 0; bottom: 0; right: 0; z-index: 60; width: min(86vw, 320px);
+    padding: 8px 14px 16px; background: var(--surface); box-shadow: -10px 0 40px rgb(0 0 0 / .25);
+    border-radius: 18px 0 0 18px;
     overflow-y: auto; overscroll-behavior: contain;
-    transform: translateX(-100%); visibility: hidden; transition: transform .25s ease, visibility 0s linear .25s;
+    transform: translateX(100%); visibility: hidden; transition: transform .25s ease, visibility 0s linear .25s;
   }
   .sidebar.nav-open .drawer { transform: none; visibility: visible; transition: transform .25s ease; }
   .sidebar.nav-open .nav-backdrop { opacity: 1; pointer-events: auto; }
   .drawer .nav { overflow: visible; }
   .drawer-head { display: flex; align-items: center; justify-content: space-between; padding-bottom: 4px; }
-  .drawer-head { position: sticky; top: -8px; z-index: 1; margin: -8px -14px 0; padding: 6px 8px 6px 18px; background: var(--surface); border-bottom: 1px solid var(--border); }
+  .drawer-head { position: sticky; top: -8px; z-index: 1; margin: -8px -14px 0; padding: 6px 8px 6px 18px; background: var(--surface); border-bottom: 1px solid var(--border); border-top-left-radius: 18px; }
   .drawer-title { font-weight: 650; font-size: 16px; }
   .nav-close {
     display: inline-flex; align-items: center; justify-content: center; width: 44px; height: 44px;

@@ -5,11 +5,11 @@
 {% with url_name=request.resolver_match.url_name %}
 <div class="app">
   <aside class="sidebar">
+    <a class="brand" href="{% url 'rentals:dashboard' %}">{% include 'includes/logo.html' %}</a>
     <button type="button" class="nav-toggle" data-nav-toggle aria-controls="main-nav" aria-expanded="false">
       {% icon 'menu' %}<span class="visually-hidden">Open menu</span>
       {% if nav_complaints or nav_open_requests or nav_mpesa_missing %}<span class="nav-toggle-dot" title="Something needs your attention"></span>{% endif %}
     </button>
-    <a class="brand" href="{% url 'rentals:dashboard' %}">{% include 'includes/logo.html' %}</a>
 
     <div class="nav-backdrop" data-nav-close></div>
     <div class="drawer" id="main-nav">
