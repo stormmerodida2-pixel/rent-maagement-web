@@ -3,6 +3,8 @@ from django.contrib.auth.mixins import LoginRequiredMixin
 from django.db.models import ProtectedError
 from django.shortcuts import redirect
 
+from audit import log as audit
+
 
 class OwnedMixin(LoginRequiredMixin):
     """Limit a view's objects to the signed-in landlord's own records.
@@ -30,10 +32,13 @@ class SafeDeleteMixin:
     protected_message = "This can't be deleted because other records depend on it."
 
     def form_valid(self, form):
+        label, kind = str(self.object), self.object._meta.verbose_name
         try:
             response = super().form_valid(form)
         except ProtectedError:
             messages.error(self.request, self.protected_message)
             return redirect(self.request.path)
-        messages.success(self.request, f'Deleted {self.object}.')
+        audit.record(owner=self.request.user, actor=self.request.user,
+                     action=f'{kind}.deleted', summary=f'Deleted {kind} {label}.')
+        messages.success(self.request, f'Deleted {label}.')
         return response

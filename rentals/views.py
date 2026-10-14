@@ -92,7 +92,7 @@ def statement(lease, limit=24):
     entries = []
     for c in lease.charges.all():
         entry = {'date': c.period if c.kind == RentCharge.Kind.RENT else c.due_date,
-                 'kind': 'charge', 'description': c.label}
+                 'kind': 'charge', 'description': c.label, 'charge_id': c.pk}
         if c.amount < 0:
             entry['payment'] = -c.amount  # credits reduce what's owed, like a payment
             entry['credit'] = True
@@ -102,6 +102,7 @@ def statement(lease, limit=24):
     entries += [
         {
             'date': timezone.localdate(p.paid_at), 'kind': 'payment', 'payment': p.amount, 'payment_id': p.pk,
+            'is_mpesa': p.method == Payment.Method.MPESA,
             'description': f'{p.get_method_display()} payment' + (f' · {p.reference}' if p.reference else ''),
         }
         for p in lease.payments.all()
@@ -129,6 +130,12 @@ def lease_detail(request, pk):
         'balance': balance,
         'statement': statement(lease),
         'deposit_held': lease.deposit_held,
+        'voided': sorted(
+            [*RentCharge.all_objects.filter(lease=lease, voided_at__isnull=False),
+             *Payment.all_objects.filter(lease=lease, voided_at__isnull=False)],
+            key=lambda r: r.voided_at, reverse=True,
+        ),
+        'history': lease.audit_entries.select_related('actor')[:15],
         'mpesa_transactions': lease.mpesa_transactions.all()[:10],
         'sms_messages': lease.sms_messages.all()[:10],
         'mpesa_account': MpesaAccount.objects.filter(owner=request.user).first(),

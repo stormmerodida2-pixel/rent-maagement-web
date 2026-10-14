@@ -31,7 +31,9 @@ TIMEOUT = 30
 
 
 class MpesaError(Exception):
-    pass
+    def __init__(self, message, code=''):
+        super().__init__(message)
+        self.code = code  # Daraja errorCode, when there is one
 
 
 def normalize_phone(value):
@@ -97,7 +99,7 @@ def _post(account, path, payload):
         raise MpesaError(f'Daraja request to {path} failed: {exc}') from exc
     if resp.status_code != 200 or str(data.get('ResponseCode', '0')) != '0':
         msg = data.get('errorMessage') or data.get('ResponseDescription') or resp.text
-        raise MpesaError(f'Daraja rejected the request: {msg}')
+        raise MpesaError(f'Daraja rejected the request: {msg}', code=str(data.get('errorCode', '')))
     return data
 
 
@@ -117,22 +119,55 @@ def _parse_timestamp(value):
     return timezone.make_aware(naive)
 
 
+# How far apart a status-checked STK payment and its late-arriving receipt can be and still match.
+RECEIPT_MATCH_WINDOW = datetime.timedelta(minutes=30)
+
+
 def record_mpesa_payment(lease, receipt, amount, paid_at, notes=''):
     """Create the Payment for an M-Pesa receipt, or return the existing one.
 
-    The same receipt can reach us from both the STK callback and the C2B confirmation,
-    so payments are keyed on the receipt number. Returns (payment, created).
+    The same money can reach us up to three ways: the STK callback, the C2B confirmation, and our
+    own STK status check (which confirms payment but carries no receipt number). Payments are keyed
+    on the receipt; a receipt-less payment from a status check is claimed by the first matching
+    receipt instead of creating a duplicate. Returns (payment, created).
     """
+    existing = Payment.objects.filter(method=Payment.Method.MPESA, reference=receipt).first()
+    if existing:
+        return existing, False
+    claim = (
+        Payment.objects.select_for_update()
+        .filter(method=Payment.Method.MPESA, reference='', lease=lease, amount=amount,
+                mpesa_transaction__isnull=False,
+                paid_at__range=(paid_at - RECEIPT_MATCH_WINDOW, paid_at + RECEIPT_MATCH_WINDOW))
+        .first()
+    )
+    if claim:
+        claim.reference = receipt
+        claim.save(update_fields=['reference'])
+        MpesaTransaction.objects.filter(payment=claim).update(receipt_number=receipt)
+        return claim, False
+
     payment, created = Payment.objects.get_or_create(
         method=Payment.Method.MPESA,
         reference=receipt,
         defaults={'lease': lease, 'amount': amount, 'paid_at': paid_at, 'notes': notes},
     )
     if created:
-        from notifications.sms import send_payment_receipt
-
-        transaction.on_commit(lambda: send_payment_receipt(payment))
+        _payment_received(payment)
     return payment, created
+
+
+def _payment_received(payment):
+    from audit import log as audit
+    from notifications.sms import send_payment_receipt
+
+    lease = payment.lease
+    audit.record(
+        owner=lease.unit.property.owner, lease=lease, action='payment.mpesa_received',
+        summary=f'M-Pesa payment {payment.reference or "(receipt pending)"} of KES {payment.amount:,.2f} '
+                f'received from {lease.tenant}.',
+    )
+    transaction.on_commit(lambda: send_payment_receipt(payment))
 
 
 def verify_credentials(account):
@@ -168,8 +203,7 @@ def stk_push(lease, amount, phone_number=None):
     ).exists():
         raise MpesaError('A payment prompt was just sent for this lease. Wait a couple of minutes and try again.')
 
-    timestamp = timezone.localtime().strftime('%Y%m%d%H%M%S')
-    password = base64.b64encode(f'{account.shortcode}{account.passkey}{timestamp}'.encode()).decode()
+    password, timestamp = _stk_password(account)
     data = _post(account, '/mpesa/stkpush/v1/processrequest', {
         'BusinessShortCode': account.shortcode,
         'Password': password,
@@ -193,6 +227,27 @@ def stk_push(lease, amount, phone_number=None):
     )
 
 
+def _stk_password(account):
+    timestamp = timezone.localtime().strftime('%Y%m%d%H%M%S')
+    password = base64.b64encode(f'{account.shortcode}{account.passkey}{timestamp}'.encode()).decode()
+    return password, timestamp
+
+
+def _apply_stk_success(txn, *, receipt, amount, paid_at, notes):
+    """Mark a pending STK transaction paid and credit the tenant. Caller holds the row lock and saves."""
+    txn.status = MpesaTransaction.Status.SUCCESS
+    txn.receipt_number = receipt
+    if receipt:
+        txn.payment, _ = record_mpesa_payment(txn.lease, receipt=receipt, amount=amount, paid_at=paid_at, notes=notes)
+    else:
+        # Status check: Safaricom confirms payment but doesn't say the receipt number. Credit the
+        # tenant now; the receipt is filled in if the callback or C2B confirmation turns up later.
+        txn.payment = Payment.objects.create(
+            lease=txn.lease, amount=amount, method=Payment.Method.MPESA, reference='', paid_at=paid_at, notes=notes,
+        )
+        _payment_received(txn.payment)
+
+
 def handle_stk_callback(account, body):
     """Apply an STK callback payload. Idempotent: repeated callbacks are ignored.
 
@@ -201,6 +256,8 @@ def handle_stk_callback(account, body):
     cb = body['Body']['stkCallback']
     checkout_id = cb['CheckoutRequestID']
     result_code = int(cb['ResultCode'])
+    items = {item['Name']: item.get('Value') for item in cb.get('CallbackMetadata', {}).get('Item', [])}
+    receipt = str(items.get('MpesaReceiptNumber', ''))
 
     with transaction.atomic():
         txn = (
@@ -211,6 +268,14 @@ def handle_stk_callback(account, body):
         if txn is None:
             logger.warning('STK callback for unknown CheckoutRequestID %s (account %s)', checkout_id, account.pk)
             return None
+        if txn.status == MpesaTransaction.Status.SUCCESS and not txn.receipt_number and receipt and result_code == 0:
+            # Late callback after a status check already credited the tenant: just add the receipt.
+            txn.receipt_number = receipt
+            txn.raw_callback = body
+            txn.save(update_fields=['receipt_number', 'raw_callback', 'updated_at'])
+            if txn.payment_id:
+                Payment.objects.filter(pk=txn.payment_id, reference='').update(reference=receipt)
+            return txn
         if txn.status != MpesaTransaction.Status.PENDING:
             return txn
 
@@ -223,21 +288,88 @@ def handle_stk_callback(account, body):
             txn.save()
             return txn
 
-        items = {
-            item['Name']: item.get('Value')
-            for item in cb.get('CallbackMetadata', {}).get('Item', [])
-        }
-        txn.receipt_number = str(items.get('MpesaReceiptNumber', ''))
-        txn.status = MpesaTransaction.Status.SUCCESS
-        txn.payment, _ = record_mpesa_payment(
-            txn.lease,
-            receipt=txn.receipt_number,
+        _apply_stk_success(
+            txn, receipt=receipt,
             amount=Decimal(str(items.get('Amount', txn.amount))),
             paid_at=_parse_timestamp(items.get('TransactionDate')),
             notes=f'STK push from {items.get("PhoneNumber", txn.phone)}',
         )
         txn.save()
         return txn
+
+
+# Daraja answers "still processing" with this error code while the tenant hasn't responded yet.
+STK_STILL_PROCESSING = '500.001.1001'
+STK_QUERY_AFTER = datetime.timedelta(minutes=2)  # give the callback a chance first
+STK_EXPIRE_AFTER = datetime.timedelta(hours=24)
+
+
+def query_stk_status(txn):
+    """Ask Safaricom what happened to a pending STK prompt and apply the answer.
+
+    Returns the (possibly updated) transaction. Raises MpesaError if Safaricom can't be asked.
+    """
+    if txn.status != MpesaTransaction.Status.PENDING:
+        return txn
+    account = txn.account
+    if account is None or not account.is_complete():
+        raise MpesaError('This prompt was sent from an M-Pesa account that is no longer set up.')
+    password, timestamp = _stk_password(account)
+    try:
+        data = _post(account, '/mpesa/stkpushquery/v1/query', {
+            'BusinessShortCode': account.shortcode,
+            'Password': password,
+            'Timestamp': timestamp,
+            'CheckoutRequestID': txn.checkout_request_id,
+        })
+    except MpesaError as exc:
+        if exc.code != STK_STILL_PROCESSING:
+            raise
+        if timezone.now() - txn.created_at > STK_EXPIRE_AFTER:
+            with transaction.atomic():
+                txn = MpesaTransaction.objects.select_for_update().get(pk=txn.pk)
+                if txn.status == MpesaTransaction.Status.PENDING:
+                    txn.status = MpesaTransaction.Status.FAILED
+                    txn.result_desc = 'No answer from Safaricom within 24 hours'
+                    txn.save()
+        return txn
+
+    result_code = int(data.get('ResultCode', -1))
+    with transaction.atomic():
+        txn = MpesaTransaction.objects.select_for_update().get(pk=txn.pk)
+        if txn.status != MpesaTransaction.Status.PENDING:
+            return txn  # the callback won the race
+        txn.result_code = result_code
+        txn.result_desc = (data.get('ResultDesc') or '')[:255]
+        if result_code == 0:
+            _apply_stk_success(
+                txn, receipt='', amount=txn.amount, paid_at=txn.created_at,
+                notes='STK push confirmed by status check',
+            )
+        else:
+            txn.status = MpesaTransaction.Status.FAILED
+        txn.save()
+    return txn
+
+
+def check_pending_stk(now=None):
+    """Status-check every STK prompt that has been pending for a while. Returns a summary dict."""
+    now = now or timezone.now()
+    summary = {'checked': 0, 'paid': 0, 'failed': 0, 'still_pending': 0, 'errors': 0}
+    pending = MpesaTransaction.objects.filter(
+        status=MpesaTransaction.Status.PENDING, created_at__lte=now - STK_QUERY_AFTER,
+    ).select_related('account', 'lease__tenant')
+    for txn in pending:
+        summary['checked'] += 1
+        try:
+            txn = query_stk_status(txn)
+        except MpesaError as exc:
+            logger.warning('STK status check failed for %s: %s', txn.checkout_request_id, exc)
+            summary['errors'] += 1
+            continue
+        key = {'success': 'paid', 'failed': 'failed'}.get(txn.status, 'still_pending')
+        summary[key] += 1
+    return summary
 
 
 # --- C2B Paybill / Till ------------------------------------------------------------

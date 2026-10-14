@@ -3,11 +3,15 @@
 from decimal import Decimal
 
 from django.contrib import messages
+from django.contrib.auth.decorators import login_required
 from django.db.models import Count, F, Q
-from django.shortcuts import get_object_or_404, redirect
+from django.shortcuts import get_object_or_404, redirect, render
 from django.urls import reverse, reverse_lazy
 from django.utils.http import url_has_allowed_host_and_scheme
 from django.views.generic import CreateView, DeleteView, DetailView, FormView, ListView, UpdateView
+
+from audit import log as audit
+from payments.forms import VoidForm
 
 from .billing import BillingError, last_reading, record_water_reading, settle_move_out
 from .forms import ChargeForm, EndLeaseForm, LeaseForm, PropertyForm, TenantForm, UnitForm, WaterReadingsForm
@@ -36,6 +40,9 @@ class FormPageMixin(NextUrlMixin):
     submit_label = 'Save'
     cancel_url = None
     success_message = 'Saved.'
+    # Set to e.g. 'lease.edited' to record the save in the activity log.
+    audit_action = None
+    audit_summary = None  # format string with {obj}; defaults to success_message
 
     def get_context_data(self, **kwargs):
         return super().get_context_data(
@@ -44,8 +51,18 @@ class FormPageMixin(NextUrlMixin):
         )
 
     def form_valid(self, form):
+        instance = getattr(form, 'instance', None)
+        creating = instance is not None and instance.pk is None
         response = super().form_valid(form)
         messages.success(self.request, self.success_message.format(obj=self.object))
+        if self.audit_action:
+            obj = self.object
+            audit.record(
+                owner=self.request.user, actor=self.request.user, action=self.audit_action,
+                lease=obj if isinstance(obj, Lease) else getattr(obj, 'lease', None),
+                summary=(self.audit_summary or self.success_message).format(obj=obj),
+                changes={} if creating else audit.form_changes(form),
+            )
         nxt = self.get_next_url()
         return redirect(nxt) if nxt else response
 
@@ -65,6 +82,7 @@ class PropertyList(OwnedMixin, ListView):
 
 class PropertyCreate(OwnedMixin, FormPageMixin, CreateView):
     model = Property
+    audit_action = 'property.added'
     form_class = PropertyForm
     page_title = 'Add a property'
     submit_label = 'Add property'
@@ -77,6 +95,8 @@ class PropertyCreate(OwnedMixin, FormPageMixin, CreateView):
 
 class PropertyUpdate(OwnedMixin, FormPageMixin, UpdateView):
     model = Property
+    audit_action = 'property.edited'
+    audit_summary = 'Edited property {obj}.'
     form_class = PropertyForm
     page_title = 'Edit property'
 
@@ -114,6 +134,7 @@ class UnitCreate(OwnedMixin, FormPageMixin, CreateView):
     """Add a unit to one of the landlord's properties (also posted to from the property page)."""
 
     model = Unit
+    audit_action = 'unit.added'
     form_class = UnitForm
     form_takes_owner = False
     page_title = 'Add a unit'
@@ -140,6 +161,8 @@ class UnitCreate(OwnedMixin, FormPageMixin, CreateView):
 
 class UnitUpdate(OwnedMixin, FormPageMixin, UpdateView):
     model = Unit
+    audit_action = 'unit.edited'
+    audit_summary = 'Edited unit {obj}.'
     form_class = UnitForm
     form_takes_owner = False
     owner_path = 'property__owner'
@@ -196,6 +219,8 @@ class TenantList(OwnedMixin, ListView):
 
 class TenantCreate(OwnedMixin, FormPageMixin, CreateView):
     model = Tenant
+    audit_action = 'tenant.added'
+    audit_summary = 'Added tenant {obj}.'
     form_class = TenantForm
     page_title = 'Add a tenant'
     submit_label = 'Add tenant'
@@ -208,6 +233,8 @@ class TenantCreate(OwnedMixin, FormPageMixin, CreateView):
 
 class TenantUpdate(OwnedMixin, FormPageMixin, UpdateView):
     model = Tenant
+    audit_action = 'tenant.edited'
+    audit_summary = 'Edited tenant {obj}.'
     form_class = TenantForm
     page_title = 'Edit tenant'
     cancel_url = reverse_lazy('rentals:tenant_list')
@@ -260,6 +287,7 @@ class LeaseList(OwnedMixin, ListView):
 
 class LeaseCreate(OwnedMixin, FormPageMixin, CreateView):
     model = Lease
+    audit_action = 'lease.started'
     form_class = LeaseForm
     owner_path = 'unit__property__owner'
     page_title = 'Start a lease'
@@ -280,6 +308,8 @@ class LeaseCreate(OwnedMixin, FormPageMixin, CreateView):
 
 class LeaseUpdate(OwnedMixin, FormPageMixin, UpdateView):
     model = Lease
+    audit_action = 'lease.edited'
+    audit_summary = 'Edited lease {obj}.'
     form_class = LeaseForm
     owner_path = 'unit__property__owner'
     page_title = 'Edit lease'
@@ -335,6 +365,12 @@ class LeaseEnd(OwnedMixin, FormPageMixin, FormView):
             self.lease, data['end_date'], deductions=data.get('deductions') or Decimal('0'),
             reason=data.get('reason', ''), apply_deposit=data['apply_deposit'], refund_paid=data['refund_paid'],
         )
+        audit.record(
+            owner=self.request.user, actor=self.request.user, lease=self.lease, action='lease.ended',
+            summary=f'Ended lease {self.lease} on {data["end_date"]:%d %b %Y}; final balance KES {final:,.2f}.',
+            changes={'Deductions': (None, data.get('deductions')), 'Reason': (None, data.get('reason') or None),
+                     'Deposit applied': (None, data['apply_deposit']), 'Refund paid': (None, data['refund_paid'])},
+        )
         if final > 0:
             outcome = f'They still owe KES {final:,.0f}.'
         elif final < 0:
@@ -350,6 +386,8 @@ class ChargeCreate(OwnedMixin, FormPageMixin, CreateView):
     """A one-off charge or credit on a lease, e.g. a repair the tenant caused."""
 
     model = RentCharge
+    audit_action = 'charge.added'
+    audit_summary = 'Added charge "{obj.label}" of KES {obj.amount:,.2f} to {obj.lease}.'
     form_class = ChargeForm
     form_takes_owner = False
     page_title = 'Add a charge'
@@ -418,5 +456,36 @@ class WaterReadings(OwnedMixin, FormPageMixin, FormView):
         for error in errors:
             messages.error(self.request, error)
         if count:
+            audit.record(
+                owner=self.request.user, actor=self.request.user, action='water.billed',
+                summary=f'Saved {count} water reading(s) for {self.property}; billed KES {billed:,.2f}.',
+            )
             messages.success(self.request, f'Saved {count} reading(s); billed KES {billed:,.0f} for water.')
         return redirect('rentals:property_detail', pk=self.property.pk)
+
+
+@login_required
+def charge_void(request, pk):
+    """Void a charge billed by mistake (wrong water reading, fee waived…). Kept in history."""
+    charge = get_object_or_404(
+        RentCharge.objects.select_related('lease__tenant'), pk=pk, lease__unit__property__owner=request.user,
+    )
+    back = reverse('rentals:lease_detail', args=[charge.lease_id])
+    form = VoidForm(request.POST or None)
+    if request.method == 'POST' and form.is_valid():
+        charge.void(request.user, form.cleaned_data['reason'])
+        audit.record(
+            owner=request.user, actor=request.user, lease=charge.lease, action='charge.voided',
+            summary=f'Voided "{charge.label}" (KES {charge.amount:,.2f}) for {charge.lease.tenant}: '
+                    f'{form.cleaned_data["reason"]}',
+        )
+        messages.success(request, f'Voided "{charge.label}". Their balance has been updated.')
+        return redirect(back)
+    note = ''
+    if charge.kind in RentCharge.MONTHLY_KINDS:
+        note = ' It won\'t be billed again for this month. Use "Add charge" if you need to bill a corrected amount.'
+    return render(request, 'form_page.html', {
+        'form': form, 'page_title': 'Void charge', 'submit_label': 'Void charge', 'cancel_url': back,
+        'intro': f'"{charge.label}", KES {charge.amount:,.2f}, for {charge.lease.tenant}. '
+                 f'It will no longer count towards their balance.{note}',
+    })

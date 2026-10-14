@@ -5,7 +5,7 @@ def branding(request):
     context = {'APP_NAME': settings.APP_NAME}
     user = getattr(request, 'user', None)
     if user is not None and user.is_authenticated and request.resolver_match \
-            and request.resolver_match.app_name in ('rentals', 'payments', 'maintenance', 'notifications', 'accounts', 'reports'):
+            and request.resolver_match.app_name in ('rentals', 'payments', 'maintenance', 'notifications', 'accounts', 'reports', 'audit'):
         # Lazily imported to keep this module importable before apps are ready.
         from maintenance.models import MaintenanceRequest
         from payments.models import C2BPayment, MpesaAccount

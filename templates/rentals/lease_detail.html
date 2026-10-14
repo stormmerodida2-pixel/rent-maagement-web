@@ -65,7 +65,13 @@
           {% for e in statement %}
           <tr>
             <td class="nowrap muted">{{ e.date|date:"d M Y" }}</td>
-            <td style="min-width:180px">{{ e.description }}{% if e.payment_id %} · <a class="small" href="{% url 'reports:payment_receipt' e.payment_id %}">receipt</a>{% endif %}</td>
+            <td style="min-width:180px">{{ e.description }}
+              <div class="row-actions">
+                {% if e.payment_id %}<a href="{% url 'reports:payment_receipt' e.payment_id %}">Receipt</a>
+                  {% if e.is_mpesa %}<a href="{% url 'payments:payment_move' e.payment_id %}">Move</a>
+                  {% else %}<a href="{% url 'payments:payment_void' e.payment_id %}">Void</a>{% endif %}
+                {% elif e.charge_id %}<a href="{% url 'rentals:charge_void' e.charge_id %}">Void</a>{% endif %}
+              </div></td>
             <td class="num">{% if e.charge %}{{ e.charge|kes }}{% endif %}</td>
             <td class="num text-success">{% if e.payment %}{{ e.payment|kes }}{% if e.credit %} <span class="muted small">credit</span>{% endif %}{% endif %}</td>
             <td class="num {% if e.balance > 0 %}text-danger{% endif %}"><strong>{{ e.balance|kes }}</strong></td>
@@ -117,6 +123,32 @@
       </div>
     </section>
 
+    {% if voided %}
+    <section class="card">
+      <div class="card-header"><h2>Voided</h2><span class="muted">Not counted in the balance</span></div>
+      <div class="table-wrap"><table class="table"><tbody>
+        {% for r in voided %}
+        <tr class="voided-row">
+          <td><s>{% if r.label %}{{ r.label }}{% else %}{{ r.get_method_display }} payment{% if r.reference %} · {{ r.reference }}{% endif %}{% endif %}</s>
+            <div class="muted small">{{ r.voided_at|date:"d M Y, H:i" }} by {{ r.voided_by.get_full_name|default:r.voided_by.username|default:"—" }}: {{ r.void_reason }}</div></td>
+          <td class="num"><s>{{ r.amount|kes }}</s></td>
+        </tr>
+        {% endfor %}
+      </tbody></table></div>
+    </section>
+    {% endif %}
+
+    <section class="card">
+      <div class="card-header"><h2>History</h2><span class="spacer"></span><a class="small" href="{% url 'audit:activity' %}?lease={{ lease.pk }}">All activity</a></div>
+      {% if history %}
+      <ul class="timeline">
+        {% for h in history %}
+        <li><div class="small">{{ h.summary }}</div><div class="muted small">{{ h.created_at|date:"d M Y, H:i" }} · {{ h.actor_label }}</div></li>
+        {% endfor %}
+      </ul>
+      {% else %}<div class="empty">No recorded changes yet.</div>{% endif %}
+    </section>
+
     <section class="card">
       <div class="card-header"><h2>M-Pesa prompts</h2></div>
       {% if mpesa_transactions %}
@@ -127,9 +159,11 @@
           <tr>
             <td>
               <strong>{{ t.amount|kes }}</strong> <span class="muted small">to {{ t.phone }}</span>
-              <div class="muted small">{{ t.created_at|date:"d M, H:i" }}{% if t.receipt_number %} · {{ t.receipt_number }}{% elif t.result_desc %} · {{ t.result_desc }}{% endif %}</div>
+              <div class="muted small">{{ t.created_at|date:"d M, H:i" }}{% if t.receipt_number %} · {{ t.receipt_number }}{% elif t.status == 'success' %} · receipt pending{% elif t.result_desc %} · {{ t.result_desc }}{% endif %}</div>
             </td>
-            <td class="num">{% badge t.status t.get_status_display %}</td>
+            <td class="num">{% badge t.status t.get_status_display %}
+              {% if t.status == 'pending' %}<form method="post" action="{% url 'payments:stk_check' t.pk %}" style="margin-top:6px">{% csrf_token %}<button class="btn btn-sm">Check status</button></form>{% endif %}
+            </td>
           </tr>
           {% endfor %}
           </tbody>

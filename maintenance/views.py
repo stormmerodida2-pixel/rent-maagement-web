@@ -38,6 +38,7 @@ class MaintenanceCreate(OwnedMixin, FormPageMixin, CreateView):
     model = MaintenanceRequest
     form_class = MaintenanceForm
     owner_path = 'unit__property__owner'
+    audit_action = 'repair.logged'
     page_title = 'Log a repair'
     submit_label = 'Log repair'
     cancel_url = reverse_lazy('maintenance:list')
@@ -49,6 +50,7 @@ class MaintenanceUpdate(OwnedMixin, FormPageMixin, UpdateView):
     model = MaintenanceRequest
     form_class = MaintenanceForm
     owner_path = 'unit__property__owner'
+    audit_action = 'repair.updated'
     page_title = 'Update repair'
     cancel_url = reverse_lazy('maintenance:list')
     success_url = reverse_lazy('maintenance:list')

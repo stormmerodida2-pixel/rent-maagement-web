@@ -5,7 +5,7 @@ from django.core.exceptions import ValidationError
 from django.db import models
 from django.utils import timezone
 
-from rentals.models import Lease
+from rentals.models import Lease, Voidable
 
 from .fields import EncryptedTextField
 
@@ -75,7 +75,7 @@ class MpesaAccount(models.Model):
         )
 
 
-class Payment(models.Model):
+class Payment(Voidable):
     class Method(models.TextChoices):
         MPESA = 'mpesa', 'M-Pesa'
         CASH = 'cash', 'Cash'
@@ -95,7 +95,7 @@ class Payment(models.Model):
         constraints = [
             models.UniqueConstraint(
                 fields=['method', 'reference'],
-                condition=~models.Q(reference=''),
+                condition=~models.Q(reference='') & models.Q(voided_at__isnull=True),
                 name='unique_payment_reference_per_method',
             ),
         ]

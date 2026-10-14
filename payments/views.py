@@ -9,18 +9,20 @@ from django.db.models import Sum
 from django.http import JsonResponse
 from django.shortcuts import get_object_or_404, redirect, render
 from django.urls import reverse, reverse_lazy
+from django.utils import timezone
 from django.views.decorators.csrf import csrf_exempt
 from django.views.decorators.http import require_POST
 from django.views.generic import CreateView, ListView
 
 from accounts.verification import is_verified
+from audit import log as audit
 from rentals.crud_views import FormPageMixin
 from rentals.mixins import OwnedMixin
 from rentals.models import Lease
 
 from . import mpesa
-from .forms import AssignC2BForm, ManualPaymentForm, MpesaAccountForm, StkPushForm
-from .models import C2BPayment, MpesaAccount, Payment
+from .forms import AssignC2BForm, ManualPaymentForm, MovePaymentForm, MpesaAccountForm, StkPushForm, VoidForm
+from .models import C2BPayment, MpesaAccount, MpesaTransaction, Payment
 
 logger = logging.getLogger(__name__)
 
@@ -114,6 +116,11 @@ def mpesa_settings(request):
                 account = form.save(commit=False)
                 account.owner = request.user
                 account.save()
+                audit.record(
+                    owner=request.user, actor=request.user, action='mpesa.settings_changed',
+                    summary=f'Changed M-Pesa settings ({account.get_payment_type_display()} {account.pay_number}).',
+                    changes=audit.form_changes(form),
+                )
                 messages.success(request, 'M-Pesa settings saved. Next, test the connection.')
                 return redirect('payments:mpesa_settings')
         elif account is None:
@@ -188,6 +195,8 @@ class PaymentList(OwnedMixin, ListView):
 
 class PaymentCreate(OwnedMixin, FormPageMixin, CreateView):
     model = Payment
+    audit_action = 'payment.recorded'
+    audit_summary = 'Recorded {obj.method} payment of KES {obj.amount:,.2f} from {obj.lease.tenant}.'
     form_class = ManualPaymentForm
     owner_path = 'lease__unit__property__owner'
     page_title = 'Record a payment'
@@ -237,7 +246,89 @@ def assign_unmatched(request, pk):
             c2b.lease = form.cleaned_data['lease']
             mpesa.apply_c2b_payment(c2b)
             c2b.save()
+        audit.record(
+            owner=request.user, actor=request.user, lease=c2b.lease, action='payment.assigned',
+            summary=f'Assigned unmatched M-Pesa payment {c2b.trans_id} (KES {c2b.amount:,.2f}) to {c2b.lease.tenant}.',
+        )
         messages.success(request, f'Assigned KES {c2b.amount:,.0f} ({c2b.trans_id}) to {c2b.lease.tenant}.')
     else:
         messages.error(request, 'Choose a tenant to assign this payment to.')
     return redirect('payments:unmatched_list')
+
+
+def _owned_payment(request, pk):
+    return get_object_or_404(
+        Payment.objects.select_related('lease__tenant', 'lease__unit__property'),
+        pk=pk, lease__unit__property__owner=request.user,
+    )
+
+
+@login_required
+def payment_void(request, pk):
+    """Void a cash/bank payment entered by mistake. It stays in the history, marked voided."""
+    payment = _owned_payment(request, pk)
+    back = reverse('rentals:lease_detail', args=[payment.lease_id])
+    if payment.method == Payment.Method.MPESA:
+        messages.error(request, "M-Pesa payments can't be voided because the money really arrived. "
+                                'Move it to the right tenant instead.')
+        return redirect(back)
+    form = VoidForm(request.POST or None)
+    if request.method == 'POST' and form.is_valid():
+        payment.void(request.user, form.cleaned_data['reason'])
+        audit.record(
+            owner=request.user, actor=request.user, lease=payment.lease, action='payment.voided',
+            summary=f'Voided {payment.get_method_display()} payment of KES {payment.amount:,.2f} '
+                    f'from {payment.lease.tenant}: {form.cleaned_data["reason"]}',
+        )
+        messages.success(request, f'Voided the KES {payment.amount:,.0f} payment. Their balance has been updated.')
+        return redirect(back)
+    return render(request, 'form_page.html', {
+        'form': form, 'page_title': 'Void payment', 'submit_label': 'Void payment', 'cancel_url': back,
+        'intro': f'{payment.get_method_display()} payment of KES {payment.amount:,.2f} from {payment.lease.tenant} '
+                 f'on {timezone.localtime(payment.paid_at):%d %b %Y}. It will no longer count towards their balance.',
+    })
+
+
+@login_required
+def payment_move(request, pk):
+    """Move a payment (usually M-Pesa) to the lease it was really meant for."""
+    payment = _owned_payment(request, pk)
+    old_lease = payment.lease
+    back = reverse('rentals:lease_detail', args=[old_lease.pk])
+    form = MovePaymentForm(request.POST or None, owner=request.user, exclude_lease=old_lease)
+    if request.method == 'POST' and form.is_valid():
+        new_lease = form.cleaned_data['lease']
+        with transaction.atomic():
+            payment.lease = new_lease
+            payment.save(update_fields=['lease'])
+            C2BPayment.objects.filter(payment=payment).update(lease=new_lease)
+        summary = (f'Moved payment {payment.reference or payment.pk} of KES {payment.amount:,.2f} '
+                   f'from {old_lease.tenant} to {new_lease.tenant}: {form.cleaned_data["reason"]}')
+        for lease in (old_lease, new_lease):
+            audit.record(owner=request.user, actor=request.user, lease=lease, action='payment.moved', summary=summary)
+        messages.success(request, f'Moved KES {payment.amount:,.0f} to {new_lease.tenant}.')
+        return redirect('rentals:lease_detail', pk=new_lease.pk)
+    return render(request, 'form_page.html', {
+        'form': form, 'page_title': 'Move payment', 'submit_label': 'Move payment', 'cancel_url': back,
+        'intro': f'{payment.get_method_display()} payment {payment.reference} of KES {payment.amount:,.2f}, currently '
+                 f'credited to {old_lease.tenant}. Choose who actually paid.',
+    })
+
+
+@login_required
+@require_POST
+def stk_check(request, pk):
+    """Manually ask Safaricom about one pending STK prompt."""
+    txn = get_object_or_404(MpesaTransaction, pk=pk, lease__unit__property__owner=request.user)
+    try:
+        txn = mpesa.query_stk_status(txn)
+    except mpesa.MpesaError as exc:
+        messages.error(request, f"Couldn't check with Safaricom: {exc}")
+    else:
+        if txn.status == MpesaTransaction.Status.SUCCESS:
+            messages.success(request, f'Paid. KES {txn.amount:,.0f} has been credited to {txn.lease.tenant}.')
+        elif txn.status == MpesaTransaction.Status.FAILED:
+            messages.info(request, f'Not paid: {txn.result_desc or "the prompt failed"}.')
+        else:
+            messages.info(request, 'Still waiting for the tenant to respond on their phone.')
+    return redirect('rentals:lease_detail', pk=txn.lease_id)

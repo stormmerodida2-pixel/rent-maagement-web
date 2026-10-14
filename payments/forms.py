@@ -92,3 +92,24 @@ class AssignC2BForm(forms.Form):
         self.fields['lease'].queryset = (
             Lease.objects.filter(unit__property__owner=owner).select_related('tenant', 'unit__property')
         )
+
+
+class VoidForm(forms.Form):
+    reason = forms.CharField(
+        max_length=200, label='Why are you voiding this?',
+        help_text='Kept in the activity log, e.g. "Entered twice" or "Wrong amount, re-entered".',
+    )
+
+
+class MovePaymentForm(forms.Form):
+    """Move an M-Pesa payment to the tenant who actually paid. M-Pesa money is real, so it's moved, never voided."""
+
+    lease = forms.ModelChoiceField(queryset=Lease.objects.none(), label='Move to', empty_label='Choose the tenant who paid')
+    reason = forms.CharField(max_length=200, help_text='e.g. "Paid for her sister in B2".')
+
+    def __init__(self, *args, owner, exclude_lease, **kwargs):
+        super().__init__(*args, **kwargs)
+        self.fields['lease'].queryset = (
+            Lease.objects.filter(unit__property__owner=owner).exclude(pk=exclude_lease.pk)
+            .select_related('tenant', 'unit__property')
+        )

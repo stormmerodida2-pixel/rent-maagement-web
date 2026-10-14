@@ -22,6 +22,7 @@
       <div class="nav-section">Money</div>
       <a href="{% url 'payments:payment_list' %}" class="{% if url_name == 'payment_list' or url_name == 'payment_create' or url_name == 'unmatched_list' %}active{% endif %}">{% icon 'wallet' %}Payments{% if nav_unmatched_c2b %}<span class="count" title="Unmatched M-Pesa payments">{{ nav_unmatched_c2b }}</span>{% endif %}</a>
       <a href="{% url 'reports:overview' %}" class="{% if app == 'reports' %}active{% endif %}">{% icon 'chart' %}Reports</a>
+      <a href="{% url 'audit:activity' %}" class="{% if app == 'audit' %}active{% endif %}">{% icon 'file' %}Activity</a>
       <a href="{% url 'notifications:sms_list' %}" class="{% if app == 'notifications' %}active{% endif %}">{% icon 'message' %}SMS log</a>
 
       <div class="nav-section">Settings</div>

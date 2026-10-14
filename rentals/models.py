@@ -10,6 +10,7 @@ from django.core.validators import MaxValueValidator, MinValueValidator
 from django.db import models
 from django.db.models import Q, Sum
 from django.urls import reverse
+from django.utils import timezone
 
 from .phone import normalize_phone
 
@@ -51,6 +52,39 @@ class Unit(models.Model):
 
     def active_lease(self):
         return self.leases.filter(is_active=True).select_related('tenant').first()
+
+
+class ActiveManager(models.Manager):
+    """Default manager for money records: voided rows are invisible to balances, reports and lists."""
+
+    def get_queryset(self):
+        return super().get_queryset().filter(voided_at__isnull=True)
+
+
+class Voidable(models.Model):
+    """Money records are never deleted, only voided with a reason, so the history stays complete."""
+
+    voided_at = models.DateTimeField(null=True, blank=True)
+    voided_by = models.ForeignKey(
+        settings.AUTH_USER_MODEL, on_delete=models.SET_NULL, null=True, blank=True, related_name='+',
+    )
+    void_reason = models.CharField(max_length=200, blank=True)
+
+    objects = ActiveManager()
+    all_objects = models.Manager()
+
+    class Meta:
+        abstract = True
+
+    @property
+    def is_voided(self):
+        return self.voided_at is not None
+
+    def void(self, user, reason):
+        self.voided_at = timezone.now()
+        self.voided_by = user
+        self.void_reason = reason[:200]
+        self.save(update_fields=['voided_at', 'voided_by', 'void_reason'])
 
 
 def new_portal_token():
@@ -185,11 +219,12 @@ class Lease(models.Model):
         last_day = calendar.monthrange(period.year, period.month)[1]
         due_date = period.replace(day=min(self.due_day, last_day))
         if self.service_charge:
-            RentCharge.objects.get_or_create(
+            RentCharge.all_objects.get_or_create(
                 lease=self, period=period, kind=RentCharge.Kind.SERVICE,
                 defaults={'amount': self.service_charge, 'due_date': due_date},
             )
-        return RentCharge.objects.get_or_create(
+        # all_objects: a voided monthly charge means "don't bill this month", not "bill it again".
+        return RentCharge.all_objects.get_or_create(
             lease=self, period=period, kind=RentCharge.Kind.RENT,
             defaults={'amount': self.monthly_rent, 'due_date': due_date},
         )
@@ -204,7 +239,7 @@ class Lease(models.Model):
             return None
         if self.balance <= 0:
             return None
-        charge, created = RentCharge.objects.get_or_create(
+        charge, created = RentCharge.all_objects.get_or_create(
             lease=self, period=rent.period, kind=RentCharge.Kind.LATE_FEE,
             defaults={'amount': self.late_fee, 'due_date': today,
                       'description': f'Late fee for {rent.period:%B %Y}'},
@@ -228,7 +263,7 @@ class Lease(models.Model):
         ).aggregate(total=Sum('amount'))['total'] or Decimal('0')
 
 
-class RentCharge(models.Model):
+class RentCharge(Voidable):
     """A line on a tenant's account: rent, utilities, fees, deposit, or a credit (negative amount)."""
 
     class Kind(models.TextChoices):

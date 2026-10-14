@@ -424,3 +424,13 @@ label, .label { display: block; font-size: 13px; font-weight: 500; color: var(--
   @page { margin: 16mm; }
 }
 @media (max-width: 600px) { .doc { padding: 24px 18px; border-radius: 0; } }
+
+/* ---- Row actions, voided rows, timeline ----------------------------------------------- */
+
+.row-actions { display: flex; gap: 10px; margin-top: 2px; font-size: 12px; }
+.row-actions a { color: var(--muted); }
+.row-actions a:hover { color: var(--brand); }
+.voided-row td { color: var(--muted); }
+.timeline { list-style: none; margin: 0; padding: 4px 18px 14px; }
+.timeline li { position: relative; padding: 10px 0 10px 18px; border-left: 2px solid var(--border); }
+.timeline li::before { content: ""; position: absolute; left: -6px; top: 15px; width: 10px; height: 10px; border-radius: 50%; background: var(--surface); border: 2px solid var(--brand); }

@@ -16,6 +16,7 @@ Built with Django. Landlords sign up themselves and do everything in the app. Th
 | `/payments/` | All payments, record cash/bank payments, assign unmatched M-Pesa payments |
 | `/maintenance/` | Repairs by status and priority |
 | `/reports/` | Monthly billed vs collected per property, 12-month trend, CSV exports |
+| `/activity/` | Activity log: who changed what, with before/after values |
 | `/messages/` | SMS log |
 | `/payments/settings/` | Connect the landlord's own M-Pesa Paybill/Till |
 | `/t/<token>/` | Tenant's private self-service page (mobile-first) |
@@ -54,6 +55,7 @@ Suggested cron (server time):
 ```cron
 0 6 * * *  cd /path/to/app && venv/bin/python manage.py generate_rent_charges
 0 9 * * *  cd /path/to/app && venv/bin/python manage.py send_rent_reminders
+*/5 * * * * cd /path/to/app && venv/bin/python manage.py check_pending_stk
 ```
 
 ### Charges, fees and deposits
@@ -68,6 +70,22 @@ A tenant's balance is everything charged minus everything paid. Charges can be:
 - **One-off charges and credits** from **Add charge** on a lease, e.g. a repair the tenant caused. A negative amount is a credit.
 
 **Move-out** (End lease) settles the deposit. It records any deductions (with a reason the tenant can see) and applies the deposit held against what's owed. It then tells you whether the tenant still owes money or is due a refund. Tick "I've already paid back any refund" to close the account at zero.
+
+### Correcting mistakes
+
+Money records are never deleted, so the history always adds up:
+
+- **Void** a cash/bank payment or a charge from the lease statement, giving a reason. It stops counting towards the balance and reports, and is listed under **Voided** on the lease page. A voided monthly charge (rent, service charge, late fee) isn't billed again for that month. To bill a corrected amount, use **Add charge**.
+- **M-Pesa payments can't be voided**, because the money really arrived. **Move** them to the tenant who actually paid.
+- Every change is recorded in the **Activity** log with who did it, when, and the before/after values. M-Pesa secrets are masked. The log can't be edited.
+
+### Stuck M-Pesa prompts
+
+If Safaricom's STK callback never arrives, `check_pending_stk` (every 5 minutes) asks Safaricom what happened to prompts pending for more than 2 minutes. There's also a **Check status** button on the lease page.
+
+- **Paid:** the tenant is credited. Safaricom's status answer doesn't include the receipt number, so the payment shows "receipt pending" until the callback or Paybill confirmation arrives. That later confirmation fills in the receipt on the same payment instead of crediting the tenant twice.
+- **Cancelled or failed:** the prompt is marked failed with Safaricom's reason.
+- **No answer after 24 hours:** marked failed.
 
 ### Statements, receipts and exports
 

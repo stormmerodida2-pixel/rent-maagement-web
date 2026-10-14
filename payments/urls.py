@@ -14,6 +14,9 @@ urlpatterns = [
     path('settings/', views.mpesa_settings, name='mpesa_settings'),
     path('', views.PaymentList.as_view(), name='payment_list'),
     path('new/', views.PaymentCreate.as_view(), name='payment_create'),
+    path('<int:pk>/void/', views.payment_void, name='payment_void'),
+    path('stk/<int:pk>/check/', views.stk_check, name='stk_check'),
+    path('<int:pk>/move/', views.payment_move, name='payment_move'),
     path('unmatched/', views.UnmatchedList.as_view(), name='unmatched_list'),
     path('unmatched/<int:pk>/assign/', views.assign_unmatched, name='assign_unmatched'),
 ]
