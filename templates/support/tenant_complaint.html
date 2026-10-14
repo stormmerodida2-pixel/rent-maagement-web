@@ -1,5 +1,5 @@
 {% extends 'support/tenant_base.html' %}
-{% load ui %}
+{% load i18n ui %}
 {% block title %}{{ complaint.subject }} · {{ APP_NAME }}{% endblock %}
 {% block tenant_content %}
 <div><h1>{{ complaint.subject }}</h1><p class="muted">{{ complaint.get_category_display }} · {% badge complaint.status complaint.get_status_display %}</p></div>
@@ -8,9 +8,9 @@
   <div class="card-body">
     <form method="post" novalidate>{% csrf_token %}
       {% include 'includes/form_fields.html' %}
-      <button class="btn btn-primary btn-block" style="margin-top:12px">Send reply</button>
+      <button class="btn btn-primary btn-block" style="margin-top:12px">{% translate "Send reply" %}</button>
     </form>
-    {% if complaint.status == 'resolved' %}<p class="helptext">Your landlord marked this resolved. Replying opens it again.</p>{% endif %}
+    {% if complaint.status == 'resolved' %}<p class="helptext">{% translate "Your landlord marked this resolved. Replying opens it again." %}</p>{% endif %}
   </div>
 </section>
 {% endblock %}

@@ -10,8 +10,10 @@ from django.http import HttpResponse
 from django.shortcuts import get_object_or_404, render
 from django.templatetags.static import static
 from django.urls import reverse
+from django.utils.translation import gettext
 from django.views.decorators.cache import cache_control
 
+from rentals.i18n import tenant_language
 from rentals.models import Tenant
 
 THEME = '#0e7a4b'
@@ -58,11 +60,15 @@ def tenant_manifest(request, token):
     """A tenant's own app: opens straight on their private rent page, never the landlord login."""
     tenant = get_object_or_404(Tenant, portal_token=token)
     home = reverse('rentals:tenant_portal', args=[token])
+    with tenant_language(tenant):
+        short_name = gettext('My rent')
+        description = gettext('Rent, payments and repairs for %(name)s.') % {'name': tenant.full_name.split()[0]}
     return _manifest_response({
         'id': home,
-        'name': f'My rent · {settings.APP_NAME}',
-        'short_name': 'My rent',
-        'description': f'Rent, payments and repairs for {tenant.full_name.split()[0]}.',
+        'lang': tenant.language,
+        'name': f'{short_name} · {settings.APP_NAME}',
+        'short_name': short_name,
+        'description': description,
         'start_url': home,
         'scope': home,
         'display': 'standalone',

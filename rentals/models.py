@@ -11,6 +11,9 @@ from django.db import models
 from django.db.models import Q, Sum
 from django.urls import reverse
 from django.utils import timezone
+from django.utils.formats import date_format
+from django.utils.translation import gettext
+from django.utils.translation import gettext_lazy as _
 
 from payments.fields import EncryptedTextField
 
@@ -102,6 +105,10 @@ class Tenant(models.Model):
     email = models.EmailField(blank=True)
     # Encrypted at rest (personal data under the Data Protection Act); can't be searched.
     id_number = EncryptedTextField('national ID / passport', blank=True)
+    language = models.CharField(
+        max_length=2, choices=settings.LANGUAGES, default='en',
+        help_text='The language they read best. Their SMS, receipts and rent page use it.',
+    )
     portal_token = models.CharField(
         max_length=32, unique=True, default=new_portal_token, editable=False,
         help_text='Secret part of the tenant\'s self-service link.',
@@ -266,19 +273,41 @@ class Lease(models.Model):
         ).aggregate(total=Sum('amount'))['total'] or Decimal('0')
 
 
+# Descriptions the app writes itself (stored in English) and their translatable forms.
+# Descriptions a landlord types in are shown as written.
+_FIXED_DESCRIPTIONS = {
+    'Deposit': _('Deposit'),
+    'Move-out deduction': _('Move-out deduction'),
+    'Deposit applied at move-out': _('Deposit applied at move-out'),
+    'Deposit refund paid to tenant': _('Deposit refund paid to tenant'),
+}
+_WATER_DESCRIPTION = re.compile(r'^Water (?P<used>\S+) units \((?P<start>\S+) → (?P<end>\S+)\) @ KES (?P<rate>\S+)$')
+_DEDUCTION_DESCRIPTION = re.compile(r'^Move-out deduction: (?P<reason>.+)$', re.S)
+
+
+def translate_description(text):
+    if text in _FIXED_DESCRIPTIONS:
+        return str(_FIXED_DESCRIPTIONS[text])
+    if m := _WATER_DESCRIPTION.match(text):
+        return gettext('Water %(used)s units (%(start)s → %(end)s) @ KES %(rate)s') % m.groupdict()
+    if m := _DEDUCTION_DESCRIPTION.match(text):
+        return gettext('Move-out deduction: %(reason)s') % m.groupdict()
+    return text
+
+
 class RentCharge(Voidable):
     """A line on a tenant's account: rent, utilities, fees, deposit, or a credit (negative amount)."""
 
     class Kind(models.TextChoices):
-        RENT = 'rent', 'Rent'
-        SERVICE = 'service', 'Service charge'
-        WATER = 'water', 'Water'
-        LATE_FEE = 'late_fee', 'Late fee'
-        DEPOSIT = 'deposit', 'Deposit'
-        DEPOSIT_APPLIED = 'deposit_applied', 'Deposit applied'
-        DEDUCTION = 'deduction', 'Move-out deduction'
-        REFUND = 'refund', 'Refund paid to tenant'
-        OTHER = 'other', 'Other'
+        RENT = 'rent', _('Rent')
+        SERVICE = 'service', _('Service charge')
+        WATER = 'water', _('Water')
+        LATE_FEE = 'late_fee', _('Late fee')
+        DEPOSIT = 'deposit', _('Deposit')
+        DEPOSIT_APPLIED = 'deposit_applied', _('Deposit applied')
+        DEDUCTION = 'deduction', _('Move-out deduction')
+        REFUND = 'refund', _('Refund paid to tenant')
+        OTHER = 'other', _('Other')
 
     # Kinds billed at most once per lease per month.
     MONTHLY_KINDS = [Kind.RENT, Kind.SERVICE, Kind.LATE_FEE]
@@ -306,11 +335,13 @@ class RentCharge(Voidable):
 
     @property
     def label(self):
+        """What the charge is for, in the active language (tenants may read Kiswahili)."""
         if self.description:
-            return self.description
+            return translate_description(self.description)
+        month = date_format(self.period, 'F Y')
         if self.kind == self.Kind.RENT:
-            return f'Rent for {self.period:%B %Y}'
-        return f'{self.get_kind_display()} for {self.period:%B %Y}'
+            return gettext('Rent for %(month)s') % {'month': month}
+        return gettext('%(kind)s for %(month)s') % {'kind': self.get_kind_display(), 'month': month}
 
     @property
     def is_overdue(self):

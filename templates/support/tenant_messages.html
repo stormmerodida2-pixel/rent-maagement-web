@@ -1,20 +1,20 @@
 {% extends 'support/tenant_base.html' %}
-{% load ui %}
-{% block title %}Messages · {{ APP_NAME }}{% endblock %}
+{% load i18n ui %}
+{% block title %}{% translate "Messages" %} · {{ APP_NAME }}{% endblock %}
 {% block tenant_content %}
-<h1>Message your landlord</h1>
-<p class="muted">For complaints and questions about rent, neighbours, security or services. For repairs, use "Report a problem" on your rent page.</p>
+<h1>{% translate "Message your landlord" %}</h1>
+<p class="muted">{% translate 'For complaints and questions about rent, neighbours, security or services. For repairs, use "Report a problem" on your rent page.' %}</p>
 <section class="card">
   <div class="card-body">
     <form method="post" novalidate>{% csrf_token %}
       {% include 'includes/form_fields.html' %}
-      <button class="btn btn-primary btn-block" style="margin-top:16px">Send message</button>
+      <button class="btn btn-primary btn-block" style="margin-top:16px">{% translate "Send message" %}</button>
     </form>
   </div>
 </section>
 {% if complaints %}
 <section class="card">
-  <div class="card-header"><h2>My messages</h2></div>
+  <div class="card-header"><h2>{% translate "My messages" %}</h2></div>
   <table class="table"><tbody>
     {% for c in complaints %}
     <tr><td><a href="{% url 'support:tenant_complaint' tenant.portal_token c.pk %}"><strong>{{ c.subject }}</strong></a>

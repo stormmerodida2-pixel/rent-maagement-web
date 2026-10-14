@@ -18,7 +18,7 @@
       <tbody>
       {% for tenant, lease in rows %}
       <tr>
-        <td><div class="who"><span class="avatar">{{ tenant.full_name|initials }}</span><div><div class="name">{{ tenant.full_name }}</div>{% if tenant.email %}<div class="meta">{{ tenant.email }}</div>{% endif %}</div></div></td>
+        <td><div class="who"><span class="avatar">{{ tenant.full_name|initials }}</span><div><div class="name">{{ tenant.full_name }}{% if tenant.language == 'sw' %} <span class="badge" title="Their SMS and rent page are in Kiswahili">Kiswahili</span>{% endif %}</div>{% if tenant.email %}<div class="meta">{{ tenant.email }}</div>{% endif %}</div></div></td>
         <td class="nowrap">{{ tenant.phone }}</td>
         <td>{% if lease %}<a href="{% url 'rentals:lease_detail' lease.pk %}">{{ lease.unit }}</a>{% else %}<span class="badge">No active lease</span>{% endif %}</td>
         <td class="num nowrap">

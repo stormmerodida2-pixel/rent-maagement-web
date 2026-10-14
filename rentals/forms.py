@@ -78,14 +78,18 @@ class UnitForm(forms.ModelForm):
 class TenantForm(OwnedForm):
     class Meta:
         model = Tenant
-        fields = ['full_name', 'phone', 'email', 'id_number']
-        labels = {'phone': 'M-Pesa phone number'}
+        fields = ['full_name', 'phone', 'language', 'email', 'id_number']
+        labels = {'phone': 'M-Pesa phone number', 'language': 'Language for SMS and their rent page'}
         help_texts = {'id_number': 'Stored encrypted.'}
         widgets = {'phone': forms.TextInput(attrs={'inputmode': 'tel', 'placeholder': '0712 345 678'})}
 
     def __init__(self, *args, **kwargs):
         super().__init__(*args, **kwargs)
         self.instance.owner = self.owner
+        self.fields['language'].required = False  # English unless chosen
+
+    def clean_language(self):
+        return self.cleaned_data.get('language') or 'en'
 
 
 class LeaseForm(OwnedForm):

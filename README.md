@@ -226,6 +226,13 @@ docker compose exec web python manage.py check --deploy
 - **Monthly report card:** on the 1st, at 07:00, landlords get last month's results by email: collected against billed, arrears, the tenants owing most, occupancy and repairs, compared with the month before. An optional short SMS goes to the phone number set under **Notifications**. It's sent once per landlord per month (a missed day catches up), skips months with no activity, and only emails confirmed addresses. **Send me last month's report now** previews it.
 - **Install on phones (PWA):** landlords get an **Install app** button in the menu, and the app opens on the dashboard. Tenants can install their own rent page, which opens straight to it. iPhones show "Share → Add to Home Screen" instructions. The service worker only caches static files and an offline page; pages and data are never stored on the device. Installing needs HTTPS, which the production setup provides; `localhost` also works for testing.
 
+### English or Kiswahili for each tenant
+
+- When adding or editing a tenant, choose **Language for SMS and their rent page**: English or Kiswahili. Tenants marked Kiswahili get their rent reminders, payment receipts, reply alerts, rent page, messages, receipts and statements in Kiswahili only. A receipt or statement prints in the tenant's language even when you print it yourself.
+- Announcements have an optional **Kiswahili title and message**. Kiswahili readers get that version, and everyone else gets the English. If you leave it blank, the preview tells you how many Kiswahili readers will get the English.
+- The landlord side stays in English.
+- Translations live in `locale/sw/LC_MESSAGES/django.po`. After changing tenant-facing text, run `python manage.py makemessages -l sw --ignore='venv/*' --no-location --no-wrap`, fill in the new `msgstr` lines, then run `python manage.py compilemessages` (needs GNU gettext: `sudo apt install gettext`) and commit both files. A test fails if any string is untranslated or the `.mo` is out of date. The Kiswahili was written for this app; have a native speaker review it before launch.
+
 ### Privacy policy and terms
 
 - `/privacy/` and `/terms/` are written for Kenya's Data Protection Act, 2019. Landlords are the data controllers for their tenants' data, and the platform is their processor. **They are a first draft: have an advocate review them before launch.**

@@ -1,4 +1,5 @@
 {% extends 'base.html' %}
+{% load i18n %}
 {% block manifest %}<link rel="manifest" href="{% url 'tenant_manifest' tenant.portal_token %}">{% endblock %}
 
 {% block body %}
@@ -8,7 +9,7 @@
   {% include 'includes/theme_switch.html' %}
 </header>
 <main class="narrow stack">
-  <a class="small" href="{% url 'rentals:tenant_portal' tenant.portal_token %}">← Back to my rent</a>
+  <a class="small" href="{% url 'rentals:tenant_portal' tenant.portal_token %}">← {% translate "Back to my rent" %}</a>
   {% include 'includes/messages.html' %}
   {% block tenant_content %}{% endblock %}
 </main>

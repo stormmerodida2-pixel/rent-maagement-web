@@ -4,6 +4,7 @@ from django.conf import settings
 from django.core.exceptions import ValidationError
 from django.db import models
 from django.utils import timezone
+from django.utils.translation import gettext_lazy as _
 
 from rentals.models import Lease, Voidable
 
@@ -77,9 +78,9 @@ class MpesaAccount(models.Model):
 
 class Payment(Voidable):
     class Method(models.TextChoices):
-        MPESA = 'mpesa', 'M-Pesa'
-        CASH = 'cash', 'Cash'
-        BANK = 'bank', 'Bank transfer'
+        MPESA = 'mpesa', _('M-Pesa')
+        CASH = 'cash', _('Cash')
+        BANK = 'bank', _('Bank transfer')
 
     lease = models.ForeignKey(Lease, on_delete=models.PROTECT, related_name='payments')
     amount = models.DecimalField(max_digits=10, decimal_places=2)

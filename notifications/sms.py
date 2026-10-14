@@ -6,8 +6,11 @@ from concurrent.futures import ThreadPoolExecutor
 
 import requests
 from django.conf import settings
+from django.utils.formats import date_format
+from django.utils.translation import gettext as _
 
 from payments.models import MpesaAccount
+from rentals.i18n import tenant_language
 from rentals.phone import normalize_phone
 
 from .models import SmsMessage
@@ -151,24 +154,27 @@ def _kes(amount):
 
 
 def reminder_text(lease, balance):
-    latest = lease.charges.order_by('-period').first()
-    when = ''
-    if latest:
-        when = (
-            f', due {latest.due_date:%d %b}' if latest.due_date >= datetime.date.today()
-            else ', now overdue'
-        )
-    account = MpesaAccount.objects.filter(owner_id=lease.unit.property.owner_id).first()
-    if account is None or not account.is_complete():
-        how = 'Pay online'
-    elif account.is_till:
-        how = f'Pay via M-Pesa Till {account.pay_number}, or online'
-    else:
-        how = f'Pay via M-Pesa Paybill {account.pay_number}, account {lease.account_number}, or online'
-    return (
-        f'Hi {lease.tenant.full_name.split()[0]}, your rent balance for {lease.unit.label} is '
-        f'{_kes(balance)}{when}. {how}: {lease.tenant.portal_url()}'
-    )
+    """The reminder SMS, in the tenant's language."""
+    with tenant_language(lease.tenant):
+        latest = lease.charges.order_by('-period').first()
+        when = ''
+        if latest:
+            when = (
+                _(', due %(date)s') % {'date': date_format(latest.due_date, 'd M')}
+                if latest.due_date >= datetime.date.today() else _(', now overdue')
+            )
+        account = MpesaAccount.objects.filter(owner_id=lease.unit.property.owner_id).first()
+        if account is None or not account.is_complete():
+            how = _('Pay online')
+        elif account.is_till:
+            how = _('Pay via M-Pesa Till %(till)s, or online') % {'till': account.pay_number}
+        else:
+            how = _('Pay via M-Pesa Paybill %(paybill)s, account %(account)s, or online') % {
+                'paybill': account.pay_number, 'account': lease.account_number}
+        return _('Hi %(name)s, your rent balance for %(unit)s is %(balance)s%(when)s. %(how)s: %(link)s') % {
+            'name': lease.tenant.full_name.split()[0], 'unit': lease.unit.label, 'balance': _kes(balance),
+            'when': when, 'how': how, 'link': lease.tenant.portal_url(),
+        }
 
 
 def send_rent_reminder(lease, balance=None):
@@ -176,16 +182,24 @@ def send_rent_reminder(lease, balance=None):
     return send_sms(lease.tenant.phone, reminder_text(lease, balance), lease, SmsMessage.Kind.REMINDER)
 
 
+def receipt_text(payment, balance):
+    """The payment receipt SMS, in the tenant's language."""
+    lease = payment.lease
+    with tenant_language(lease.tenant):
+        if balance > 0:
+            status = _('Balance: %(amount)s.') % {'amount': _kes(balance)}
+        elif balance < 0:
+            status = _('You are %(amount)s in credit.') % {'amount': _kes(-balance)}
+        else:
+            status = _('You are fully paid up.')
+        return _('Received %(amount)s (M-Pesa %(reference)s) for %(unit)s. Thank you! %(status)s') % {
+            'amount': _kes(payment.amount), 'reference': payment.reference, 'unit': lease.unit.label,
+            'status': status,
+        }
+
+
 def send_payment_receipt(payment):
     if not settings.SMS['PAYMENT_RECEIPTS']:
         return None
     lease = payment.lease
-    balance = lease.balance
-    status = f'Balance: {_kes(balance)}.' if balance > 0 else (
-        f'You are {_kes(-balance)} in credit.' if balance < 0 else 'You are fully paid up.'
-    )
-    body = (
-        f'Received {_kes(payment.amount)} (M-Pesa {payment.reference}) for {lease.unit.label}. '
-        f'Thank you! {status}'
-    )
-    return send_sms(lease.tenant.phone, body, lease, SmsMessage.Kind.RECEIPT)
+    return send_sms(lease.tenant.phone, receipt_text(payment, lease.balance), lease, SmsMessage.Kind.RECEIPT)

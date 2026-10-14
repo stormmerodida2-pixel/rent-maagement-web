@@ -21,6 +21,16 @@
       <div class="card-body"><div class="bubble-msg" style="max-width:100%"><div class="body">{{ sms_text }}</div></div>
         <p class="helptext">{{ sms_text|length }} characters · {{ sms_parts }} SMS part{{ sms_parts|pluralize }} per tenant.</p></div>
     </section>
+    {% if a.has_swahili %}
+    <section class="card">
+      <div class="card-header"><h2>Kiswahili version</h2><span class="muted small">for tenants set to Kiswahili</span></div>
+      <div class="card-body stack">
+        <div class="notice-card{% if a.pinned %} pinned{% endif %}"><strong>{{ a.title_sw }}</strong><p>{{ a.body_sw|linebreaksbr }}</p></div>
+        {% if a.send_sms %}<div class="bubble-msg" style="max-width:100%"><div class="body">{{ sms_text_sw }}</div></div>
+        <p class="helptext">{{ sms_text_sw|length }} characters · {{ sms_parts_sw }} SMS part{{ sms_parts_sw|pluralize }} per tenant.</p>{% endif %}
+      </div>
+    </section>
+    {% endif %}
   </div>
 
   <div class="stack">
@@ -30,6 +40,7 @@
       <div class="card-body stack">
         <p><strong>{{ recipients|length }} tenant{{ recipients|length|pluralize }}</strong> will get this{% if a.send_sms %}, about <strong>{{ recipients|length }} × {{ sms_parts }} SMS ≈ KES {{ estimated_cost|floatformat:2 }}</strong>{% endif %}.</p>
         {% if not recipients %}<div class="alert alert-warning small">No active tenants match. Check who it's for.</div>{% endif %}
+        {% if swahili_readers and not a.has_swahili %}<div class="alert alert-info small">{{ swahili_readers }} of them read{{ swahili_readers|pluralize:"s," }} Kiswahili. {% if a.status == 'draft' %}<a href="{% url 'announcements:update' a.pk %}">Add a Kiswahili version</a>, or they'll get the English.{% else %}They'll get the English.{% endif %}</div>{% endif %}
         {% if a.status == 'draft' %}
         <form method="post" class="row">{% csrf_token %}
           <button name="action" value="send" class="btn btn-primary" {% if not recipients %}disabled{% endif %}>
