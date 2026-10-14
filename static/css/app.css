@@ -78,9 +78,11 @@
 }
 
 /* Dark-mode logo artwork, with the same rules as the colour tokens. */
-:root[data-theme="dark"] .logo { background-image: url("../img/logo-dark.jpeg"); }
+:root[data-theme="dark"] .logo { background-image: url("../img/logo-dark.jpeg"); aspect-ratio: 606 / 546; }
 @media (prefers-color-scheme: dark) {
-  :root:not([data-theme="light"]):not([data-theme="dark"]) .logo { background-image: url("../img/logo-dark.jpeg"); }
+  :root:not([data-theme="light"]):not([data-theme="dark"]) .logo {
+    background-image: url("../img/logo-dark.jpeg"); aspect-ratio: 606 / 546;
+  }
 }
 
 /* ---- Base ---------------------------------------------------------------- */
@@ -220,17 +222,18 @@ label, .label { display: block; font-size: 13px; font-weight: 500; color: var(--
 }
 .brand { display: flex; align-items: center; gap: 10px; font-weight: 650; font-size: 16px; color: var(--text); padding: 4px 8px 18px; }
 .brand:hover { text-decoration: none; }
-/* The logo is the brand artwork exactly as supplied (static/img/logo-light.jpeg / logo-dark.jpeg).
-   It's a background image so the browser downloads only the file for the current theme. */
+/* The logo is the brand artwork exactly as supplied: static/img/logo.jpeg in light mode and
+   logo-dark.jpeg in dark mode. Each box takes its image's own proportions, so the whole image shows,
+   uncropped and undistorted. It's a background so only the current theme's file is downloaded. */
 .logo {
-  display: inline-block; flex: none; height: 56px; aspect-ratio: 609 / 567; border-radius: 8px;
-  background: url("../img/logo-light.jpeg") center / contain no-repeat;
+  display: inline-block; flex: none; height: 56px; aspect-ratio: 1408 / 768;
+  background: url("../img/logo.jpeg") center / contain no-repeat;
 }
-.logo-lg { height: 150px; border-radius: 14px; }
+.logo-lg { height: 150px; }
 .auth-logo { text-align: center; margin: -8px 0 18px; }
 .footer-logo .logo { height: 72px; }
-.topbar .logo, .site-nav .logo { height: 48px; }
-.sidebar .logo { height: 112px; }
+.topbar .logo, .site-nav .logo { height: 64px; }
+.sidebar .logo { height: 118px; }
 @media (max-width: 900px) { .sidebar .logo { height: 48px; } }
 .nav-section { font-size: 11px; text-transform: uppercase; letter-spacing: .06em; color: var(--muted); padding: 14px 10px 6px; }
 .nav a {
@@ -447,7 +450,7 @@ label, .label { display: block; font-size: 13px; font-weight: 500; color: var(--
 .doc .table th { background: #f2f4f7; color: #667085; }
 .doc .table td, .doc .table th { border-color: #e4e7ec; padding: 9px 10px; }
 /* Printed documents are white paper: always the light logo, and print it (backgrounds often aren't). */
-html:root .doc .logo { background-image: url("../img/logo-light.jpeg"); height: 64px;
+html:root .doc .logo { background-image: url("../img/logo.jpeg"); aspect-ratio: 1408 / 768; height: 64px;
   -webkit-print-color-adjust: exact; print-color-adjust: exact; }
 .doc-head { display: flex; justify-content: space-between; gap: 24px; flex-wrap: wrap; padding-bottom: 20px; border-bottom: 2px solid #101828; margin-bottom: 24px; }
 .doc-title { text-align: right; }
