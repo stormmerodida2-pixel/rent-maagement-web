@@ -22,6 +22,13 @@
     {% icon 'arrow-right' %}
   </a>
 
+  <a class="card settings-item" href="{% url 'staff:manage' %}">
+    <span class="settings-icon">{% icon 'users' %}</span>
+    <span class="settings-text"><strong>Staff</strong>
+      <span class="muted small">{% if staff_count %}{{ staff_count }} staff member{{ staff_count|pluralize }} · {% endif %}Caretakers who collect rent and log repairs from their phone</span></span>
+    {% icon 'arrow-right' %}
+  </a>
+
   <div class="card settings-group">
     <div class="settings-item">
       <span class="settings-icon">{% icon 'bell' %}</span>

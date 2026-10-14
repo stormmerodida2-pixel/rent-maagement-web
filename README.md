@@ -246,6 +246,17 @@ docker compose exec web python manage.py check --deploy
 - **Payment toast and chime:** a new payment pops up as "💚 Wanjiku just paid KES 18,000" with a soft chime made in the browser. Browsers only play sound after you've clicked or typed on the page once, and the **Sound** switch under **Settings → Payment alerts** mutes it (remembered per browser).
 - **Remind everyone who owes:** a button on the dashboard opens a preview of every tenant with a balance and their personal SMS. Anyone reminded in the last 24 hours starts unticked, and the SMS cost updates as you tick. Messages go out several at a time, so a long list still takes only a few seconds.
 
+### Staff (caretakers)
+
+- **Settings → Staff → Add staff:** choose their name, a username and a password (give it to them in person), and optionally which properties they look after. Untick **Can log in** when someone leaves; their past work stays in the records.
+- Staff log in on the normal login page and land in a phone-first staff area. There they can:
+  - see who hasn't paid and what each tenant owes
+  - send an M-Pesa prompt to the tenant's own number, then watch it live until it's paid or declined; **Check with Safaricom** asks M-Pesa directly
+  - record cash (dated within the last 7 days); the tenant gets an SMS receipt naming who recorded it
+  - log repairs and update them
+- Staff never see totals, reports, payment lists, exports, settings or other landlord pages. A middleware sends any staff request outside `/staff/` back to the staff area, so new pages are covered automatically.
+- Everything staff do appears in **Activity** with "(staff)" after their name.
+
 ### Search engines
 
 - **`/sitemap.xml`** lists only the public pages (home, sign-up, login, contact), always with the domain from `SITE_URL`.

@@ -186,16 +186,37 @@ def receipt_text(payment, balance):
     """The payment receipt SMS, in the tenant's language."""
     lease = payment.lease
     with tenant_language(lease.tenant):
-        if balance > 0:
-            status = _('Balance: %(amount)s.') % {'amount': _kes(balance)}
-        elif balance < 0:
-            status = _('You are %(amount)s in credit.') % {'amount': _kes(-balance)}
-        else:
-            status = _('You are fully paid up.')
+        status = _balance_status(balance)
         return _('Received %(amount)s (M-Pesa %(reference)s) for %(unit)s. Thank you! %(status)s') % {
             'amount': _kes(payment.amount), 'reference': payment.reference, 'unit': lease.unit.label,
             'status': status,
         }
+
+
+def _balance_status(balance):
+    if balance > 0:
+        return _('Balance: %(amount)s.') % {'amount': _kes(balance)}
+    if balance < 0:
+        return _('You are %(amount)s in credit.') % {'amount': _kes(-balance)}
+    return _('You are fully paid up.')
+
+
+def cash_receipt_text(payment, balance, recorded_by):
+    """Receipt for cash a caretaker recorded, so the tenant can see it was written down."""
+    lease = payment.lease
+    with tenant_language(lease.tenant):
+        return _('Received %(amount)s cash for %(unit)s, recorded by %(name)s. Thank you! %(status)s') % {
+            'amount': _kes(payment.amount), 'unit': lease.unit.label, 'name': recorded_by,
+            'status': _balance_status(balance),
+        }
+
+
+def send_cash_receipt(payment, recorded_by):
+    if not settings.SMS['PAYMENT_RECEIPTS']:
+        return None
+    lease = payment.lease
+    return send_sms(lease.tenant.phone, cash_receipt_text(payment, lease.balance, recorded_by), lease,
+                    SmsMessage.Kind.RECEIPT)
 
 
 def send_payment_receipt(payment):

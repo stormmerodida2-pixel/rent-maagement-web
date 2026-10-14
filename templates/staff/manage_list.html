@@ -1,0 +1,30 @@
+{% extends 'app_base.html' %}
+{% load ui %}
+{% block page_title %}Staff{% endblock %}
+{% block content %}
+<div class="page-header">
+  <div><h1>Staff</h1><p class="sub">Caretakers and agents. They can send M-Pesa prompts and see whether tenants paid, record cash and log repairs. They never see your totals, reports or settings.</p></div>
+  <div class="actions"><a class="btn btn-primary" href="{% url 'staff:add' %}">{% icon 'plus' %}Add staff</a></div>
+</div>
+<section class="card">
+  {% if members %}
+  <div class="table-wrap"><table class="table">
+    <thead><tr><th>Name</th><th>Username</th><th>Looks after</th><th>Last login</th><th></th></tr></thead>
+    <tbody>
+    {% for m in members %}
+    <tr>
+      <td><div class="who"><span class="avatar">{{ m.name|initials }}</span><div><div class="name">{{ m.name }}</div>{% if m.phone %}<div class="meta">{{ m.phone }}</div>{% endif %}</div></div></td>
+      <td>{{ m.user.username }}{% if not m.user.is_active %} <span class="badge">Can't log in</span>{% endif %}</td>
+      <td>{% for p in m.properties.all %}{{ p }}{% if not forloop.last %}, {% endif %}{% empty %}All properties{% endfor %}</td>
+      <td class="nowrap">{{ m.user.last_login|date:"d M Y, H:i"|default:"Never" }}</td>
+      <td class="num"><a class="btn btn-sm btn-ghost" href="{% url 'staff:edit' m.pk %}">Edit</a></td>
+    </tr>
+    {% endfor %}
+    </tbody>
+  </table></div>
+  {% else %}
+  <div class="empty"><strong>No staff yet</strong>Add your caretaker so they can collect rent and log repairs from their phone.</div>
+  {% endif %}
+</section>
+<p class="muted small" style="margin-top:14px">Staff log in on the normal login page with the username and password you set. Everything they record shows in your Activity log with "(staff)" next to their name.</p>
+{% endblock %}

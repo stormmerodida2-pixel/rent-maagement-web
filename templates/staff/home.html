@@ -1,0 +1,56 @@
+{% extends 'staff/base.html' %}
+{% load ui %}
+{% block page_title %}Rent{% endblock %}
+{% block content %}
+<div class="staff-head">
+  <h1>{% if show_all or q %}Tenants{% else %}Who hasn't paid{% endif %}</h1>
+  <p class="muted">Send an M-Pesa prompt and watch for the payment, or record cash you were handed.</p>
+</div>
+
+{% if not mpesa_ready %}
+<div class="alert alert-warning">{% icon 'wallet' 18 %}<span>M-Pesa prompts aren't available yet: the landlord hasn't connected M-Pesa. You can still record cash.</span></div>
+{% endif %}
+
+<form method="get" class="staff-search">
+  <input type="search" name="q" value="{{ q }}" placeholder="Search tenant or unit" aria-label="Search tenant or unit">
+  {% if show_all %}<input type="hidden" name="show" value="all">{% endif %}
+  <button class="btn">Search</button>
+</form>
+<nav class="tabs staff-filter" aria-label="Show">
+  <a href="{% url 'staff:home' %}" class="{% if not show_all %}active{% endif %}">Not paid</a>
+  <a href="?show=all" class="{% if show_all %}active{% endif %}">All tenants</a>
+</nav>
+
+<div class="staff-list">
+{% for r in rows %}
+  {% with lease=r.lease %}
+  <article class="card staff-card">
+    <div class="staff-card-head">
+      <span class="avatar">{{ lease.tenant.full_name|initials }}</span>
+      <div class="staff-card-who">
+        <strong>{{ lease.tenant.full_name }}</strong>
+        <span class="muted small">{{ lease.unit }}{% if lease.tenant.phone %} · <a href="tel:+{{ lease.tenant.phone }}">{{ lease.tenant.phone }}</a>{% endif %}</span>
+      </div>
+      {% if r.balance > 0 %}<span class="staff-owes">Owes<strong>{{ r.balance|kes }}</strong></span>
+      {% else %}<span class="badge badge-success">Paid up</span>{% endif %}
+    </div>
+    <div class="muted small">{% if r.last_paid %}Last paid {{ r.last_paid|date:"d M Y" }}{% else %}No payments yet{% endif %}
+      {% if r.prompt %} · <a href="{% url 'staff:prompt' r.prompt.pk %}">Prompt {% if r.prompt.status == 'success' %}<span class="text-success">paid ✓</span>{% elif r.prompt.status == 'failed' %}not paid{% else %}waiting…{% endif %}</a>{% endif %}</div>
+    <div class="staff-actions">
+      {% if mpesa_ready %}
+      <form method="post" action="{% url 'staff:send_prompt' lease.pk %}" class="staff-prompt">{% csrf_token %}
+        <label class="visually-hidden" for="amt-{{ lease.pk }}">Amount (KES)</label>
+        <input id="amt-{{ lease.pk }}" name="amount" type="number" inputmode="numeric" min="1" step="1" required
+               value="{% if r.balance > 0 %}{{ r.balance|floatformat:0 }}{% else %}{{ lease.monthly_rent|floatformat:0 }}{% endif %}">
+        <button class="btn btn-primary">{% icon 'phone' %}Send M-Pesa prompt</button>
+      </form>
+      {% endif %}
+      <a class="btn" href="{% url 'staff:record_cash' lease.pk %}">{% icon 'wallet' %}Record cash</a>
+    </div>
+  </article>
+  {% endwith %}
+{% empty %}
+  <section class="card"><div class="empty">{% if q %}<strong>No tenant matches "{{ q }}"</strong>{% elif show_all %}<strong>No tenants yet</strong>{% else %}<strong>Everyone has paid 🎉</strong>Nobody owes anything right now.{% endif %}</div></section>
+{% endfor %}
+</div>
+{% endblock %}

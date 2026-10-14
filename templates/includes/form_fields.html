@@ -10,7 +10,7 @@
   {% else %}
   <div class="field{% if field.errors %} has-error{% endif %}" data-field="{{ field.name }}">
     <label for="{{ field.id_for_label }}">{{ field.label }}{% if not field.field.required %} <span class="muted" style="font-weight:400">({% translate "optional" %})</span>{% endif %}</label>
-    {{ field }}
+    {% if field.widget_type == 'checkboxselectmultiple' %}<div class="checkbox-list">{{ field }}</div>{% else %}{{ field }}{% endif %}
     {% if field.help_text %}<span class="helptext">{{ field.help_text }}</span>{% endif %}
     {{ field.errors }}
   </div>
