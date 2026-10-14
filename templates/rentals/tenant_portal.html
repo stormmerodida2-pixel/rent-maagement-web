@@ -93,6 +93,14 @@
   {% endif %}
 
   <section class="card">
+    <div class="card-body row">
+      <div style="flex:1;min-width:200px"><h2>Need to tell your landlord something?</h2>
+        <p class="muted small" style="margin-top:2px">Complaints or questions about rent, neighbours, security or services.</p></div>
+      <a class="btn" href="{% url 'support:tenant_messages' tenant.portal_token %}">{% icon 'message' %}Messages{% if open_complaints %} ({{ open_complaints }}){% endif %}</a>
+    </div>
+  </section>
+
+  <section class="card">
     <div class="card-header"><h2>My requests</h2></div>
     {% if requests %}
     <table class="table">

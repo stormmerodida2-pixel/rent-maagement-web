@@ -1,0 +1,27 @@
+{% extends 'support/tenant_base.html' %}
+{% load ui %}
+{% block title %}Messages · {{ APP_NAME }}{% endblock %}
+{% block tenant_content %}
+<h1>Message your landlord</h1>
+<p class="muted">For complaints and questions about rent, neighbours, security or services. For repairs, use "Report a problem" on your rent page.</p>
+<section class="card">
+  <div class="card-body">
+    <form method="post" novalidate>{% csrf_token %}
+      {% include 'includes/form_fields.html' %}
+      <button class="btn btn-primary btn-block" style="margin-top:16px">Send message</button>
+    </form>
+  </div>
+</section>
+{% if complaints %}
+<section class="card">
+  <div class="card-header"><h2>My messages</h2></div>
+  <table class="table"><tbody>
+    {% for c in complaints %}
+    <tr><td><a href="{% url 'support:tenant_complaint' tenant.portal_token c.pk %}"><strong>{{ c.subject }}</strong></a>
+      <div class="muted small">{{ c.get_category_display }} · {{ c.updated_at|date:"d M Y" }}</div></td>
+      <td class="num">{% badge c.status c.get_status_display %}</td></tr>
+    {% endfor %}
+  </tbody></table>
+</section>
+{% endif %}
+{% endblock %}

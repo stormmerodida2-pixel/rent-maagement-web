@@ -1,0 +1,8 @@
+{% extends 'registration/auth_card.html' %}
+{% block title %}Contact us · {{ APP_NAME }}{% endblock %}
+{% block card %}
+<h1>Contact us</h1>
+<p class="muted">Questions, problems or ideas: we read every message and reply by email.</p>
+<div style="margin-top:20px">{% include 'includes/messages.html' %}{% include 'support/contact_form.html' %}</div>
+{% endblock %}
+{% block below %}<p class="muted small" style="text-align:center;margin-top:20px">Are you a tenant? Message your landlord from the link in your rent SMS.</p>{% endblock %}

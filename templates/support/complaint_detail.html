@@ -1,0 +1,22 @@
+{% extends 'app_base.html' %}
+{% load ui %}
+{% block page_title %}{{ complaint.subject }}{% endblock %}
+{% block content %}
+<div class="page-header">
+  <div><h1>{{ complaint.subject }}</h1>
+    <p class="sub">{{ complaint.get_category_display }} · from {{ complaint.tenant }}{% if complaint.lease %} (<a href="{% url 'rentals:lease_detail' complaint.lease_id %}">{{ complaint.lease.unit }}</a>){% endif %} · {% badge complaint.status complaint.get_status_display %}</p></div>
+  <div class="actions"><a class="btn" href="{% url 'support:complaint_list' %}">All complaints</a></div>
+</div>
+<div class="grid-2">
+  <section class="card"><div class="card-body">{% with viewer='landlord' %}{% include 'support/thread.html' %}{% endwith %}</div></section>
+  <section class="card">
+    <div class="card-header"><h2>Reply</h2></div>
+    <div class="card-body">
+      <form method="post" novalidate>{% csrf_token %}
+        {% include 'includes/form_fields.html' %}
+        <div class="form-actions"><button class="btn btn-primary">Send</button></div>
+      </form>
+    </div>
+  </section>
+</div>
+{% endblock %}

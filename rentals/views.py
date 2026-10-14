@@ -197,6 +197,7 @@ def tenant_portal(request, token):
         'lease_rows': [(lease, lease.balance) for lease in leases],
         'payments': Payment.objects.filter(lease__tenant=tenant).select_related('lease__unit')[:10],
         'requests': tenant.maintenance_requests.select_related('unit')[:10],
+        'open_complaints': tenant.complaints.exclude(status='resolved').count(),
         'maintenance_form': maintenance_form,
         'mpesa_account': MpesaAccount.objects.filter(owner=tenant.owner).first(),
     })

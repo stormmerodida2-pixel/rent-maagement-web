@@ -17,6 +17,7 @@
       <a href="{% url 'rentals:property_list' %}" class="{% if 'property' in url_name or 'unit_' in url_name %}active{% endif %}">{% icon 'building' %}Properties</a>
       <a href="{% url 'rentals:tenant_list' %}" class="{% if 'tenant_' in url_name and url_name != 'tenant_portal' %}active{% endif %}">{% icon 'users' %}Tenants</a>
       <a href="{% url 'rentals:lease_list' %}" class="{% if 'lease' in url_name %}active{% endif %}">{% icon 'file' %}Leases</a>
+      <a href="{% url 'support:complaint_list' %}" class="{% if url_name == 'complaint_list' or url_name == 'complaint_detail' %}active{% endif %}">{% icon 'message' %}Complaints{% if nav_complaints %}<span class="count">{{ nav_complaints }}</span>{% endif %}</a>
       <a href="{% url 'maintenance:list' %}" class="{% if app == 'maintenance' %}active{% endif %}">{% icon 'wrench' %}Maintenance{% if nav_open_requests %}<span class="count">{{ nav_open_requests }}</span>{% endif %}</a>
 
       <div class="nav-section">Money</div>
@@ -27,6 +28,7 @@
 
       <div class="nav-section">Settings</div>
       <a href="{% url 'payments:mpesa_settings' %}" class="{% if url_name == 'mpesa_settings' %}active{% endif %}">{% icon 'settings' %}M-Pesa{% if nav_mpesa_missing %}<span class="count">!</span>{% endif %}</a>
+      <a href="{% url 'support:contact' %}?from={{ request.path|urlencode }}" class="{% if url_name == 'contact' %}active{% endif %}">{% icon 'bell' %}Help &amp; support</a>
       {% if user.is_superuser %}<a href="{% url 'admin:index' %}">{% icon 'shield' %}Admin</a>{% endif %}
       {% endwith %}
     </nav>

@@ -1,0 +1,34 @@
+{% extends 'app_base.html' %}
+{% load ui %}
+{% block page_title %}Complaints{% endblock %}
+{% block content %}
+<div class="page-header"><div><h1>Complaints &amp; messages</h1><p class="sub">Messages from your tenants about anything other than repairs. Repairs are under Maintenance.</p></div></div>
+<section class="card">
+  <div class="toolbar">
+    <nav class="tabs" aria-label="Filter by status">
+      <a href="?status=active" class="{% if status == 'active' %}active{% endif %}">Needs attention</a>
+      <a href="?status=resolved" class="{% if status == 'resolved' %}active{% endif %}">Resolved</a>
+      <a href="?status=all" class="{% if status == 'all' %}active{% endif %}">All</a>
+    </nav>
+  </div>
+  {% if object_list %}
+  <div class="table-wrap">
+    <table class="table">
+      <thead><tr><th>Subject</th><th>Tenant</th><th>Category</th><th>Status</th><th>Updated</th></tr></thead>
+      <tbody>
+      {% for c in object_list %}
+      <tr>
+        <td><a href="{% url 'support:complaint_detail' c.pk %}"><strong>{{ c.subject }}</strong></a>{% if c.unread_by_landlord %} <span class="badge badge-info">New</span>{% endif %}</td>
+        <td>{{ c.tenant }}{% if c.lease %}<div class="muted small">{{ c.lease.unit }}</div>{% endif %}</td>
+        <td>{{ c.get_category_display }}</td>
+        <td>{% badge c.status c.get_status_display %}</td>
+        <td class="muted nowrap">{{ c.updated_at|timesince }} ago</td>
+      </tr>
+      {% endfor %}
+      </tbody>
+    </table>
+  </div>
+  {% include 'includes/pagination.html' %}
+  {% else %}<div class="empty"><strong>Nothing here</strong>Tenants can message you from their private page.</div>{% endif %}
+</section>
+{% endblock %}

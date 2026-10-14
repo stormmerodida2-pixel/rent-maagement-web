@@ -16,6 +16,8 @@ Built with Django. Landlords sign up themselves and do everything in the app. Th
 | `/payments/` | All payments, record cash/bank payments, assign unmatched M-Pesa payments |
 | `/maintenance/` | Repairs by status and priority |
 | `/reports/` | Monthly billed vs collected per property, 12-month trend, CSV exports |
+| `/complaints/` | Complaints and messages from tenants (anything that isn't a repair) |
+| `/contact/` | Contact us, for anyone: visitors, landlords (as "Help & support" in the app) |
 | `/activity/` | Activity log: who changed what, with before/after values |
 | `/messages/` | SMS log |
 | `/payments/settings/` | Connect the landlord's own M-Pesa Paybill/Till |
@@ -87,6 +89,11 @@ If Safaricom's STK callback never arrives, `check_pending_stk` (every 5 minutes)
 - **Paid:** the tenant is credited. Safaricom's status answer doesn't include the receipt number, so the payment shows "receipt pending" until the callback or Paybill confirmation arrives. That later confirmation fills in the receipt on the same payment instead of crediting the tenant twice.
 - **Cancelled or failed:** the prompt is marked failed with Safaricom's reason.
 - **Still unresolved after 24 hours, for any reason:** marked failed. That covers Safaricom never answering, changed M-Pesa keys, and a removed M-Pesa account, so nothing is retried forever.
+
+### Complaints and support
+
+- **Tenants → landlord:** from their private page, tenants open **Messages** and send a complaint or question (rent/billing, noise/neighbours, security, services, other). The landlord gets an email and a counter on **Complaints** in the sidebar, then replies and sets the status (Open, In progress, Resolved). The tenant gets an SMS with a link to the reply. If the tenant replies to a resolved complaint, it re-opens. Repairs still go through **Maintenance**.
+- **Anyone → you:** the **Contact us** page (home page footer, and **Help & support** in the app) saves the message and emails it to `SUPPORT_EMAIL`, with the sender as reply-to. All messages are also listed in the admin under *Support messages*, where you can tick them off as handled. It has spam protection (a hidden honeypot field) and a limit of 5 messages per IP per hour.
 
 ### Statements, receipts and exports
 

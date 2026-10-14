@@ -1,0 +1,14 @@
+{% extends 'base.html' %}
+{% block head %}<meta name="robots" content="noindex, nofollow">{% endblock %}
+{% block body %}
+<header class="topbar" style="border-bottom:1px solid var(--border);background:var(--surface)">
+  <a class="brand" href="{% url 'rentals:tenant_portal' tenant.portal_token %}" style="padding:0">{% include 'includes/logo.html' %}{{ APP_NAME }}</a>
+  <span class="spacer"></span>
+  {% include 'includes/theme_switch.html' %}
+</header>
+<main class="narrow stack">
+  <a class="small" href="{% url 'rentals:tenant_portal' tenant.portal_token %}">← Back to my rent</a>
+  {% include 'includes/messages.html' %}
+  {% block tenant_content %}{% endblock %}
+</main>
+{% endblock %}
