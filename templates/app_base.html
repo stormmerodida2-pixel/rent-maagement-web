@@ -1,0 +1,61 @@
+{% extends 'base.html' %}
+{% load ui %}
+{% block title %}{% block page_title %}{% endblock %} · {{ APP_NAME }}{% endblock %}
+{% block body %}
+{% with url_name=request.resolver_match.url_name %}
+<div class="app">
+  <aside class="sidebar">
+    <a class="brand" href="{% url 'rentals:dashboard' %}">{% include 'includes/logo.html' %}{{ APP_NAME }}</a>
+
+    <nav class="nav" aria-label="Main">
+      {% with app=request.resolver_match.app_name %}
+      <div class="nav-section">Overview</div>
+      <a href="{% url 'rentals:dashboard' %}" class="{% if url_name == 'dashboard' %}active{% endif %}">{% icon 'grid' %}Dashboard</a>
+      {% if nav_setup_incomplete %}<a href="{% url 'accounts:welcome' %}" class="{% if url_name == 'welcome' %}active{% endif %}">{% icon 'arrow-right' %}Getting started</a>{% endif %}
+
+      <div class="nav-section">Manage</div>
+      <a href="{% url 'rentals:property_list' %}" class="{% if 'property' in url_name or 'unit_' in url_name %}active{% endif %}">{% icon 'building' %}Properties</a>
+      <a href="{% url 'rentals:tenant_list' %}" class="{% if 'tenant_' in url_name and url_name != 'tenant_portal' %}active{% endif %}">{% icon 'users' %}Tenants</a>
+      <a href="{% url 'rentals:lease_list' %}" class="{% if 'lease' in url_name %}active{% endif %}">{% icon 'file' %}Leases</a>
+      <a href="{% url 'maintenance:list' %}" class="{% if app == 'maintenance' %}active{% endif %}">{% icon 'wrench' %}Maintenance{% if nav_open_requests %}<span class="count">{{ nav_open_requests }}</span>{% endif %}</a>
+
+      <div class="nav-section">Money</div>
+      <a href="{% url 'payments:payment_list' %}" class="{% if url_name == 'payment_list' or url_name == 'payment_create' or url_name == 'unmatched_list' %}active{% endif %}">{% icon 'wallet' %}Payments{% if nav_unmatched_c2b %}<span class="count" title="Unmatched M-Pesa payments">{{ nav_unmatched_c2b }}</span>{% endif %}</a>
+      <a href="{% url 'reports:overview' %}" class="{% if app == 'reports' %}active{% endif %}">{% icon 'chart' %}Reports</a>
+      <a href="{% url 'notifications:sms_list' %}" class="{% if app == 'notifications' %}active{% endif %}">{% icon 'message' %}SMS log</a>
+
+      <div class="nav-section">Settings</div>
+      <a href="{% url 'payments:mpesa_settings' %}" class="{% if url_name == 'mpesa_settings' %}active{% endif %}">{% icon 'settings' %}M-Pesa{% if nav_mpesa_missing %}<span class="count">!</span>{% endif %}</a>
+      {% if user.is_superuser %}<a href="{% url 'admin:index' %}">{% icon 'shield' %}Admin</a>{% endif %}
+      {% endwith %}
+    </nav>
+
+    <div class="sidebar-footer">
+      <div class="who">
+        <span class="avatar">{{ user.get_full_name|default:user.username|initials }}</span>
+        <div><div class="name small">{{ user.get_full_name|default:user.username }}</div><div class="meta">{% if user.is_superuser %}Administrator{% else %}Landlord{% endif %}</div></div>
+      </div>
+      <form method="post" action="{% url 'logout' %}">{% csrf_token %}
+        <button class="btn btn-ghost btn-sm" title="Log out">{% icon 'logout' %}<span class="visually-hidden">Log out</span></button>
+      </form>
+    </div>
+  </aside>
+
+  <main class="main">
+    <div class="container">
+      {% if email_unverified %}
+      <div class="alert alert-info" style="margin-bottom:16px">
+        {% icon 'message' 18 %}
+        <span>Please confirm your email. We sent a link to <strong>{{ user.email }}</strong>.</span>
+        <span class="spacer"></span>
+        <form method="post" action="{% url 'accounts:resend_verification' %}">{% csrf_token %}
+          <input type="hidden" name="next" value="{{ request.get_full_path }}"><button class="btn btn-sm">Resend</button></form>
+      </div>
+      {% endif %}
+      {% include 'includes/messages.html' %}
+      {% block content %}{% endblock %}
+    </div>
+  </main>
+</div>
+{% endwith %}
+{% endblock %}

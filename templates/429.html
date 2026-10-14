@@ -1,0 +1,11 @@
+{% extends 'base.html' %}
+{% block title %}Too many attempts · {{ APP_NAME }}{% endblock %}
+{% block body %}
+<main>
+  <div class="card auth-card">
+    <h1>Too many attempts</h1>
+    <p class="muted">For your security, please wait about {{ minutes }} minutes and try again.</p>
+    <a class="btn btn-block" href="{% url 'rentals:home' %}">Back to home</a>
+  </div>
+</main>
+{% endblock %}

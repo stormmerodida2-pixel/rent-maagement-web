@@ -1,0 +1,132 @@
+{% extends 'app_base.html' %}
+{% load ui %}
+{% block page_title %}M-Pesa settings{% endblock %}
+{% block content %}
+<div class="page-header">
+  <div>
+    <h1>M-Pesa settings</h1>
+    <p class="sub">Connect your own Paybill or Till so rent goes straight into your account.</p>
+  </div>
+</div>
+
+{% if not verified %}
+<div class="alert alert-warning" style="margin-bottom:20px">Confirm your email address first. M-Pesa settings control where your rent is paid, so we need to know this account is really yours.</div>
+{% endif %}
+
+<div class="grid-2">
+  <section class="card">
+    <div class="card-header">
+      <h2>Your Daraja app</h2>
+      <span class="spacer"></span>
+      {% if account %}
+        {% if account.environment == 'production' %}<span class="badge badge-success">Live</span>{% else %}<span class="badge badge-warn">Sandbox</span>{% endif %}
+      {% endif %}
+    </div>
+    <div class="card-body">
+      <form method="post" autocomplete="off">
+        {% csrf_token %}
+        <input type="hidden" name="action" value="save">
+        {% if form.non_field_errors %}<div class="alert alert-error" style="margin-bottom:14px">{{ form.non_field_errors|join:" " }}</div>{% endif %}
+        {% for field in form %}
+        <div class="field" data-field="{{ field.name }}">
+          <label for="{{ field.id_for_label }}">{{ field.label }}</label>
+          {{ field }}
+          {% if field.help_text %}<span class="helptext" style="word-break:break-all">{{ field.help_text }}</span>{% endif %}
+          {{ field.errors }}
+        </div>
+        {% endfor %}
+        <button type="submit" class="btn btn-primary" style="margin-top:18px">Save settings</button>
+      </form>
+    </div>
+  </section>
+
+  <div class="stack">
+    <section class="card">
+      <div class="card-header"><h2>Setup checklist</h2></div>
+      <div class="table-wrap">
+        <table class="table">
+          <tbody>
+            <tr>
+              <td><strong>1. Save your details</strong><div class="muted small">Short code, consumer key and secret, passkey</div></td>
+              <td class="num">{% if account and account.is_complete %}{% badge 'success' 'Done' %}{% else %}{% badge 'pending' 'To do' %}{% endif %}</td>
+            </tr>
+            <tr>
+              <td>
+                <strong>2. Test the connection</strong>
+                <div class="muted small">
+                  {% if account.verified_at %}Verified {{ account.verified_at|date:"d M Y, H:i" }}
+                  {% elif account.last_error %}<span class="text-danger">{{ account.last_error }}</span>
+                  {% else %}Checks Safaricom accepts your key and secret{% endif %}
+                </div>
+              </td>
+              <td class="num">
+                {% if account %}
+                <form method="post">{% csrf_token %}<input type="hidden" name="action" value="verify">
+                  <button class="btn btn-sm">{% if account.verified_at %}Re-test{% else %}Test{% endif %}</button>
+                </form>
+                {% endif %}
+              </td>
+            </tr>
+            <tr>
+              <td>
+                <strong>3. Register Paybill URLs</strong>
+                <div class="muted small">
+                  {% if account.c2b_registered_at %}Registered {{ account.c2b_registered_at|date:"d M Y, H:i" }}
+                  {% else %}Lets payments tenants make from the M-Pesa menu be recorded automatically{% endif %}
+                </div>
+              </td>
+              <td class="num">
+                {% if account %}
+                <form method="post">{% csrf_token %}<input type="hidden" name="action" value="register">
+                  <button class="btn btn-sm" {% if not account.verified_at %}disabled title="Test the connection first"{% endif %}>{% if account.c2b_registered_at %}Re-register{% else %}Register{% endif %}</button>
+                </form>
+                {% endif %}
+              </td>
+            </tr>
+          </tbody>
+        </table>
+      </div>
+      {% if account.is_till %}
+      <div class="card-body" style="border-top:1px solid var(--border)">
+        <div class="alert alert-info small">Till payments have no account number, so they're matched to tenants by phone number. Safaricom often hides payer numbers, so expect to assign some Till payments by hand. A Paybill matches automatically.</div>
+      </div>
+      {% endif %}
+    </section>
+
+    <section class="card">
+      <div class="card-header"><h2>Where to get these</h2></div>
+      <div class="card-body small" style="color:var(--text-2)">
+        <ol style="margin:0;padding-left:18px;display:grid;gap:8px">
+          <li>Sign in at <a href="https://developer.safaricom.co.ke" target="_blank" rel="noopener">developer.safaricom.co.ke</a> and create an app with <strong>Lipa Na M-Pesa</strong> enabled. Its consumer key and secret are on the app page.</li>
+          <li><strong>Sandbox:</strong> use short code <code>174379</code> and the passkey shown under the passkey field.</li>
+          <li><strong>Live:</strong> use <em>Go Live</em> on the Daraja portal to link your own Paybill/Till. Safaricom emails the production passkey to the business admin.</li>
+        </ol>
+      </div>
+    </section>
+
+    {% if hooks %}
+    <section class="card">
+      <div class="card-header"><h2>Your webhook URLs</h2></div>
+      <div class="card-body small">
+        <p class="muted" style="margin-bottom:10px">Registered with Safaricom automatically. They're shown here for reference. Keep them private.</p>
+        {% for name, url in hooks.items %}
+        <label style="margin-top:8px">{{ name }}</label>
+        <div class="copy"><input type="text" readonly value="{{ url }}" onclick="this.select()"></div>
+        {% endfor %}
+      </div>
+    </section>
+    {% endif %}
+  </div>
+</div>
+
+<script>
+  // Only show the till number field for Till accounts.
+  (function () {
+    var type = document.getElementById('id_payment_type');
+    var till = document.querySelector('[data-field="till_number"]');
+    if (!type || !till) return;
+    function sync() { till.style.display = type.value === 'till' ? '' : 'none'; }
+    type.addEventListener('change', sync); sync();
+  })();
+</script>
+{% endblock %}

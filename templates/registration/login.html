@@ -1,0 +1,33 @@
+{% extends 'base.html' %}
+{% block title %}Log in · {{ APP_NAME }}{% endblock %}
+{% block body %}
+<header class="topbar">
+  <a class="brand" href="{% url 'rentals:home' %}" style="padding:0">{% include 'includes/logo.html' %}{{ APP_NAME }}</a>
+</header>
+<main>
+  <div class="card auth-card">
+    <h1>Welcome back</h1>
+    <p class="muted">Log in to manage your properties.</p>
+
+    <form method="post" novalidate>
+      {% csrf_token %}
+      {% if form.non_field_errors %}
+        <div class="alert alert-error">Your username and password didn't match. Please try again.</div>
+      {% endif %}
+      <div class="field">
+        <label for="{{ form.username.id_for_label }}">Username</label>
+        {{ form.username }}
+      </div>
+      <div class="field">
+        <div class="row" style="justify-content:space-between"><label for="{{ form.password.id_for_label }}">Password</label><a class="small" href="{% url 'password_reset' %}">Forgot password?</a></div>
+        {{ form.password }}
+      </div>
+      <input type="hidden" name="next" value="{{ next }}">
+      <button type="submit" class="btn btn-primary btn-block btn-lg">Log in</button>
+    </form>
+  </div>
+  <p class="muted small" style="text-align:center;margin-top:20px">
+    New here? <a href="{% url 'accounts:signup' %}">Create a landlord account</a>
+  </p>
+</main>
+{% endblock %}

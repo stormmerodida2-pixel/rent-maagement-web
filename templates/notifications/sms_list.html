@@ -1,0 +1,26 @@
+{% extends 'app_base.html' %}
+{% load ui %}
+{% block page_title %}SMS log{% endblock %}
+{% block content %}
+<div class="page-header"><div><h1>SMS log</h1><p class="sub">Reminders and receipts sent to your tenants.</p></div></div>
+<section class="card">
+  {% if object_list %}
+  <div class="table-wrap">
+    <table class="table">
+      <thead><tr><th>Sent</th><th>To</th><th>Type</th><th>Message</th></tr></thead>
+      <tbody>
+      {% for m in object_list %}
+      <tr>
+        <td class="muted nowrap">{{ m.created_at|date:"d M, H:i" }}</td>
+        <td class="nowrap">{% if m.lease %}<a href="{% url 'rentals:lease_detail' m.lease_id %}">{{ m.lease.tenant }}</a>{% else %}{{ m.phone }}{% endif %}</td>
+        <td>{% badge m.status m.get_kind_display %}</td>
+        <td style="min-width:280px" class="small">{{ m.body }}{% if m.error %}<div class="text-danger">{{ m.error }}</div>{% endif %}</td>
+      </tr>
+      {% endfor %}
+      </tbody>
+    </table>
+  </div>
+  {% include 'includes/pagination.html' %}
+  {% else %}<div class="empty"><strong>No messages yet</strong>Reminders and payment receipts will show up here.</div>{% endif %}
+</section>
+{% endblock %}

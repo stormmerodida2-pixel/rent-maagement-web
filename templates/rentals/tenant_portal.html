@@ -1,0 +1,127 @@
+{% extends 'base.html' %}
+{% load ui %}
+{% block title %}My rent · {{ APP_NAME }}{% endblock %}
+{% block head %}<meta name="robots" content="noindex, nofollow">{% endblock %}
+{% block body %}
+<header class="topbar" style="border-bottom:1px solid var(--border);background:var(--surface)">
+  <span class="brand" style="padding:0">{% include 'includes/logo.html' %}{{ APP_NAME }}</span>
+</header>
+
+<main class="narrow stack">
+  <div class="row">
+    <span class="avatar avatar-lg">{{ tenant.full_name|initials }}</span>
+    <div>
+      <h1>Hi {{ tenant.full_name.split.0 }}</h1>
+      <p class="muted">Your rent, payments and repair requests.</p>
+    </div>
+  </div>
+
+  {% include 'includes/messages.html' %}
+
+  {% for lease, balance in lease_rows %}
+  <section class="card">
+    <div class="card-header">
+      <h2>{{ lease.unit }}</h2>
+      <span class="spacer"></span>
+      {% if balance > 0 %}<span class="badge badge-danger">Balance due</span>{% else %}<span class="badge badge-success">Paid up</span>{% endif %}
+    </div>
+    <div class="card-body stack">
+      <div class="row" style="justify-content:flex-end;margin-bottom:-8px"><a class="small" href="{% url 'reports:tenant_statement' tenant.portal_token lease.pk %}">View statement</a></div>
+      <div class="balance-hero {% if balance > 0 %}owing{% else %}clear{% endif %}">
+        <div class="label">{% if balance > 0 %}You owe{% elif balance < 0 %}You're in credit{% else %}Balance{% endif %}</div>
+        <div class="value">{% if balance < 0 %}{{ balance|kes|cut:"-" }}{% else %}{{ balance|kes }}{% endif %}</div>
+        <div class="muted small">Rent {{ lease.monthly_rent|kes }} a month, due on day {{ lease.due_day }}</div>
+      </div>
+
+      {% if mpesa_account and mpesa_account.is_complete %}
+      <form method="post">
+        {% csrf_token %}
+        <input type="hidden" name="action" value="pay">
+        <input type="hidden" name="lease" value="{{ lease.pk }}">
+        <div class="field">
+          <label for="amount-{{ lease.pk }}">Amount to pay (KES)</label>
+          <input id="amount-{{ lease.pk }}" name="amount" type="number" inputmode="numeric" min="1" step="1" required
+            value="{% if balance > 0 %}{{ balance|floatformat:0 }}{% else %}{{ lease.monthly_rent|floatformat:0 }}{% endif %}">
+        </div>
+        <button type="submit" class="btn btn-primary btn-lg btn-block" style="margin-top:12px">{% icon 'phone' %}Pay with M-Pesa</button>
+        <p class="helptext" style="text-align:center">An M-Pesa prompt will appear on {{ tenant.phone }}. Enter your PIN to pay.</p>
+      </form>
+
+      <div class="pay-box">
+        <strong>Or pay from the M-Pesa menu</strong>
+        {% if mpesa_account.is_till %}
+        <div class="muted small">Lipa na M-Pesa → Buy Goods and Services</div>
+        <dl><dt>Till no.</dt><dd>{{ mpesa_account.pay_number }}</dd></dl>
+        {% else %}
+        <div class="muted small">Lipa na M-Pesa → Pay Bill</div>
+        <dl>
+          <dt>Business no.</dt><dd>{{ mpesa_account.pay_number }}</dd>
+          <dt>Account no.</dt><dd>{{ lease.account_number }}</dd>
+        </dl>
+        {% endif %}
+      </div>
+      {% else %}
+      <div class="pay-box">Online payment isn't available yet. Please pay your landlord as usual.</div>
+      {% endif %}
+    </div>
+  </section>
+  {% empty %}
+  <section class="card"><div class="empty"><strong>No active lease</strong>Contact your landlord if this looks wrong.</div></section>
+  {% endfor %}
+
+  {% if lease_rows %}
+  <section class="card" id="report">
+    <div class="card-header"><h2>Report a problem</h2></div>
+    <div class="card-body">
+      <form method="post" action="#report">
+        {% csrf_token %}
+        <input type="hidden" name="action" value="maintenance">
+        {% for field in maintenance_form.hidden_fields %}{{ field }}{% endfor %}
+        {% for field in maintenance_form.visible_fields %}
+        <div class="field">
+          <label for="{{ field.id_for_label }}">{{ field.label }}</label>
+          {{ field }}
+          {{ field.errors }}
+        </div>
+        {% endfor %}
+        <button type="submit" class="btn btn-primary btn-block" style="margin-top:16px">{% icon 'wrench' %}Send request</button>
+      </form>
+    </div>
+  </section>
+  {% endif %}
+
+  <section class="card">
+    <div class="card-header"><h2>My requests</h2></div>
+    {% if requests %}
+    <table class="table">
+      <tbody>
+      {% for r in requests %}
+      <tr>
+        <td><strong>{{ r.title }}</strong><div class="muted small">Reported {{ r.created_at|date:"d M Y" }}{% if r.resolved_at %} · fixed {{ r.resolved_at|date:"d M" }}{% endif %}</div></td>
+        <td class="num">{% badge r.status r.get_status_display %}</td>
+      </tr>
+      {% endfor %}
+      </tbody>
+    </table>
+    {% else %}<div class="empty">You haven't reported anything.</div>{% endif %}
+  </section>
+
+  <section class="card">
+    <div class="card-header"><h2>Recent payments</h2></div>
+    {% if payments %}
+    <table class="table">
+      <tbody>
+      {% for p in payments %}
+      <tr>
+        <td>{{ p.paid_at|date:"d M Y" }}<div class="muted small">{{ p.get_method_display }}{% if p.reference %} · {{ p.reference }}{% endif %}</div></td>
+        <td class="num"><strong>{{ p.amount|kes }}</strong><div><a class="small" href="{% url 'reports:tenant_receipt' tenant.portal_token p.pk %}">Receipt</a></div></td>
+      </tr>
+      {% endfor %}
+      </tbody>
+    </table>
+    {% else %}<div class="empty">No payments yet.</div>{% endif %}
+  </section>
+
+  <p class="muted small" style="text-align:center">This page is private to you. Please don't share the link.</p>
+</main>
+{% endblock %}

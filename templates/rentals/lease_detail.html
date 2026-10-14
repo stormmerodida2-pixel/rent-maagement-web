@@ -1,0 +1,163 @@
+{% extends 'app_base.html' %}
+{% load ui %}
+{% block page_title %}{{ lease.tenant }}{% endblock %}
+{% block content %}
+<div class="page-header">
+  <div class="profile">
+    <span class="avatar avatar-lg">{{ lease.tenant.full_name|initials }}</span>
+    <div>
+      <h1>{{ lease.tenant }}</h1>
+      <p class="sub">
+        {{ lease.unit }}
+        {% if lease.is_active %}<span class="badge badge-success">Active lease</span>{% else %}<span class="badge">Ended</span>{% endif %}
+      </p>
+    </div>
+  </div>
+  <div class="actions">
+    <a class="btn" href="{% url 'payments:payment_create' %}?lease={{ lease.pk }}">{% icon 'wallet' %}Record cash/bank</a>
+    <a class="btn" href="{% url 'rentals:charge_create' lease.pk %}">{% icon 'plus' %}Add charge</a>
+    <a class="btn" href="{% url 'rentals:tenant_update' lease.tenant_id %}?next={{ request.path|urlencode }}">Edit tenant</a>
+    <a class="btn" href="{% url 'rentals:lease_update' lease.pk %}">Edit lease</a>
+    {% if lease.is_active %}<a class="btn text-danger" href="{% url 'rentals:lease_end' lease.pk %}">End lease</a>{% endif %}
+  </div>
+</div>
+
+<div class="grid-2">
+  <div class="stack">
+    <section class="card">
+      <div class="card-body row" style="align-items:flex-start;gap:24px">
+        <div class="balance-hero {% if balance > 0 %}owing{% else %}clear{% endif %}">
+          <div class="label">{% if balance > 0 %}Balance owed{% elif balance < 0 %}In credit{% else %}Balance{% endif %}</div>
+          <div class="value">{% if balance < 0 %}{{ balance|kes:2|cut:"-" }}{% else %}{{ balance|kes:2 }}{% endif %}</div>
+          <div class="muted small">{{ lease.monthly_rent|kes }} / month · due on day {{ lease.due_day }}</div>
+        </div>
+      </div>
+      <div class="card-body" style="border-top:1px solid var(--border)">
+        <h3 style="margin-bottom:12px">Request payment via M-Pesa</h3>
+        <form class="form-inline" method="post" action="{% url 'payments:request_payment' lease.pk %}">
+          {% csrf_token %}
+          <div class="field">
+            <label for="{{ stk_form.amount.id_for_label }}">Amount (KES)</label>
+            {{ stk_form.amount }}
+          </div>
+          <div class="field">
+            <label for="{{ stk_form.phone.id_for_label }}">Phone</label>
+            {{ stk_form.phone }}
+          </div>
+          <button type="submit" class="btn btn-primary">{% icon 'phone' %}Send prompt</button>
+        </form>
+        <p class="helptext">The tenant gets an M-Pesa PIN prompt on their phone. The payment is recorded automatically once they confirm.</p>
+        <form method="post" action="{% url 'rentals:send_reminder' lease.pk %}" style="margin-top:14px">
+          {% csrf_token %}
+          <button type="submit" class="btn">{% icon 'bell' %}Send SMS reminder</button>
+        </form>
+      </div>
+    </section>
+
+    <section class="card">
+      <div class="card-header"><h2>Statement</h2><span class="muted">Newest first</span><span class="spacer"></span>
+        <a class="btn btn-sm" href="{% url 'reports:lease_statement' lease.pk %}">Print statement</a></div>
+      {% if statement %}
+      <div class="table-wrap">
+        <table class="table">
+          <thead><tr><th>Date</th><th>Description</th><th class="num">Charged</th><th class="num">Paid</th><th class="num">Balance</th></tr></thead>
+          <tbody>
+          {% for e in statement %}
+          <tr>
+            <td class="nowrap muted">{{ e.date|date:"d M Y" }}</td>
+            <td style="min-width:180px">{{ e.description }}{% if e.payment_id %} · <a class="small" href="{% url 'reports:payment_receipt' e.payment_id %}">receipt</a>{% endif %}</td>
+            <td class="num">{% if e.charge %}{{ e.charge|kes }}{% endif %}</td>
+            <td class="num text-success">{% if e.payment %}{{ e.payment|kes }}{% if e.credit %} <span class="muted small">credit</span>{% endif %}{% endif %}</td>
+            <td class="num {% if e.balance > 0 %}text-danger{% endif %}"><strong>{{ e.balance|kes }}</strong></td>
+          </tr>
+          {% endfor %}
+          </tbody>
+        </table>
+      </div>
+      {% else %}
+        <div class="empty"><strong>No activity yet</strong>Monthly charges appear here once rent is billed (<code>manage.py generate_rent_charges</code>).</div>
+      {% endif %}
+    </section>
+  </div>
+
+  <div class="stack">
+    <section class="card">
+      <div class="card-header"><h2>Details</h2></div>
+      <div class="card-body profile">
+        <dl>
+          <dt>Phone</dt><dd>{{ lease.tenant.phone }}</dd>
+          {% if lease.tenant.email %}<dt>Email</dt><dd>{{ lease.tenant.email }}</dd>{% endif %}
+          <dt>Lease</dt><dd>{{ lease.start_date|date:"d M Y" }} – {{ lease.end_date|date:"d M Y"|default:"ongoing" }}</dd>
+          <dt>Deposit</dt><dd>{{ lease.deposit|kes }}{% if deposit_held %} <span class="muted small">({{ deposit_held|kes }} held)</span>{% endif %}</dd>
+          {% if lease.service_charge %}<dt>Service charge</dt><dd>{{ lease.service_charge|kes }} / month</dd>{% endif %}
+          {% if lease.late_fee %}<dt>Late fee</dt><dd>{{ lease.late_fee|kes }} after {{ lease.late_fee_grace_days }} day{{ lease.late_fee_grace_days|pluralize }}</dd>{% endif %}
+        </dl>
+      </div>
+      <div class="card-body" style="border-top:1px solid var(--border)">
+        {% if mpesa_account %}
+        <div class="pay-box">
+          <strong>How this tenant pays</strong>
+          <dl>
+            {% if mpesa_account.is_till %}
+            <dt>Till</dt><dd>{{ mpesa_account.pay_number }}</dd>
+            {% else %}
+            <dt>Paybill</dt><dd>{{ mpesa_account.pay_number }}</dd>
+            <dt>Account</dt><dd>{{ lease.account_number }}</dd>
+            {% endif %}
+          </dl>
+        </div>
+        {% else %}
+        <div class="alert alert-warning small">M-Pesa isn't connected yet. <a href="{% url 'payments:mpesa_settings' %}">Connect it</a> to collect rent.</div>
+        {% endif %}
+        <label style="margin-top:14px">Tenant's self-service link</label>
+        <div class="copy">
+          <input type="text" readonly value="{{ lease.tenant.portal_url }}" onclick="this.select()" aria-label="Tenant self-service link">
+          <a class="btn btn-sm" href="{{ lease.tenant.portal_url }}" target="_blank" rel="noopener" title="Open">{% icon 'external' %}</a>
+        </div>
+      </div>
+    </section>
+
+    <section class="card">
+      <div class="card-header"><h2>M-Pesa prompts</h2></div>
+      {% if mpesa_transactions %}
+      <div class="table-wrap">
+        <table class="table">
+          <tbody>
+          {% for t in mpesa_transactions %}
+          <tr>
+            <td>
+              <strong>{{ t.amount|kes }}</strong> <span class="muted small">to {{ t.phone }}</span>
+              <div class="muted small">{{ t.created_at|date:"d M, H:i" }}{% if t.receipt_number %} · {{ t.receipt_number }}{% elif t.result_desc %} · {{ t.result_desc }}{% endif %}</div>
+            </td>
+            <td class="num">{% badge t.status t.get_status_display %}</td>
+          </tr>
+          {% endfor %}
+          </tbody>
+        </table>
+      </div>
+      {% else %}<div class="empty">No prompts sent yet.</div>{% endif %}
+    </section>
+
+    <section class="card">
+      <div class="card-header"><h2>SMS messages</h2></div>
+      {% if sms_messages %}
+      <div class="table-wrap">
+        <table class="table">
+          <tbody>
+          {% for m in sms_messages %}
+          <tr>
+            <td>
+              <div class="row" style="gap:8px">{% badge m.status m.get_kind_display %}<span class="muted small">{{ m.created_at|date:"d M, H:i" }}</span></div>
+              <div class="small" style="margin-top:6px">{{ m.body }}</div>
+              {% if m.error %}<div class="small text-danger">{{ m.error }}</div>{% endif %}
+            </td>
+          </tr>
+          {% endfor %}
+          </tbody>
+        </table>
+      </div>
+      {% else %}<div class="empty">No messages sent yet.</div>{% endif %}
+    </section>
+  </div>
+</div>
+{% endblock %}

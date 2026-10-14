@@ -1,0 +1,22 @@
+# Python
+venv/
+.venv/
+__pycache__/
+*.pyc
+
+# Local data and secrets
+db.sqlite3
+*.sqlite3
+.env
+.env.*
+!.env.example
+
+# Generated
+staticfiles/
+media/
+*.log
+.coverage
+htmlcov/
+
+# OS
+.DS_Store

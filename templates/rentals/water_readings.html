@@ -1,0 +1,49 @@
+{% extends 'app_base.html' %}
+{% load ui %}
+{% block page_title %}Water readings · {{ property.name }}{% endblock %}
+{% block content %}
+<div class="page-header">
+  <div>
+    <h1>Water readings</h1>
+    <p class="sub">{{ property.name }}{% if property.water_rate %} · KES {{ property.water_rate|floatformat:"-2" }} per unit{% endif %}.
+      Enter today's meter readings. Each tenant is billed for what they used since the last reading.</p>
+  </div>
+</div>
+
+{% if not property.water_rate %}
+<div class="alert alert-warning" style="margin-bottom:20px">
+  Set a water rate for this property first, otherwise readings are saved without billing anyone.
+  <span class="spacer"></span><a class="btn btn-sm" href="{% url 'rentals:property_update' property.pk %}">Set water rate</a>
+</div>
+{% endif %}
+
+<form method="post" novalidate>
+  {% csrf_token %}
+  <section class="card">
+    <div class="toolbar">
+      <label for="{{ form.reading_date.id_for_label }}" style="margin:0">Reading date</label>
+      {{ form.reading_date }}
+      {{ form.reading_date.errors }}
+    </div>
+    <div class="table-wrap">
+      <table class="table">
+        <thead><tr><th>Unit</th><th>Tenant</th><th class="num">Last reading</th><th>New reading</th></tr></thead>
+        <tbody>
+        {% for unit, last, field, lease in rows %}
+        <tr>
+          <td><strong>{{ unit.label }}</strong></td>
+          <td>{% if lease %}{{ lease.tenant }}{% else %}<span class="badge badge-warn">Vacant</span>{% endif %}</td>
+          <td class="num">{% if last %}{{ last.value|floatformat:"-2" }}<div class="muted small">{{ last.reading_date|date:"d M Y" }}</div>{% else %}<span class="muted small">First reading sets the baseline</span>{% endif %}</td>
+          <td style="max-width:180px">{{ field }}{{ field.errors }}</td>
+        </tr>
+        {% endfor %}
+        </tbody>
+      </table>
+    </div>
+  </section>
+  <div class="form-actions">
+    <button type="submit" class="btn btn-primary">Save readings &amp; bill water</button>
+    <a class="btn btn-ghost" href="{{ cancel_url }}">Cancel</a>
+  </div>
+</form>
+{% endblock %}

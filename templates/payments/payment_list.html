@@ -1,0 +1,52 @@
+{% extends 'app_base.html' %}
+{% load ui %}
+{% block page_title %}Payments{% endblock %}
+{% block content %}
+<div class="page-header">
+  <div><h1>Payments</h1><p class="sub">Every shilling received, from M-Pesa, cash and bank.</p></div>
+  <div class="actions">
+    <a class="btn" href="{% url 'reports:payments_csv' %}{% if month %}?month={{ month }}{% endif %}">Export CSV</a>
+    <a class="btn btn-primary" href="{% url 'payments:payment_create' %}">{% icon 'plus' %}Record cash/bank payment</a>
+  </div>
+</div>
+
+{% if unmatched_count %}
+<div class="alert alert-warning" style="margin-bottom:20px">
+  {% icon 'inbox' 18 %}<span><strong>{{ unmatched_count }} M-Pesa payment{{ unmatched_count|pluralize }}</strong> couldn't be matched to a tenant.</span>
+  <span class="spacer"></span><a class="btn btn-sm" href="{% url 'payments:unmatched_list' %}">Assign now</a>
+</div>
+{% endif %}
+
+<section class="card">
+  <div class="toolbar">
+    <nav class="tabs" aria-label="Filter by method">
+      <a href="?month={{ month }}" class="{% if not method %}active{% endif %}">All</a>
+      {% for value, label in methods %}<a href="?method={{ value }}&month={{ month }}" class="{% if method == value %}active{% endif %}">{{ label }}</a>{% endfor %}
+    </nav>
+    <span class="spacer"></span>
+    <form method="get"><input type="hidden" name="method" value="{{ method }}">
+      <input type="month" name="month" value="{{ month }}" aria-label="Month" onchange="this.form.submit()">
+      {% if month %}<a class="small" href="?method={{ method }}">All time</a>{% endif %}</form>
+    <span class="muted small">Total <strong style="color:var(--text)">{{ total|kes }}</strong></span>
+  </div>
+  {% if object_list %}
+  <div class="table-wrap">
+    <table class="table">
+      <thead><tr><th>Date</th><th>Tenant</th><th>Method</th><th>Reference</th><th class="num">Amount</th></tr></thead>
+      <tbody>
+      {% for p in object_list %}
+      <tr>
+        <td class="muted nowrap">{{ p.paid_at|date:"d M Y, H:i" }}</td>
+        <td><a href="{% url 'rentals:lease_detail' p.lease_id %}">{{ p.lease.tenant }}</a> <span class="muted small">· {{ p.lease.unit }}</span></td>
+        <td><span class="badge{% if p.method == 'mpesa' %} badge-success{% endif %}">{{ p.get_method_display }}</span></td>
+        <td class="muted">{{ p.reference }}</td>
+        <td class="num"><strong>{{ p.amount|kes }}</strong> <a class="small" href="{% url 'reports:payment_receipt' p.pk %}">Receipt</a></td>
+      </tr>
+      {% endfor %}
+      </tbody>
+    </table>
+  </div>
+  {% include 'includes/pagination.html' %}
+  {% else %}<div class="empty"><strong>No payments found</strong>M-Pesa payments appear here automatically.</div>{% endif %}
+</section>
+{% endblock %}

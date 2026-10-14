@@ -1,0 +1,175 @@
+{% extends 'app_base.html' %}
+{% load ui %}
+{% block page_title %}Dashboard{% endblock %}
+{% block content %}
+<div class="page-header">
+  <div>
+    <h1>{{ greeting }}, {{ user.first_name|default:user.username }}</h1>
+    <p class="sub">Here's how your rentals look for {{ today|date:"F Y" }}.</p>
+  </div>
+  <div class="actions">
+    <a class="btn" href="{% url 'maintenance:create' %}">{% icon 'wrench' %}Log repair</a>
+    <a class="btn btn-primary" href="{% url 'rentals:lease_create' %}">{% icon 'plus' %}New lease</a>
+  </div>
+</div>
+
+{% if setup_incomplete %}
+<section class="card" style="margin-bottom:20px">
+  <div class="card-body row">
+    <div style="flex:1;min-width:220px">
+      <h2>Finish setting up</h2>
+      <p class="muted small" style="margin-top:2px">{{ setup_done }} of {{ setup_total }} steps done. Next: {{ setup_next.title }}.</p>
+      <div class="progress"><span style="width:{% widthratio setup_done setup_total 100 %}%"></span></div>
+    </div>
+    <a class="btn btn-primary" href="{% url 'accounts:welcome' %}">Continue setup {% icon 'arrow-right' %}</a>
+  </div>
+</section>
+{% elif not mpesa_account or not mpesa_account.is_complete %}
+<div class="alert alert-info" style="margin-bottom:20px">
+  {% icon 'wallet' 18 %}
+  <span><strong>Connect M-Pesa to start collecting rent.</strong> Payments go straight to your own Paybill or Till.</span>
+  <span class="spacer"></span>
+  <a class="btn btn-primary btn-sm" href="{% url 'payments:mpesa_settings' %}">Connect M-Pesa</a>
+</div>
+{% endif %}
+
+{% if unmatched_c2b %}
+<div class="alert alert-warning" style="margin-bottom:20px">
+  {% icon 'inbox' 18 %}
+  <span><strong>{{ unmatched_c2b }} M-Pesa payment{{ unmatched_c2b|pluralize }}</strong> couldn't be matched to a tenant.</span>
+  <span class="spacer"></span>
+  <a class="btn btn-sm" href="{% url 'payments:unmatched_list' %}">Assign now</a>
+</div>
+{% endif %}
+
+<div class="kpis" style="margin-bottom:20px">
+  <div class="card kpi">
+    <div class="label">Collected this month</div>
+    <div class="value text-success">{{ collected_this_month|kes }}</div>
+    {% if collection_rate is not None %}
+      <div class="progress" role="progressbar" aria-valuenow="{{ collection_rate }}" aria-valuemin="0" aria-valuemax="100"><span style="width: {{ collection_rate }}%"></span></div>
+      <div class="sub">{{ collection_rate }}% of {{ billed_this_month|kes }} billed</div>
+    {% else %}
+      <div class="sub">Nothing billed yet this month</div>
+    {% endif %}
+  </div>
+  <div class="card kpi">
+    <div class="label">Outstanding arrears</div>
+    <div class="value {% if total_arrears %}text-danger{% endif %}">{{ total_arrears|kes }}</div>
+    <div class="sub">{{ arrears|length }} tenant{{ arrears|length|pluralize }} owing</div>
+  </div>
+  <div class="card kpi">
+    <div class="label">Occupancy</div>
+    <div class="value">{{ occupied_count }}<small> / {{ unit_count }}</small></div>
+    <div class="sub">{% if vacant_count %}{{ vacant_count }} vacant unit{{ vacant_count|pluralize }}{% elif unit_count %}Fully let{% else %}No units yet{% endif %}</div>
+  </div>
+  <div class="card kpi">
+    <div class="label">Open repairs</div>
+    <div class="value">{{ open_count }}</div>
+    <div class="sub">{% if urgent_count %}<span class="text-danger">{{ urgent_count }} high priority</span>{% elif open_requests %}None urgent{% else %}All caught up{% endif %}</div>
+  </div>
+</div>
+
+<div class="grid-2">
+  <div class="stack">
+    <section class="card">
+      <div class="card-header">
+        <h2>Tenants in arrears</h2>
+        <span class="spacer"></span>
+        <a class="small" href="{% url 'rentals:lease_list' %}">All leases</a>
+      </div>
+      {% if arrears %}
+      <div class="table-wrap">
+        <table class="table">
+          <thead><tr><th>Tenant</th><th class="num">Owes</th><th></th></tr></thead>
+          <tbody>
+          {% for lease, balance in arrears %}
+          <tr>
+            <td>
+              <a class="who" href="{% url 'rentals:lease_detail' lease.pk %}" style="text-decoration:none">
+                <span class="avatar">{{ lease.tenant.full_name|initials }}</span>
+                <span><span class="name">{{ lease.tenant }}</span><span class="meta" style="display:block">{{ lease.unit }}</span></span>
+              </a>
+            </td>
+            <td class="num text-danger"><strong>{{ balance|kes }}</strong></td>
+            <td class="num">
+              <form method="post" action="{% url 'rentals:send_reminder' lease.pk %}">
+                {% csrf_token %}<input type="hidden" name="next" value="{{ request.get_full_path }}">
+                <button class="btn btn-sm">{% icon 'bell' %}Remind</button>
+              </form>
+            </td>
+          </tr>
+          {% endfor %}
+          </tbody>
+        </table>
+      </div>
+      {% elif occupied_count %}
+        <div class="empty"><strong>Everyone is paid up 🎉</strong>No outstanding balances right now.</div>
+      {% else %}
+        <div class="empty">
+          <strong>No active leases yet</strong>
+          Add a property, a tenant and a lease to start collecting rent.
+          <div style="margin-top:14px"><a class="btn btn-primary btn-sm" href="{% url 'rentals:property_create' %}">{% icon 'plus' %}Add a property</a></div>
+        </div>
+      {% endif %}
+    </section>
+
+    <section class="card">
+      <div class="card-header">
+        <h2>Recent payments</h2>
+        <span class="spacer"></span>
+        <a class="small" href="{% url 'payments:payment_list' %}">View all</a>
+      </div>
+      {% if recent_payments %}
+      <div class="table-wrap">
+        <table class="table">
+          <thead><tr><th>Tenant</th><th>Method</th><th>Date</th><th class="num">Amount</th></tr></thead>
+          <tbody>
+          {% for p in recent_payments %}
+          <tr>
+            <td><a href="{% url 'rentals:lease_detail' p.lease_id %}">{{ p.lease.tenant }}</a> <span class="muted small">· {{ p.lease.unit.label }}</span></td>
+            <td><span class="badge{% if p.method == 'mpesa' %} badge-success{% endif %}">{{ p.get_method_display }}</span></td>
+            <td class="muted nowrap">{{ p.paid_at|date:"d M, H:i" }}</td>
+            <td class="num"><strong>{{ p.amount|kes }}</strong></td>
+          </tr>
+          {% endfor %}
+          </tbody>
+        </table>
+      </div>
+      {% else %}
+        <div class="empty"><strong>No payments yet</strong>M-Pesa payments appear here as soon as Safaricom confirms them.</div>
+      {% endif %}
+    </section>
+  </div>
+
+  <section class="card">
+    <div class="card-header">
+      <h2>Open repairs</h2>
+      <span class="spacer"></span>
+      <a class="small" href="{% url 'maintenance:list' %}">View all</a>
+    </div>
+    {% if open_requests %}
+    <div class="table-wrap">
+      <table class="table">
+        <tbody>
+        {% for r in open_requests %}
+        <tr>
+          <td>
+            <a href="{% url 'maintenance:update' r.pk %}"><strong>{{ r.title }}</strong></a>
+            <div class="muted small">{{ r.unit }} · {{ r.created_at|timesince }} ago</div>
+          </td>
+          <td class="num">
+            {% badge r.priority r.get_priority_display %}
+            <div style="margin-top:4px">{% badge r.status r.get_status_display %}</div>
+          </td>
+        </tr>
+        {% endfor %}
+        </tbody>
+      </table>
+    </div>
+    {% else %}
+      <div class="empty"><strong>Nothing to fix</strong>Repairs reported by tenants show up here.</div>
+    {% endif %}
+  </section>
+</div>
+{% endblock %}

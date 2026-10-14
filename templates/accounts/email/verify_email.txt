@@ -1,0 +1,9 @@
+Hi {{ user.first_name|default:user.username }},
+
+Please confirm your email address for {{ APP_NAME }} by opening this link:
+
+{{ url }}
+
+The link works for 3 days. If you didn't create an account, you can ignore this email.
+
+{{ APP_NAME }}

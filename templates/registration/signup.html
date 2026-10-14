@@ -1,0 +1,21 @@
+{% extends 'base.html' %}
+{% block title %}Create your account · {{ APP_NAME }}{% endblock %}
+{% block body %}
+<header class="topbar">
+  <a class="brand" href="{% url 'rentals:home' %}" style="padding:0">{% include 'includes/logo.html' %}{{ APP_NAME }}</a>
+</header>
+<main>
+  <div class="card auth-card" style="max-width:440px">
+    <h1>Create your landlord account</h1>
+    <p class="muted">Set up your properties and start collecting rent on M-Pesa.</p>
+    <form method="post" novalidate>
+      {% csrf_token %}
+      {% include 'includes/form_fields.html' %}
+      <button type="submit" class="btn btn-primary btn-block btn-lg">Create account</button>
+    </form>
+  </div>
+  <p class="muted small" style="text-align:center;margin:20px 0 40px">
+    Already have an account? <a href="{% url 'login' %}">Log in</a>
+  </p>
+</main>
+{% endblock %}

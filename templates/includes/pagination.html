@@ -1,0 +1,7 @@
+{% if is_paginated %}
+<div class="row" style="justify-content:center;padding:14px">
+  {% if page_obj.has_previous %}<a class="btn btn-sm" href="?{% for k, v in request.GET.items %}{% if k != 'page' %}{{ k }}={{ v|urlencode }}&{% endif %}{% endfor %}page={{ page_obj.previous_page_number }}">← Newer</a>{% endif %}
+  <span class="muted small">Page {{ page_obj.number }} of {{ page_obj.paginator.num_pages }}</span>
+  {% if page_obj.has_next %}<a class="btn btn-sm" href="?{% for k, v in request.GET.items %}{% if k != 'page' %}{{ k }}={{ v|urlencode }}&{% endif %}{% endfor %}page={{ page_obj.next_page_number }}">Older →</a>{% endif %}
+</div>
+{% endif %}

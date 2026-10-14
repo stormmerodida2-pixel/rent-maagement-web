@@ -1,0 +1,30 @@
+{% extends 'app_base.html' %}
+{% load ui %}
+{% block page_title %}Getting started{% endblock %}
+{% block content %}
+<div class="page-header">
+  <div>
+    <h1>{% if current %}Let's get you set up{% else %}You're all set 🎉{% endif %}</h1>
+    <p class="sub">{% if current %}Four steps and you'll be collecting rent on M-Pesa.{% else %}Rent is billed monthly and M-Pesa payments are recorded automatically.{% endif %}</p>
+  </div>
+  <div class="actions"><a class="btn" href="{% url 'rentals:dashboard' %}">{% if current %}Skip for now{% else %}Go to dashboard{% endif %}</a></div>
+</div>
+
+<section class="card" style="max-width:720px">
+  <div class="card-header">
+    <h2>Setup progress</h2><span class="spacer"></span><span class="muted">{{ done_count }} of {{ steps|length }} done</span>
+  </div>
+  <div class="card-body" style="padding-top:0;padding-bottom:0"><div class="progress" style="margin:14px 0"><span style="width:{% widthratio done_count steps|length 100 %}%"></span></div></div>
+  <ol class="steps-list">
+    {% for step in steps %}
+    <li class="{% if step.done %}done{% elif step == current %}current{% endif %}">
+      <span class="dot">{% if step.done %}✓{% else %}{{ step.number }}{% endif %}</span>
+      <div class="body"><h3>{{ step.title }}</h3><p>{{ step.text }}</p></div>
+      {% if not step.done %}
+        <a class="btn btn-sm{% if step == current %} btn-primary{% endif %}" href="{% url step.url %}{% if step.url != 'payments:mpesa_settings' %}?next={% url 'accounts:welcome' %}{% endif %}">{{ step.cta }}</a>
+      {% endif %}
+    </li>
+    {% endfor %}
+  </ol>
+</section>
+{% endblock %}

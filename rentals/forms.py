@@ -1,0 +1,233 @@
+import datetime
+
+from django import forms
+from django.core.exceptions import ValidationError
+
+from .models import Lease, Property, RentCharge, Tenant, Unit
+
+DATE = forms.DateInput(attrs={'type': 'date'}, format='%Y-%m-%d')
+
+
+class OwnedForm(forms.ModelForm):
+    """ModelForm that knows the signed-in landlord, to scope choices and set ownership."""
+
+    def __init__(self, *args, owner, **kwargs):
+        self.owner = owner
+        super().__init__(*args, **kwargs)
+
+
+class PropertyForm(OwnedForm):
+    # Optional quick-start: create a run of numbered units together with the property.
+    unit_prefix = forms.CharField(
+        required=False, max_length=10, label='Unit label prefix', help_text='e.g. "A" gives A1, A2, A3…',
+    )
+    unit_count = forms.IntegerField(required=False, min_value=1, max_value=200, label='Number of units')
+    unit_rent = forms.DecimalField(required=False, min_value=0, max_digits=10, decimal_places=2,
+                                   label='Monthly rent per unit (KES)')
+
+    class Meta:
+        model = Property
+        fields = ['name', 'address', 'water_rate']
+
+    def __init__(self, *args, **kwargs):
+        super().__init__(*args, **kwargs)
+        if self.instance.pk:
+            for name in ['unit_prefix', 'unit_count', 'unit_rent']:
+                del self.fields[name]
+
+    def clean(self):
+        cleaned = super().clean()
+        if cleaned.get('unit_count') and cleaned.get('unit_rent') is None:
+            self.add_error('unit_rent', 'Enter the rent for these units.')
+        return cleaned
+
+    def save(self, commit=True):
+        prop = super().save(commit=False)
+        prop.owner = self.owner
+        if commit:
+            prop.save()
+            count = self.cleaned_data.get('unit_count')
+            if count:
+                prefix = self.cleaned_data.get('unit_prefix') or ''
+                Unit.objects.bulk_create(
+                    Unit(property=prop, label=f'{prefix}{i}', default_rent=self.cleaned_data['unit_rent'])
+                    for i in range(1, count + 1)
+                )
+        return prop
+
+
+class UnitForm(forms.ModelForm):
+    class Meta:
+        model = Unit
+        fields = ['label', 'bedrooms', 'default_rent']
+        labels = {'default_rent': 'Monthly rent (KES)'}
+
+    def __init__(self, *args, property, **kwargs):
+        self.property = property
+        super().__init__(*args, **kwargs)
+        self.instance.property = property
+
+    def clean_label(self):
+        label = self.cleaned_data['label'].strip()
+        clash = Unit.objects.filter(property=self.property, label__iexact=label).exclude(pk=self.instance.pk)
+        if clash.exists():
+            raise ValidationError(f'{self.property} already has a unit called {label}.')
+        return label
+
+
+class TenantForm(OwnedForm):
+    class Meta:
+        model = Tenant
+        fields = ['full_name', 'phone', 'email', 'id_number']
+        labels = {'phone': 'M-Pesa phone number'}
+        widgets = {'phone': forms.TextInput(attrs={'inputmode': 'tel', 'placeholder': '0712 345 678'})}
+
+    def __init__(self, *args, **kwargs):
+        super().__init__(*args, **kwargs)
+        self.instance.owner = self.owner
+
+
+class LeaseForm(OwnedForm):
+    bill_now = forms.BooleanField(
+        required=False, initial=True, label="Bill this month's rent now",
+        help_text='Otherwise it is billed by the next monthly run.',
+    )
+    bill_deposit = forms.BooleanField(
+        required=False, initial=True, label='Bill the deposit now',
+        help_text='Adds the deposit to what the tenant owes, so you can track when it is paid.',
+    )
+
+    class Meta:
+        model = Lease
+        fields = ['unit', 'tenant', 'start_date', 'end_date', 'monthly_rent', 'service_charge', 'deposit',
+                  'due_day', 'late_fee', 'late_fee_grace_days']
+        labels = {
+            'monthly_rent': 'Monthly rent (KES)', 'deposit': 'Deposit (KES)', 'end_date': 'End date',
+            'service_charge': 'Service charge (KES / month)', 'late_fee': 'Late fee (KES)',
+            'late_fee_grace_days': 'Grace period (days)',
+        }
+        widgets = {'start_date': DATE, 'end_date': DATE}
+
+    def __init__(self, *args, **kwargs):
+        super().__init__(*args, **kwargs)
+        units = Unit.objects.filter(property__owner=self.owner).select_related('property')
+        occupied = Lease.objects.filter(is_active=True).exclude(pk=self.instance.pk).values('unit')
+        self.fields['unit'].queryset = units.exclude(pk__in=occupied)
+        self.fields['unit'].empty_label = 'Choose a vacant unit'
+        self.fields['tenant'].queryset = Tenant.objects.filter(owner=self.owner)
+        self.fields['tenant'].empty_label = 'Choose a tenant'
+        self.fields['monthly_rent'].required = False
+        self.fields['monthly_rent'].help_text = "Leave blank to use the unit's rent."
+        for name in self.OPTIONAL_WITH_DEFAULT:
+            self.fields[name].required = False
+        if self.instance.pk:
+            del self.fields['bill_now']
+            del self.fields['bill_deposit']
+        else:
+            self.initial.setdefault('start_date', datetime.date.today())
+
+    # Blank means "use the model default" (no service charge, no late fee, 3-day grace).
+    OPTIONAL_WITH_DEFAULT = ['deposit', 'service_charge', 'late_fee', 'late_fee_grace_days']
+
+    def clean(self):
+        cleaned = super().clean()
+        for name in self.OPTIONAL_WITH_DEFAULT:
+            if cleaned.get(name) is None and name not in self.errors:
+                cleaned[name] = Lease._meta.get_field(name).get_default()
+        unit = cleaned.get('unit')
+        if unit and cleaned.get('monthly_rent') is None:
+            cleaned['monthly_rent'] = unit.default_rent
+            self.instance.monthly_rent = unit.default_rent
+        return cleaned
+
+    def save(self, commit=True):
+        lease = super().save(commit)
+        if commit and self.cleaned_data.get('bill_deposit'):
+            lease.bill_deposit()
+        if commit and self.cleaned_data.get('bill_now') and lease.start_date <= datetime.date.today():
+            lease.ensure_charge_for(datetime.date.today())
+        return lease
+
+
+class EndLeaseForm(forms.Form):
+    end_date = forms.DateField(initial=datetime.date.today, widget=DATE, label='Move-out date')
+    deductions = forms.DecimalField(
+        required=False, min_value=0, max_digits=10, decimal_places=2, label='Deductions (KES)',
+        help_text='Damage, cleaning or other costs taken from the deposit.',
+    )
+    reason = forms.CharField(required=False, max_length=150, label='Reason for deductions')
+    apply_deposit = forms.BooleanField(
+        required=False, initial=True, label='Apply the deposit to what they owe',
+    )
+    refund_paid = forms.BooleanField(
+        required=False, label="I've already paid back any refund",
+        help_text='Records the refund so their account closes at zero.',
+    )
+
+    def __init__(self, *args, lease, **kwargs):
+        self.lease = lease
+        super().__init__(*args, **kwargs)
+
+    def clean_end_date(self):
+        end = self.cleaned_data['end_date']
+        if end < self.lease.start_date:
+            raise ValidationError('The lease cannot end before it started.')
+        return end
+
+    def clean(self):
+        cleaned = super().clean()
+        if cleaned.get('deductions') and not cleaned.get('reason'):
+            self.add_error('reason', 'Say what the deductions are for. The tenant will see this.')
+        return cleaned
+
+
+class WaterReadingsForm(forms.Form):
+    """One meter-reading field per unit, plus the reading date."""
+
+    reading_date = forms.DateField(initial=datetime.date.today, widget=DATE)
+
+    def __init__(self, *args, units, **kwargs):
+        super().__init__(*args, **kwargs)
+        self.units = units
+        for unit in units:
+            self.fields[f'unit_{unit.pk}'] = forms.DecimalField(
+                required=False, min_value=0, max_digits=12, decimal_places=2, label=unit.label,
+            )
+
+    def readings(self):
+        """(unit, value) pairs for the units that were filled in."""
+        return [(u, self.cleaned_data[f'unit_{u.pk}']) for u in self.units
+                if self.cleaned_data.get(f'unit_{u.pk}') is not None]
+
+
+class ChargeForm(forms.ModelForm):
+    """One-off charge or credit added by the landlord."""
+
+    KINDS = [RentCharge.Kind.OTHER, RentCharge.Kind.WATER, RentCharge.Kind.DEDUCTION, RentCharge.Kind.REFUND]
+
+    class Meta:
+        model = RentCharge
+        fields = ['kind', 'description', 'amount', 'due_date']
+        labels = {'kind': 'Type', 'amount': 'Amount (KES)', 'due_date': 'Date'}
+        widgets = {'due_date': DATE}
+
+    def __init__(self, *args, lease, **kwargs):
+        self.lease = lease
+        super().__init__(*args, **kwargs)
+        self.fields['kind'].choices = [(k.value, k.label) for k in self.KINDS]
+        self.fields['description'].required = True
+        self.fields['description'].help_text = 'Shown on the tenant\'s statement, e.g. "Replaced broken window".'
+        self.initial.setdefault('due_date', datetime.date.today())
+
+    def clean_amount(self):
+        if self.cleaned_data['amount'] == 0:
+            raise ValidationError('Enter an amount other than zero.')
+        return self.cleaned_data['amount']
+
+    def save(self, commit=True):
+        charge = super().save(commit=False)
+        charge.lease = self.lease
+        charge.period = charge.due_date.replace(day=1)
+        if commit:
+            charge.save()
+        return charge

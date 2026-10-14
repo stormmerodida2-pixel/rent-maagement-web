@@ -1,0 +1,54 @@
+{% extends 'app_base.html' %}
+{% load ui %}
+{% block page_title %}{{ object.name }}{% endblock %}
+{% block content %}
+<div class="page-header">
+  <div><h1>{{ object.name }}</h1><p class="sub">{{ object.address|default:"No address" }}{% if object.water_rate %} · Water KES {{ object.water_rate|floatformat:"-2" }}/unit{% endif %}</p></div>
+  <div class="actions">
+    <a class="btn" href="{% url 'rentals:water_readings' object.pk %}">{% icon 'chart' %}Water readings</a>
+    <a class="btn" href="{% url 'rentals:property_update' object.pk %}">Edit property</a>
+  </div>
+</div>
+
+<div class="grid-2">
+  <section class="card">
+    <div class="card-header"><h2>Units</h2><span class="muted">{{ unit_rows|length }} total</span></div>
+    {% if unit_rows %}
+    <div class="table-wrap">
+      <table class="table">
+        <thead><tr><th>Unit</th><th>Tenant</th><th class="num">Rent</th><th></th></tr></thead>
+        <tbody>
+        {% for unit, lease in unit_rows %}
+        <tr>
+          <td><strong>{{ unit.label }}</strong><div class="muted small">{{ unit.bedrooms }} bedroom{{ unit.bedrooms|pluralize }}</div></td>
+          <td>
+            {% if lease %}<a href="{% url 'rentals:lease_detail' lease.pk %}">{{ lease.tenant }}</a>
+            {% else %}<span class="badge badge-warn">Vacant</span>{% endif %}
+          </td>
+          <td class="num">{{ unit.default_rent|kes }}</td>
+          <td class="num nowrap">
+            {% if not lease %}<a class="btn btn-sm" href="{% url 'rentals:lease_create' %}?unit={{ unit.pk }}">Let</a>{% endif %}
+            <a class="btn btn-sm btn-ghost" href="{% url 'rentals:unit_update' unit.pk %}">Edit</a>
+          </td>
+        </tr>
+        {% endfor %}
+        </tbody>
+      </table>
+    </div>
+    {% else %}
+      <div class="empty"><strong>No units yet</strong>Add the rooms, flats or houses you rent out.</div>
+    {% endif %}
+  </section>
+
+  <section class="card">
+    <div class="card-header"><h2>Add a unit</h2></div>
+    <div class="card-body">
+      <form method="post" action="{% url 'rentals:unit_create' object.pk %}" novalidate>
+        {% csrf_token %}
+        {% with form=unit_form %}{% include 'includes/form_fields.html' %}{% endwith %}
+        <div class="form-actions"><button class="btn btn-primary">{% icon 'plus' %}Add unit</button></div>
+      </form>
+    </div>
+  </section>
+</div>
+{% endblock %}

@@ -1,0 +1,188 @@
+{% extends 'base.html' %}
+{% load ui %}
+{% block title %}{{ APP_NAME }} · Rent collection on M-Pesa for Kenyan landlords{% endblock %}
+{% block body %}
+<header class="site-nav">
+  <div class="inner">
+    <a class="brand" href="{% url 'rentals:home' %}">{% include 'includes/logo.html' %}{{ APP_NAME }}</a>
+    <nav class="links" aria-label="Sections">
+      <a href="#features">Features</a>
+      <a href="#how-it-works">How it works</a>
+      <a href="#tenants">For tenants</a>
+    </nav>
+    {% if user.is_authenticated %}
+      <a class="btn btn-primary" href="{% url 'rentals:dashboard' %}">Open dashboard {% icon 'arrow-right' %}</a>
+    {% else %}
+      <span class="row" style="gap:8px"><a class="btn btn-ghost" href="{% url 'login' %}">Log in</a><a class="btn btn-primary" href="{% url 'accounts:signup' %}">Get started</a></span>
+    {% endif %}
+  </div>
+</header>
+
+<main>
+  <div class="wrap hero">
+    <div>
+      <span class="eyebrow">Built for M-Pesa</span>
+      <h1>Collect rent on <span class="nowrap">M-Pesa.</span> <em>Know who's paid</em>, instantly.</h1>
+      <p class="lead">
+        {{ APP_NAME }} bills your tenants every month, prompts them to pay on their phones,
+        records every Paybill payment automatically and chases arrears by SMS, so you stop
+        reconciling statements by hand.
+      </p>
+      <div class="ctas">
+        {% if user.is_authenticated %}
+          <a class="btn btn-primary btn-lg" href="{% url 'rentals:dashboard' %}">Go to your dashboard {% icon 'arrow-right' %}</a>
+        {% else %}
+          <a class="btn btn-primary btn-lg" href="{% url 'accounts:signup' %}">Get started free {% icon 'arrow-right' %}</a>
+        {% endif %}
+        <a class="btn btn-lg" href="#how-it-works">See how it works</a>
+      </div>
+      <div class="proof">
+        <span>STK Push &amp; Paybill</span>
+        <span>SMS reminders</span>
+        <span>Tenant self-service</span>
+      </div>
+    </div>
+
+    <div class="mock" aria-hidden="true">
+      <div class="card mock-window">
+        <div class="mock-bar"><i></i><i></i><i></i></div>
+        <div class="mock-body">
+          <div class="mock-kpis">
+            <div class="card"><div class="label">Collected</div><b class="text-success">KES 412k</b></div>
+            <div class="card"><div class="label">Arrears</div><b class="text-danger">KES 38k</b></div>
+          </div>
+          <div>
+            <div class="label">Latest payments</div>
+            <div class="mock-row"><span class="avatar">WK</span>Wanjiku K. · A4 <span class="badge badge-success">Paybill</span><span class="amt">18,000</span></div>
+            <div class="mock-row"><span class="avatar">OM</span>Otieno M. · B2 <span class="badge badge-success">STK</span><span class="amt">22,500</span></div>
+            <div class="mock-row"><span class="avatar">AN</span>Achieng N. · C1 <span class="badge badge-warn">Reminded</span><span class="amt text-danger">−12,000</span></div>
+          </div>
+        </div>
+      </div>
+      <div class="phone">
+        <div class="phone-screen">
+          <div class="small">M-PESA</div>
+          <div class="stk">
+            <b>Pay KES 18,000</b>
+            to Sunrise Apartments, account LEASE14. Enter M-PESA PIN:
+            <div class="pin">••••</div>
+            <div class="ok">Send</div>
+          </div>
+        </div>
+      </div>
+    </div>
+  </div>
+
+  <section class="section section-alt" id="features">
+    <div class="wrap">
+      <div class="section-head">
+        <span class="eyebrow">Features</span>
+        <h2>Everything between "rent is due" and "rent is in the bank"</h2>
+        <p>One place for your properties, tenants, payments and repairs, whether you run one block or ten.</p>
+      </div>
+      <div class="features">
+        <div class="card feature">
+          <div class="icon">{% icon 'phone' %}</div>
+          <h3>M-Pesa STK Push</h3>
+          <p>Send a payment prompt straight to a tenant's phone. They enter their PIN and the payment lands on their lease.</p>
+        </div>
+        <div class="card feature">
+          <div class="icon">{% icon 'inbox' %}</div>
+          <h3>Automatic Paybill matching</h3>
+          <p>Tenants pay your Paybill with their account number and every payment is matched to the right lease. Nothing to reconcile.</p>
+        </div>
+        <div class="card feature">
+          <div class="icon">{% icon 'chart' %}</div>
+          <h3>Arrears at a glance</h3>
+          <p>Monthly rent is billed automatically. See who owes what, how much you've collected and your occupancy in one dashboard.</p>
+        </div>
+        <div class="card feature">
+          <div class="icon">{% icon 'bell' %}</div>
+          <h3>SMS reminders &amp; receipts</h3>
+          <p>Polite, automatic reminders to tenants with a balance, and an SMS receipt the moment their payment arrives.</p>
+        </div>
+        <div class="card feature">
+          <div class="icon">{% icon 'wrench' %}</div>
+          <h3>Maintenance tracking</h3>
+          <p>Tenants report problems from their phones. Track priority, who's fixing it, the cost and when it was resolved.</p>
+        </div>
+        <div class="card feature">
+          <div class="icon">{% icon 'shield' %}</div>
+          <h3>Your data stays yours</h3>
+          <p>Each landlord sees only their own properties, tenants and payments. Every M-Pesa receipt is recorded exactly once.</p>
+        </div>
+      </div>
+    </div>
+  </section>
+
+  <section class="section" id="how-it-works">
+    <div class="wrap">
+      <div class="section-head">
+        <span class="eyebrow">How it works</span>
+        <h2>Set up once, then let rent come in</h2>
+      </div>
+      <div class="steps">
+        <div class="step">
+          <h3>Add your properties and tenants</h3>
+          <p>Create your buildings and units, add tenants with their M-Pesa numbers, and start a lease with the rent and due date.</p>
+        </div>
+        <div class="step">
+          <h3>Rent is billed every month</h3>
+          <p>Each lease is charged on the 1st. Tenants get an SMS with their balance, your Paybill number and their account number.</p>
+        </div>
+        <div class="step">
+          <h3>Payments reconcile themselves</h3>
+          <p>STK and Paybill payments are recorded the moment Safaricom confirms them. Balances, arrears and receipts update instantly.</p>
+        </div>
+      </div>
+    </div>
+  </section>
+
+  <section class="section section-alt" id="tenants">
+    <div class="wrap split">
+      <div>
+        <span class="eyebrow">For tenants</span>
+        <div class="section-head" style="margin-bottom:0">
+          <h2>A private page for every tenant, no app or password needed</h2>
+          <p>Each tenant gets a personal link by SMS. From any phone they can:</p>
+        </div>
+        <ul class="checks">
+          <li>See their balance and payment history</li>
+          <li>Pay with one tap. The M-Pesa prompt comes to their own phone.</li>
+          <li>Report a leaking tap or broken lock, and follow the repair</li>
+        </ul>
+      </div>
+      <div class="sms" aria-hidden="true">
+        <div class="bubble"><div class="from">{{ APP_NAME }}</div>Hi Wanjiku, your rent balance for A4 is KES 18,000, due 05 Nov. Pay via M-Pesa Paybill 600986, account LEASE14, or online: …/t/x7Kp…</div>
+        <div class="bubble"><div class="from">{{ APP_NAME }}</div>Received KES 18,000 (M-Pesa SJK1ABC2DE) for A4. Thank you! You are fully paid up.</div>
+      </div>
+    </div>
+  </section>
+
+  <section class="section">
+    <div class="wrap">
+      <div class="cta-band">
+        <div>
+          <h2>Spend less time chasing rent.</h2>
+          <p>Create your account, add your units and start collecting on M-Pesa today.</p>
+        </div>
+        {% if user.is_authenticated %}
+          <a class="btn btn-lg" href="{% url 'rentals:dashboard' %}">Open dashboard</a>
+        {% else %}
+          <a class="btn btn-lg" href="{% url 'accounts:signup' %}">Create your account</a>
+        {% endif %}
+      </div>
+    </div>
+  </section>
+</main>
+
+<footer class="site-footer">
+  <div class="wrap">
+    <span class="row">{% include 'includes/logo.html' %}<strong style="color:var(--text)">{{ APP_NAME }}</strong></span>
+    <span>Rent collection for Kenyan landlords.</span>
+    <span class="spacer"></span>
+    <a href="{% url 'login' %}">Log in</a>
+    <a href="{% url 'accounts:signup' %}">Sign up</a>
+  </div>
+</footer>
+{% endblock %}

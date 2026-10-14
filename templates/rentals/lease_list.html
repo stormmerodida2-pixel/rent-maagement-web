@@ -1,0 +1,43 @@
+{% extends 'app_base.html' %}
+{% load ui %}
+{% block page_title %}Leases{% endblock %}
+{% block content %}
+<div class="page-header">
+  <div><h1>Leases</h1><p class="sub">Who rents which unit, and what they owe.</p></div>
+  <div class="actions"><a class="btn btn-primary" href="{% url 'rentals:lease_create' %}">{% icon 'plus' %}Start lease</a></div>
+</div>
+<section class="card">
+  <div class="toolbar">
+    <nav class="tabs" aria-label="Filter leases">
+      <a href="?status=active" class="{% if status == 'active' and not owing %}active{% endif %}">Active</a>
+      <a href="?status=active&owing=1" class="{% if owing %}active{% endif %}">Owing</a>
+      <a href="?status=ended" class="{% if status == 'ended' %}active{% endif %}">Ended</a>
+      <a href="?status=all" class="{% if status == 'all' %}active{% endif %}">All</a>
+    </nav>
+    <span class="spacer"></span>
+    <form method="get"><input type="hidden" name="status" value="{{ status }}">{% if owing %}<input type="hidden" name="owing" value="1">{% endif %}
+      <input type="search" name="q" value="{{ q }}" placeholder="Search tenant, unit, property" aria-label="Search leases"></form>
+  </div>
+  {% if rows %}
+  <div class="table-wrap">
+    <table class="table">
+      <thead><tr><th>Tenant</th><th>Unit</th><th class="num">Rent</th><th>Since</th><th class="num">Balance</th></tr></thead>
+      <tbody>
+      {% for lease, balance in rows %}
+      <tr>
+        <td><a class="who" href="{% url 'rentals:lease_detail' lease.pk %}" style="text-decoration:none"><span class="avatar">{{ lease.tenant.full_name|initials }}</span><span class="name">{{ lease.tenant }}</span></a></td>
+        <td>{{ lease.unit }}{% if not lease.is_active %} <span class="badge">Ended</span>{% endif %}</td>
+        <td class="num">{{ lease.monthly_rent|kes }}</td>
+        <td class="muted nowrap">{{ lease.start_date|date:"d M Y" }}</td>
+        <td class="num {% if balance > 0 %}text-danger{% elif balance < 0 %}text-success{% endif %}"><strong>{{ balance|kes }}</strong></td>
+      </tr>
+      {% endfor %}
+      </tbody>
+    </table>
+  </div>
+  {% include 'includes/pagination.html' %}
+  {% else %}
+    <div class="empty"><strong>No leases here</strong>{% if status == 'active' and not q %}Start a lease to begin billing rent.{% endif %}</div>
+  {% endif %}
+</section>
+{% endblock %}

@@ -1,0 +1,38 @@
+{% extends 'app_base.html' %}
+{% load ui %}
+{% block page_title %}Tenants{% endblock %}
+{% block content %}
+<div class="page-header">
+  <div><h1>Tenants</h1><p class="sub">Everyone renting from you, past and present.</p></div>
+  <div class="actions"><a class="btn btn-primary" href="{% url 'rentals:tenant_create' %}">{% icon 'plus' %}Add tenant</a></div>
+</div>
+<section class="card">
+  <div class="toolbar">
+    <form method="get"><input type="search" name="q" value="{{ q }}" placeholder="Search name, phone or email" aria-label="Search tenants"><button class="btn btn-sm">Search</button>
+      {% if q %}<a class="small" href="{% url 'rentals:tenant_list' %}">Clear</a>{% endif %}</form>
+  </div>
+  {% if rows %}
+  <div class="table-wrap">
+    <table class="table">
+      <thead><tr><th>Tenant</th><th>Phone</th><th>Lives in</th><th></th></tr></thead>
+      <tbody>
+      {% for tenant, lease in rows %}
+      <tr>
+        <td><div class="who"><span class="avatar">{{ tenant.full_name|initials }}</span><div><div class="name">{{ tenant.full_name }}</div>{% if tenant.email %}<div class="meta">{{ tenant.email }}</div>{% endif %}</div></div></td>
+        <td class="nowrap">{{ tenant.phone }}</td>
+        <td>{% if lease %}<a href="{% url 'rentals:lease_detail' lease.pk %}">{{ lease.unit }}</a>{% else %}<span class="badge">No active lease</span>{% endif %}</td>
+        <td class="num nowrap">
+          {% if not lease %}<a class="btn btn-sm" href="{% url 'rentals:lease_create' %}?tenant={{ tenant.pk }}">Start lease</a>{% endif %}
+          <a class="btn btn-sm btn-ghost" href="{% url 'rentals:tenant_update' tenant.pk %}">Edit</a>
+        </td>
+      </tr>
+      {% endfor %}
+      </tbody>
+    </table>
+  </div>
+  {% include 'includes/pagination.html' %}
+  {% else %}
+    <div class="empty">{% if q %}<strong>No tenants match "{{ q }}"</strong>{% else %}<strong>No tenants yet</strong>Add a tenant, then start a lease for them.{% endif %}</div>
+  {% endif %}
+</section>
+{% endblock %}

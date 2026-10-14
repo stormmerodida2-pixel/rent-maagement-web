@@ -1,0 +1,315 @@
+"""Minimal client for Safaricom's Daraja API: STK Push (Lipa Na M-Pesa Online) and C2B Paybill/Till.
+
+Every call runs against a landlord's own MpesaAccount, so money goes straight to them.
+"""
+
+import base64
+import datetime
+import hashlib
+import logging
+from decimal import ROUND_CEILING, Decimal
+
+import requests
+from django.conf import settings
+from django.core.cache import cache
+from django.db import transaction
+from django.urls import reverse
+from django.utils import timezone
+
+from rentals import phone
+from rentals.models import Lease
+
+from .models import C2BPayment, MpesaAccount, MpesaTransaction, Payment
+
+logger = logging.getLogger(__name__)
+
+BASE_URLS = {
+    MpesaAccount.Environment.SANDBOX: 'https://sandbox.safaricom.co.ke',
+    MpesaAccount.Environment.PRODUCTION: 'https://api.safaricom.co.ke',
+}
+TIMEOUT = 30
+
+
+class MpesaError(Exception):
+    pass
+
+
+def normalize_phone(value):
+    try:
+        return phone.normalize_phone(value)
+    except ValueError as exc:
+        raise MpesaError(str(exc)) from exc
+
+
+def account_for(lease):
+    """The landlord's M-Pesa account for a lease, or MpesaError if it isn't set up."""
+    try:
+        account = MpesaAccount.objects.get(owner_id=lease.unit.property.owner_id)
+    except MpesaAccount.DoesNotExist:
+        raise MpesaError("M-Pesa isn't connected yet. Add your Paybill or Till under Settings → M-Pesa.")
+    if not account.is_complete():
+        raise MpesaError('Your M-Pesa settings are incomplete. Finish them under Settings → M-Pesa.')
+    return account
+
+
+def _token_cache_key(account):
+    # Include a hash of the credentials so editing them invalidates the cached token.
+    digest = hashlib.sha256(f'{account.consumer_key}:{account.consumer_secret}'.encode()).hexdigest()[:16]
+    return f'mpesa:token:{account.pk}:{account.environment}:{digest}'
+
+
+def get_access_token(account, use_cache=True):
+    key = _token_cache_key(account)
+    token = cache.get(key) if use_cache else None
+    if token:
+        return token
+    if not account.consumer_key or not account.consumer_secret:
+        raise MpesaError('Consumer key and secret are required.')
+    try:
+        resp = requests.get(
+            f'{BASE_URLS[account.environment]}/oauth/v1/generate',
+            params={'grant_type': 'client_credentials'},
+            auth=(account.consumer_key, account.consumer_secret),
+            timeout=TIMEOUT,
+        )
+        if resp.status_code in (400, 401):
+            raise MpesaError('Safaricom rejected the consumer key/secret. Check they belong to this environment.')
+        resp.raise_for_status()
+        data = resp.json()
+        token = data['access_token']
+    except (requests.RequestException, ValueError, KeyError) as exc:
+        raise MpesaError(f'Could not get M-Pesa access token: {exc}') from exc
+    # Tokens last 3600s; refresh a little early.
+    cache.set(key, token, int(data.get('expires_in', 3599)) - 60)
+    return token
+
+
+def _post(account, path, payload):
+    try:
+        resp = requests.post(
+            f'{BASE_URLS[account.environment]}{path}',
+            json=payload,
+            headers={'Authorization': f'Bearer {get_access_token(account)}'},
+            timeout=TIMEOUT,
+        )
+        data = resp.json()
+    except (requests.RequestException, ValueError) as exc:
+        raise MpesaError(f'Daraja request to {path} failed: {exc}') from exc
+    if resp.status_code != 200 or str(data.get('ResponseCode', '0')) != '0':
+        msg = data.get('errorMessage') or data.get('ResponseDescription') or resp.text
+        raise MpesaError(f'Daraja rejected the request: {msg}')
+    return data
+
+
+def hook_url(account, name):
+    """Public URL of one of this account's webhooks (Safaricom must reach it over HTTPS)."""
+    base = settings.MPESA['CALLBACK_BASE_URL']
+    if not base:
+        raise MpesaError('MPESA_CALLBACK_BASE_URL must be set to a public HTTPS URL.')
+    return base.rstrip('/') + reverse(f'payments:{name}', args=[account.callback_token])
+
+
+def _parse_timestamp(value):
+    try:
+        naive = datetime.datetime.strptime(str(value), '%Y%m%d%H%M%S')
+    except (TypeError, ValueError):
+        return timezone.now()
+    return timezone.make_aware(naive)
+
+
+def record_mpesa_payment(lease, receipt, amount, paid_at, notes=''):
+    """Create the Payment for an M-Pesa receipt, or return the existing one.
+
+    The same receipt can reach us from both the STK callback and the C2B confirmation,
+    so payments are keyed on the receipt number. Returns (payment, created).
+    """
+    payment, created = Payment.objects.get_or_create(
+        method=Payment.Method.MPESA,
+        reference=receipt,
+        defaults={'lease': lease, 'amount': amount, 'paid_at': paid_at, 'notes': notes},
+    )
+    if created:
+        from notifications.sms import send_payment_receipt
+
+        transaction.on_commit(lambda: send_payment_receipt(payment))
+    return payment, created
+
+
+def verify_credentials(account):
+    """Check the consumer key/secret by fetching a fresh token. Records the outcome on the account."""
+    try:
+        get_access_token(account, use_cache=False)
+    except MpesaError as exc:
+        account.last_error = str(exc)[:255]
+        account.verified_at = None
+        account.save(update_fields=['last_error', 'verified_at', 'updated_at'])
+        raise
+    account.last_error = ''
+    account.verified_at = timezone.now()
+    account.save(update_fields=['last_error', 'verified_at', 'updated_at'])
+
+
+# --- STK Push -----------------------------------------------------------------
+
+PENDING_PUSH_COOLDOWN = datetime.timedelta(minutes=2)
+
+
+def stk_push(lease, amount, phone_number=None):
+    """Prompt the tenant's phone to pay `amount` against `lease`. Returns the MpesaTransaction."""
+    account = account_for(lease)
+    # M-Pesa only accepts whole shillings.
+    amount = Decimal(amount).to_integral_value(rounding=ROUND_CEILING)
+    if amount < 1:
+        raise MpesaError('Amount must be at least KES 1.')
+    msisdn = normalize_phone(phone_number or lease.tenant.phone)
+    if lease.mpesa_transactions.filter(
+        status=MpesaTransaction.Status.PENDING,
+        created_at__gte=timezone.now() - PENDING_PUSH_COOLDOWN,
+    ).exists():
+        raise MpesaError('A payment prompt was just sent for this lease. Wait a couple of minutes and try again.')
+
+    timestamp = timezone.localtime().strftime('%Y%m%d%H%M%S')
+    password = base64.b64encode(f'{account.shortcode}{account.passkey}{timestamp}'.encode()).decode()
+    data = _post(account, '/mpesa/stkpush/v1/processrequest', {
+        'BusinessShortCode': account.shortcode,
+        'Password': password,
+        'Timestamp': timestamp,
+        'TransactionType': account.transaction_type,
+        'Amount': int(amount),
+        'PartyA': msisdn,
+        'PartyB': account.pay_number,
+        'PhoneNumber': msisdn,
+        'CallBackURL': hook_url(account, 'stk_callback'),
+        'AccountReference': lease.account_number[:12],
+        'TransactionDesc': f'Rent {lease.unit.label}'[:13],
+    })
+    return MpesaTransaction.objects.create(
+        account=account,
+        lease=lease,
+        phone=msisdn,
+        amount=amount,
+        merchant_request_id=data.get('MerchantRequestID', ''),
+        checkout_request_id=data['CheckoutRequestID'],
+    )
+
+
+def handle_stk_callback(account, body):
+    """Apply an STK callback payload. Idempotent: repeated callbacks are ignored.
+
+    Returns the MpesaTransaction, or None if the CheckoutRequestID is unknown for this account.
+    """
+    cb = body['Body']['stkCallback']
+    checkout_id = cb['CheckoutRequestID']
+    result_code = int(cb['ResultCode'])
+
+    with transaction.atomic():
+        txn = (
+            MpesaTransaction.objects.select_for_update()
+            .filter(checkout_request_id=checkout_id, account=account)
+            .first()
+        )
+        if txn is None:
+            logger.warning('STK callback for unknown CheckoutRequestID %s (account %s)', checkout_id, account.pk)
+            return None
+        if txn.status != MpesaTransaction.Status.PENDING:
+            return txn
+
+        txn.raw_callback = body
+        txn.result_code = result_code
+        txn.result_desc = cb.get('ResultDesc', '')[:255]
+
+        if result_code != 0:
+            txn.status = MpesaTransaction.Status.FAILED
+            txn.save()
+            return txn
+
+        items = {
+            item['Name']: item.get('Value')
+            for item in cb.get('CallbackMetadata', {}).get('Item', [])
+        }
+        txn.receipt_number = str(items.get('MpesaReceiptNumber', ''))
+        txn.status = MpesaTransaction.Status.SUCCESS
+        txn.payment, _ = record_mpesa_payment(
+            txn.lease,
+            receipt=txn.receipt_number,
+            amount=Decimal(str(items.get('Amount', txn.amount))),
+            paid_at=_parse_timestamp(items.get('TransactionDate')),
+            notes=f'STK push from {items.get("PhoneNumber", txn.phone)}',
+        )
+        txn.save()
+        return txn
+
+
+# --- C2B Paybill / Till ------------------------------------------------------------
+
+def register_c2b_urls(account):
+    """Tell Safaricom where to send C2B validation/confirmation requests for this account."""
+    data = _post(account, '/mpesa/c2b/v1/registerurl', {
+        'ShortCode': account.pay_number,
+        # If our validation URL is unreachable, let the payment go through anyway.
+        'ResponseType': 'Completed',
+        'ConfirmationURL': hook_url(account, 'c2b_confirmation'),
+        'ValidationURL': hook_url(account, 'c2b_validation'),
+    })
+    account.c2b_registered_at = timezone.now()
+    account.save(update_fields=['c2b_registered_at', 'updated_at'])
+    return data
+
+
+def match_lease(account, bill_ref, msisdn):
+    """Find which of this landlord's leases a payment belongs to: by account number, else by phone."""
+    lease = Lease.find_by_account_number(bill_ref, owner=account.owner)
+    if lease:
+        return lease
+    try:
+        number = phone.normalize_phone(msisdn)
+    except ValueError:
+        return None  # Safaricom now often sends a hashed MSISDN
+    leases = list(
+        Lease.objects.filter(is_active=True, tenant__phone=number, unit__property__owner=account.owner)[:2]
+    )
+    return leases[0] if len(leases) == 1 else None
+
+
+def handle_c2b_confirmation(account, body):
+    """Store a C2B confirmation and, if it can be matched to a lease, record the payment. Idempotent."""
+    shortcode = str(body.get('BusinessShortCode', ''))
+    if shortcode and shortcode != account.pay_number:
+        logger.warning('C2B for shortcode %s arrived on account %s (%s)', shortcode, account.pk, account.pay_number)
+    with transaction.atomic():
+        c2b, created = C2BPayment.objects.get_or_create(
+            trans_id=body['TransID'],
+            defaults={
+                'account': account,
+                'trans_type': body.get('TransactionType', ''),
+                'trans_time': _parse_timestamp(body.get('TransTime')),
+                'amount': Decimal(str(body['TransAmount'])),
+                'shortcode': shortcode,
+                'bill_ref': (body.get('BillRefNumber') or '')[:100],
+                'msisdn': str(body.get('MSISDN', ''))[:100],
+                'payer_name': ' '.join(
+                    filter(None, [body.get('FirstName'), body.get('MiddleName'), body.get('LastName')])
+                )[:200],
+                'raw': body,
+            },
+        )
+        if not created:
+            return c2b
+        c2b.lease = match_lease(account, c2b.bill_ref, c2b.msisdn)
+        if c2b.lease is None:
+            logger.warning('Unmatched payment %s on account %s (ref %r)', c2b.trans_id, account.pk, c2b.bill_ref)
+        else:
+            apply_c2b_payment(c2b)
+        c2b.save()
+        return c2b
+
+
+def apply_c2b_payment(c2b):
+    """Record the Payment for a C2B payment that has a lease. Caller saves `c2b`."""
+    c2b.payment, _ = record_mpesa_payment(
+        c2b.lease,
+        receipt=c2b.trans_id,
+        amount=c2b.amount,
+        paid_at=c2b.trans_time,
+        notes=f'Paybill, account {c2b.bill_ref!r}'[:255] if c2b.bill_ref else 'Till payment',
+    )

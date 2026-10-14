@@ -1,0 +1,63 @@
+{% extends 'app_base.html' %}
+{% load ui %}
+{% block page_title %}Reports{% endblock %}
+{% block content %}
+<div class="page-header">
+  <div><h1>Reports</h1><p class="sub">Billing and collections for {{ month|date:"F Y" }}.</p></div>
+  <div class="actions">
+    <a class="btn" href="?month={{ prev_month|date:'Y-m' }}">← {{ prev_month|date:"M" }}</a>
+    {% if next_month %}<a class="btn" href="?month={{ next_month|date:'Y-m' }}">{{ next_month|date:"M" }} →</a>{% endif %}
+  </div>
+</div>
+
+<div class="kpis" style="margin-bottom:20px">
+  <div class="card kpi"><div class="label">Billed</div><div class="value">{{ totals.billed|kes }}</div><div class="sub">Rent, service, water and fees</div></div>
+  <div class="card kpi"><div class="label">Collected</div><div class="value text-success">{{ totals.collected|kes }}</div>
+    {% if totals.rate is not None %}<div class="progress"><span style="width:{{ totals.rate }}%"></span></div><div class="sub">{{ totals.rate }}% of billed</div>{% endif %}</div>
+  <div class="card kpi"><div class="label">Arrears today</div><div class="value {% if totals.arrears %}text-danger{% endif %}">{{ totals.arrears|kes }}</div></div>
+  <div class="card kpi"><div class="label">Occupancy</div><div class="value">{{ totals.occupied }}<small> / {{ totals.units }}</small></div></div>
+</div>
+
+<section class="card" style="margin-bottom:20px">
+  <div class="card-header"><h2>By property</h2><span class="spacer"></span>
+    <a class="btn btn-sm" href="{% url 'reports:rent_roll_csv' %}">Rent roll (CSV)</a>
+    <a class="btn btn-sm" href="{% url 'reports:payments_csv' %}?month={{ month|date:'Y-m' }}">Payments {{ month|date:"M Y" }} (CSV)</a>
+  </div>
+  {% if rows %}
+  <div class="table-wrap">
+    <table class="table">
+      <thead><tr><th>Property</th><th class="num">Occupied</th><th class="num">Billed</th><th class="num">Collected</th><th class="num">Rate</th><th class="num">Arrears</th></tr></thead>
+      <tbody>
+      {% for r in rows %}
+      <tr>
+        <td><a href="{% url 'rentals:property_detail' r.property.pk %}"><strong>{{ r.property.name }}</strong></a></td>
+        <td class="num">{{ r.occupied }} / {{ r.units }}</td>
+        <td class="num">{{ r.billed|kes }}</td>
+        <td class="num text-success">{{ r.collected|kes }}</td>
+        <td class="num">{% if r.rate is not None %}{{ r.rate }}%{% else %}—{% endif %}</td>
+        <td class="num {% if r.arrears %}text-danger{% endif %}">{{ r.arrears|kes }}</td>
+      </tr>
+      {% endfor %}
+      </tbody>
+      <tfoot><tr><td><strong>Total</strong></td><td class="num">{{ totals.occupied }} / {{ totals.units }}</td><td class="num"><strong>{{ totals.billed|kes }}</strong></td>
+        <td class="num text-success"><strong>{{ totals.collected|kes }}</strong></td><td class="num">{% if totals.rate is not None %}{{ totals.rate }}%{% endif %}</td><td class="num"><strong>{{ totals.arrears|kes }}</strong></td></tr></tfoot>
+    </table>
+  </div>
+  {% else %}<div class="empty">Add a property to see reports.</div>{% endif %}
+</section>
+
+<section class="card">
+  <div class="card-header"><h2>Last 12 months</h2><span class="spacer"></span>
+    <span class="legend"><i class="sw sw-billed"></i>Billed</span><span class="legend"><i class="sw sw-collected"></i>Collected</span></div>
+  <div class="card-body">
+    <div class="trend" role="img" aria-label="Billed and collected for the last 12 months">
+      {% for t in trend %}
+      <div class="trend-col" title="{{ t.month|date:'F Y' }}: billed {{ t.billed|kes }}, collected {{ t.collected|kes }}">
+        <div class="bars"><span class="bar billed" style="height:{{ t.billed_pct }}%"></span><span class="bar collected" style="height:{{ t.collected_pct }}%"></span></div>
+        <div class="trend-label">{{ t.month|date:"M" }}</div>
+      </div>
+      {% endfor %}
+    </div>
+  </div>
+</section>
+{% endblock %}

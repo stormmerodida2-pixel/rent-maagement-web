@@ -1,0 +1,33 @@
+{% extends 'app_base.html' %}
+{% load ui %}
+{% block page_title %}Unmatched payments{% endblock %}
+{% block content %}
+<div class="page-header">
+  <div><h1>Unmatched M-Pesa payments</h1>
+    <p class="sub">Money that reached your Paybill/Till without a recognisable account number. Choose who paid and it's added to their balance.</p></div>
+</div>
+<section class="card">
+  {% if rows %}
+  <div class="table-wrap">
+    <table class="table">
+      <thead><tr><th>Received</th><th>From</th><th>Account entered</th><th class="num">Amount</th><th>Assign to</th></tr></thead>
+      <tbody>
+      {% for c2b, form in rows %}
+      <tr>
+        <td class="muted nowrap">{{ c2b.trans_time|date:"d M Y, H:i" }}<div class="small">{{ c2b.trans_id }}</div></td>
+        <td>{{ c2b.payer_name|default:"Unknown" }}{% if c2b.msisdn|length <= 12 %}<div class="muted small">{{ c2b.msisdn }}</div>{% endif %}</td>
+        <td>{% if c2b.bill_ref %}<code>{{ c2b.bill_ref }}</code>{% else %}<span class="muted">none</span>{% endif %}</td>
+        <td class="num"><strong>{{ c2b.amount|kes }}</strong></td>
+        <td>
+          <form method="post" action="{% url 'payments:assign_unmatched' c2b.pk %}" class="row" style="gap:8px;flex-wrap:nowrap">
+            {% csrf_token %}{{ form.lease }}<button class="btn btn-sm btn-primary">Assign</button>
+          </form>
+        </td>
+      </tr>
+      {% endfor %}
+      </tbody>
+    </table>
+  </div>
+  {% else %}<div class="empty"><strong>All caught up</strong>Every M-Pesa payment has been matched to a tenant.</div>{% endif %}
+</section>
+{% endblock %}

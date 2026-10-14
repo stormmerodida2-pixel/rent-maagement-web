@@ -1,0 +1,52 @@
+{% extends "admin/base.html" %}
+
+{% block title %}{% if subtitle %}{{ subtitle }} | {% endif %}{{ title }} | {{ site_title|default:_('Django site admin') }}{% endblock %}
+
+{% block extrastyle %}{{ block.super }}
+<style>
+  /* Match the app's green brand (see static/css/app.css). */
+  :root, html[data-theme="light"], html[data-theme="dark"] {
+    --primary: #6cc59c;
+    --secondary: #0e7a4b;
+    --accent: #c9f2dc;
+    --primary-fg: #fff;
+    --header-bg: #0b5f3b;
+    --header-color: #e6f4ed;
+    --header-link-color: #fff;
+    --breadcrumbs-bg: #0e7a4b;
+    --breadcrumbs-link-fg: #fff;
+    --button-bg: #0e7a4b;
+    --button-hover-bg: #0b6640;
+    --default-button-bg: #0b5f3b;
+    --default-button-hover-bg: #094c30;
+    --link-selected-fg: #0e7a4b;
+    --font-family-primary: "Inter", ui-sans-serif, system-ui, -apple-system, "Segoe UI", Roboto, sans-serif;
+  }
+  html[data-theme="light"], :root { --link-fg: #0e7a4b; --link-hover-color: #0b5f3b; }
+  html[data-theme="dark"] { --link-fg: #4fd69c; --link-hover-color: #7fe3b8; }
+  @media (prefers-color-scheme: dark) { html[data-theme="auto"] { --link-fg: #4fd69c; --link-hover-color: #7fe3b8; } }
+  #site-name a { display: inline-flex; align-items: center; gap: 10px; font-weight: 600; }
+  #site-name .mark { width: 26px; height: 26px; border-radius: 7px; background: #fff; color: #0e7a4b; display: grid; place-items: center; }
+</style>
+<link rel="preconnect" href="https://fonts.googleapis.com">
+<link href="https://fonts.googleapis.com/css2?family=Inter:wght@400;500;600&display=swap" rel="stylesheet">
+{% endblock %}
+
+{% block branding %}
+<div id="site-name">
+  <a href="{% url 'rentals:dashboard' %}">
+    <span class="mark"><svg viewBox="0 0 24 24" width="16" height="16" fill="currentColor" aria-hidden="true"><path d="M4 11 12 4l8 7v9h-5.5v-5.5h-5V20H4z"/></svg></span>
+    {{ site_header|default:_('Django administration') }}
+  </a>
+</div>
+{% if user.is_anonymous %}
+  {% include "admin/color_theme_toggle.html" %}
+{% endif %}
+{% endblock %}
+
+{% block userlinks %}
+  <a href="{% url 'rentals:dashboard' %}">Dashboard</a> /
+  {{ block.super }}
+{% endblock %}
+
+{% block nav-global %}{% endblock %}
