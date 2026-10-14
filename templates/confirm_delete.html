@@ -1,6 +1,7 @@
 {% extends 'app_base.html' %}
 {% block page_title %}Delete{% endblock %}
 {% block content %}
+<div class="form-page">
 <div class="page-header"><div><h1>Delete {{ object }}?</h1><p class="sub">This can't be undone.</p></div></div>
 <section class="card form-card">
   <div class="card-body">
@@ -13,4 +14,5 @@
     </form>
   </div>
 </section>
+</div>
 {% endblock %}

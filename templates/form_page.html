@@ -1,6 +1,7 @@
 {% extends 'app_base.html' %}
 {% block page_title %}{{ page_title }}{% endblock %}
 {% block content %}
+<div class="form-page">
 <div class="page-header"><div><h1>{{ page_title }}</h1>{% if intro %}<p class="sub">{{ intro }}</p>{% endif %}</div></div>
 <section class="card form-card">
   <div class="card-body">
@@ -16,4 +17,5 @@
     </form>
   </div>
 </section>
+</div>
 {% endblock %}

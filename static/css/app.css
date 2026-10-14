@@ -77,11 +77,13 @@
   }
 }
 
-/* Dark-mode logo artwork, with the same rules as the colour tokens. */
-:root[data-theme="dark"] .logo { background-image: url("../img/logo-dark.jpeg"); aspect-ratio: 606 / 546; }
+/* Dark mode keeps the same light logo, on a white rounded panel so its dark lettering stays visible. */
+:root[data-theme="dark"] .logo {
+  background-color: #fff; border-radius: 12px; background-origin: content-box; padding: 4px 6px;
+}
 @media (prefers-color-scheme: dark) {
   :root:not([data-theme="light"]):not([data-theme="dark"]) .logo {
-    background-image: url("../img/logo-dark.jpeg"); aspect-ratio: 606 / 546;
+    background-color: #fff; border-radius: 12px; background-origin: content-box; padding: 4px 6px;
   }
 }
 
@@ -222,12 +224,12 @@ label, .label { display: block; font-size: 13px; font-weight: 500; color: var(--
 }
 .brand { display: flex; align-items: center; gap: 10px; font-weight: 650; font-size: 16px; color: var(--text); padding: 4px 8px 18px; }
 .brand:hover { text-decoration: none; }
-/* The logo is the brand artwork exactly as supplied: static/img/logo.jpeg in light mode and
-   logo-dark.jpeg in dark mode. Each box takes its image's own proportions, so the whole image shows,
-   uncropped and undistorted. It's a background so only the current theme's file is downloaded. */
+/* The logo is logo-transparent.png: logo.jpeg (same size and framing, nothing cropped or stretched)
+   with its grey background made transparent, so it blends into any light page. The box takes the
+   image's own proportions. In dark mode it sits on a white panel (see the dark-mode rules above). */
 .logo {
   display: inline-block; flex: none; height: 56px; aspect-ratio: 1408 / 768;
-  background: url("../img/logo.jpeg") center / contain no-repeat;
+  background: url("../img/logo-transparent.png") center / contain no-repeat;
 }
 .logo-lg { height: 150px; }
 .auth-logo { text-align: center; margin: -8px 0 18px; }
@@ -389,7 +391,8 @@ label, .label { display: block; font-size: 13px; font-weight: 500; color: var(--
 
 /* ---- Forms pages, tabs, toolbars --------------------------------------------- */
 
-.form-card { max-width: 640px; }
+/* Single-form pages: heading and form centred together in one column. */
+.form-page { max-width: 640px; margin: 0 auto; }
 .form-actions { display: flex; gap: 10px; align-items: center; margin-top: 22px; flex-wrap: wrap; }
 .field-check { display: grid; grid-template-columns: auto 1fr; gap: 2px 10px; align-items: center; }
 .field-check input { width: 18px; height: 18px; accent-color: var(--brand); }
@@ -450,7 +453,7 @@ label, .label { display: block; font-size: 13px; font-weight: 500; color: var(--
 .doc .table th { background: #f2f4f7; color: #667085; }
 .doc .table td, .doc .table th { border-color: #e4e7ec; padding: 9px 10px; }
 /* Printed documents are white paper: always the light logo, and print it (backgrounds often aren't). */
-html:root .doc .logo { background-image: url("../img/logo.jpeg"); aspect-ratio: 1408 / 768; height: 64px;
+html:root .doc .logo { background-image: url("../img/logo-transparent.png"); aspect-ratio: 1408 / 768; height: 64px;
   -webkit-print-color-adjust: exact; print-color-adjust: exact; }
 .doc-head { display: flex; justify-content: space-between; gap: 24px; flex-wrap: wrap; padding-bottom: 20px; border-bottom: 2px solid #101828; margin-bottom: 24px; }
 .doc-title { text-align: right; }
