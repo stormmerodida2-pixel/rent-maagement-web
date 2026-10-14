@@ -183,3 +183,13 @@ class ThemeSwitchTests(TestCase):
             self.assertContains(resp, 'js/theme.js', msg_prefix=url)
         self.client.force_login(owner)
         self.assertContains(self.client.get(reverse('rentals:dashboard')), 'data-theme-choice="auto"')
+
+
+class NavigationTests(TestCase):
+    def test_signed_in_pages_link_back_to_the_home_page(self):
+        owner = get_user_model().objects.create_user('landlord')
+        self.client.force_login(owner)
+        for url in [reverse('rentals:dashboard'), reverse('rentals:lease_list'), reverse('rentals:lease_create')]:
+            self.assertContains(self.client.get(url), f'href="{reverse("rentals:home")}"', msg_prefix=url)
+        # The home page itself still offers the way back in.
+        self.assertContains(self.client.get(reverse('rentals:home')), reverse('rentals:dashboard'))
