@@ -1,11 +1,16 @@
+import contextlib
 import datetime
+import os
 import tempfile
+import unittest
 from io import StringIO
 from pathlib import Path
+from types import SimpleNamespace
 from unittest import mock
 
 from django.core.cache import cache
-from django.core.management import call_command
+from django.core.management import CommandError, call_command
+from django.db import connection
 from django.test import RequestFactory, TestCase, override_settings
 from django.urls import reverse
 from django.utils import timezone
@@ -70,12 +75,22 @@ class ScheduleTests(TestCase):
 
 
 class BackupTests(TestCase):
-    def test_sqlite_backup_and_rotation(self):
-        with tempfile.TemporaryDirectory() as tmp:
+    """Real pg_dump runs in CI's Docker smoke test; here pg_dump is simulated on PostgreSQL."""
+
+    def fake_pg_dump(self, calls):
+        def run(cmd, env, **kwargs):
+            calls.append((cmd, env))
+            Path(cmd[cmd.index('--file') + 1]).write_bytes(b'dump')
+            return SimpleNamespace(returncode=0, stderr='')
+        return mock.patch('ops.management.commands.backup_db.subprocess.run', side_effect=run)
+
+    def test_backup_and_rotation(self):
+        calls = []
+        dump = self.fake_pg_dump(calls) if connection.vendor == 'postgresql' else contextlib.nullcontext()
+        with tempfile.TemporaryDirectory() as tmp, dump:
             old = Path(tmp) / 'rentals-20000101-000000.sqlite3'
             old.write_text('old')
             ancient = (timezone.now() - datetime.timedelta(days=30)).timestamp()
-            import os
             os.utime(old, (ancient, ancient))
             with override_settings(BACKUP_DIR=Path(tmp), BACKUP_KEEP_DAYS=14):
                 out = StringIO()
@@ -84,6 +99,20 @@ class BackupTests(TestCase):
             self.assertEqual(len(files), 1)
             self.assertFalse(old.exists())
             self.assertIn('removed 1 old backup', out.getvalue())
+        if calls:
+            cmd, env = calls[0]
+            self.assertEqual(cmd[0], 'pg_dump')
+            self.assertIn('--format=custom', cmd)
+            self.assertIn('PGPASSWORD', env)  # password via env, never on the command line
+
+    @unittest.skipUnless(connection.vendor == 'postgresql', 'pg_dump is only used with PostgreSQL')
+    def test_failed_pg_dump_leaves_no_partial_file(self):
+        failed = SimpleNamespace(returncode=1, stderr='connection refused')
+        with tempfile.TemporaryDirectory() as tmp, override_settings(BACKUP_DIR=Path(tmp)), \
+                mock.patch('ops.management.commands.backup_db.subprocess.run', return_value=failed):
+            with self.assertRaisesMessage(CommandError, 'connection refused'):
+                call_command('backup_db', stdout=StringIO())
+            self.assertEqual(list(Path(tmp).iterdir()), [])
 
 
 class HealthTests(TestCase):

@@ -110,8 +110,8 @@ WSGI_APPLICATION = 'config.wsgi.application'
 
 # DATABASE_URL, e.g. postgres://user:password@db:5432/rentals. Without it, a local SQLite file.
 DATABASES = {
-    'default': dj_database_url.config(
-        default=f'sqlite:///{BASE_DIR / "db.sqlite3"}',
+    'default': dj_database_url.parse(
+        os.environ.get('DATABASE_URL') or f'sqlite:///{BASE_DIR / "db.sqlite3"}',  # empty counts as unset
         conn_max_age=600,
         conn_health_checks=True,
     ),
