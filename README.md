@@ -220,6 +220,13 @@ docker compose exec web python manage.py check --deploy
 - **Monitoring:** point an uptime monitor at `/healthz/`. It returns 503 if the database or cache is down.
 - After a few days of confirmed HTTPS, raise `DJANGO_HSTS_SECONDS` to `31536000`.
 
+### Privacy policy and terms
+
+- `/privacy/` and `/terms/` are written for Kenya's Data Protection Act, 2019. Landlords are the data controllers for their tenants' data, and the platform is their processor. **They are a first draft: have an advocate review them before launch.**
+- Set `LEGAL_ENTITY_NAME`, `LEGAL_ADDRESS` and `PRIVACY_EMAIL` so the pages show your business details.
+- Sign-up requires accepting both. The date and the terms version (`LEGAL['TERMS_VERSION']` in settings) are saved on each landlord's profile. When you change the terms materially, bump the version and the "last updated" date.
+- Register with the Office of the Data Protection Commissioner (odpc.go.ke) if the law requires it for your business.
+
 ### Search engines
 
 - **`/sitemap.xml`** lists only the public pages (home, sign-up, login, contact), always with the domain from `SITE_URL`.

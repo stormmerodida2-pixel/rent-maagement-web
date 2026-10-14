@@ -1,3 +1,4 @@
+from django.conf import settings
 import re
 
 from django.contrib.auth import get_user_model
@@ -23,7 +24,7 @@ class SignupTests(TestCase):
     def signup(self, **overrides):
         data = {
             'first_name': 'Grace', 'email': 'grace@example.com', 'username': 'grace',
-            'password1': 'a-strong-pass-123', 'password2': 'a-strong-pass-123', **overrides,
+            'password1': 'a-strong-pass-123', 'password2': 'a-strong-pass-123', 'accept_terms': 'on', **overrides,
         }
         return self.client.post(reverse('accounts:signup'), data)
 
@@ -37,6 +38,15 @@ class SignupTests(TestCase):
         page = self.client.get(reverse('accounts:welcome'))
         self.assertContains(page, 'Add your first property')
         self.assertContains(page, 'Please confirm your email')
+
+    def test_terms_must_be_accepted_and_acceptance_is_recorded(self):
+        resp = self.signup(accept_terms='')
+        self.assertContains(resp, 'Please read and accept the terms')
+        self.assertFalse(get_user_model().objects.filter(username='grace').exists())
+        self.signup()
+        profile = get_user_model().objects.get(username='grace').profile
+        self.assertIsNotNone(profile.terms_accepted_at)
+        self.assertEqual(profile.terms_version, settings.LEGAL['TERMS_VERSION'])
 
     def test_duplicate_email_rejected(self):
         get_user_model().objects.create_user('x', email='grace@example.com')
@@ -64,7 +74,7 @@ class VerifyEmailTests(TestCase):
         cache.clear()
         self.client.post(reverse('accounts:signup'), {
             'first_name': 'Grace', 'email': 'grace@example.com', 'username': 'grace',
-            'password1': 'a-strong-pass-123', 'password2': 'a-strong-pass-123',
+            'password1': 'a-strong-pass-123', 'password2': 'a-strong-pass-123', 'accept_terms': 'on',
         })
         self.user = get_user_model().objects.get(username='grace')
 
