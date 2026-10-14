@@ -207,5 +207,6 @@ class StatementTests(TestCase):
         self.assertContains(dash, '1 high priority')
         self.assertEqual(dash.context['collection_rate'], 0)
         page = self.client.get(reverse('rentals:lease_detail', args=[lease.pk]))
-        self.assertContains(page, f'Rent for {datetime.date.today():%B %Y}')
+        start, end = lease.cycle_start(datetime.date.today()), lease.cycle_end(datetime.date.today())
+        self.assertContains(page, f'Rent {start.day} {start:%b} – {end.day} {end:%b %Y}')
         self.assertContains(page, lease.account_number)

@@ -123,6 +123,12 @@ class LeaseForm(OwnedForm):
         self.fields['tenant'].empty_label = 'Choose a tenant'
         self.fields['monthly_rent'].required = False
         self.fields['monthly_rent'].help_text = "Leave blank to use the unit's rent."
+        self.fields['due_day'].label = 'Rent day'
+        if not self.instance.pk:
+            self.fields['due_day'].required = False
+            self.fields['due_day'].initial = None
+            self.fields['due_day'].help_text = ('Leave blank to use the move-in day: moved in on the 12th, rent is due '
+                                                'every 12th and covers a month from then.')
         for name in self.OPTIONAL_WITH_DEFAULT:
             self.fields[name].required = False
         if self.instance.pk:
@@ -143,6 +149,10 @@ class LeaseForm(OwnedForm):
         if unit and cleaned.get('monthly_rent') is None:
             cleaned['monthly_rent'] = unit.default_rent
             self.instance.monthly_rent = unit.default_rent
+        if cleaned.get('due_day') is None and 'due_day' not in self.errors and cleaned.get('start_date'):
+            # Rent day = move-in day: moved in on the 12th, each month runs 12th to 11th.
+            cleaned['due_day'] = cleaned['start_date'].day
+            self.instance.due_day = cleaned['due_day']
         return cleaned
 
     def save(self, commit=True):
@@ -154,17 +164,11 @@ class LeaseForm(OwnedForm):
         return lease
 
 
-def end_of_next_month(today=None):
-    today = today or datetime.date.today()
-    first_next = (today.replace(day=1) + datetime.timedelta(days=32)).replace(day=1)
-    return (first_next + datetime.timedelta(days=32)).replace(day=1) - datetime.timedelta(days=1)
-
-
 class NoticeForm(forms.Form):
     """A tenant (or the landlord) gives notice: when they will move out."""
 
     move_out = forms.DateField(widget=DATE, label='Move-out date',
-                               help_text="Rent is billed up to and including this month, then billing stops.")
+                               help_text="Defaults to the end of a rent month. No new month is billed after it.")
     given_on = forms.DateField(widget=DATE, label='Notice given on', initial=datetime.date.today)
     note = forms.CharField(max_length=200, required=False, label='Note',
                            help_text='e.g. "Moving to Nakuru for work", or who gave notice.')
@@ -175,7 +179,7 @@ class NoticeForm(forms.Form):
         if lease.end_date:
             self.initial.update(move_out=lease.end_date, given_on=lease.notice_given_on, note=lease.notice_note)
         else:
-            self.initial.setdefault('move_out', end_of_next_month())
+            self.initial.setdefault('move_out', lease.default_move_out())
 
     def clean_move_out(self):
         move_out = self.cleaned_data['move_out']

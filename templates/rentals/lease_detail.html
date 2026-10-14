@@ -1,5 +1,5 @@
 {% extends 'app_base.html' %}
-{% load ui %}
+{% load humanize ui %}
 {% block page_title %}{{ lease.tenant }}{% endblock %}
 {% block content %}
 <div class="page-header">
@@ -41,7 +41,7 @@
         <div class="balance-hero {% if balance > 0 %}owing{% else %}clear{% endif %}">
           <div class="label">{% if balance > 0 %}Balance owed{% elif balance < 0 %}In credit{% else %}Balance{% endif %}</div>
           <div class="value">{% if balance < 0 %}{{ balance|kes:2|cut:"-" }}{% else %}{{ balance|kes:2 }}{% endif %}</div>
-          <div class="muted small">{{ lease.monthly_rent|kes }} / month · due on day {{ lease.due_day }}</div>
+          <div class="muted small">{{ lease.monthly_rent|kes }} / month · rent day: the {{ lease.due_day|ordinal }}{% if lease.due_day > 28 %} (or the last day in shorter months){% endif %}</div>
         </div>
       </div>
       <div class="card-body" style="border-top:1px solid var(--border)">

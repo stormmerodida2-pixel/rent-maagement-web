@@ -86,7 +86,7 @@ class LanguageTests(TestCase):
         payment = Payment.objects.create(lease=self.sw, amount=D('5000'), method='mpesa', reference='SJK1')
         statement = self.portal(self.sw, 'reports:tenant_statement', self.sw.pk)
         self.assertContains(statement, 'Taarifa ya akaunti')
-        self.assertContains(statement, 'Kodi ya Oktoba 2026')
+        self.assertContains(statement, 'Kodi 5 Okt – 4 Nov 2026')  # rent day the 5th
         self.assertContains(statement, 'Malipo ya M-Pesa')
         self.assertContains(statement, 'Rudi')
         # The landlord printing it for the tenant gets the Kiswahili document with an English toolbar.
