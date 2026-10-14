@@ -25,6 +25,7 @@ from payments import mpesa
 from payments.forms import StkPushForm
 from payments.models import C2BPayment, MpesaAccount, Payment
 
+from .forms import NoticeForm
 from .i18n import tenant_page
 from .models import Lease, RentCharge, Tenant, Unit
 
@@ -100,6 +101,8 @@ def dashboard(request):
         'unmatched_c2b': C2BPayment.objects.filter(account__owner=user, payment__isnull=True).count(),
         'mpesa_account': MpesaAccount.objects.filter(owner=user).first(),
         'setup_incomplete': not all(step['done'] for step in steps),
+        'moving_out': Lease.objects.filter(unit__property__owner=user, is_active=True, end_date__isnull=False)
+        .select_related('tenant', 'unit__property').order_by('end_date')[:8],
         'setup_done': sum(step['done'] for step in steps),
         'setup_total': len(steps),
         'setup_next': next((step for step in steps if not step['done']), None),
@@ -217,6 +220,36 @@ def send_reminder(request, pk):
     if next_url and url_has_allowed_host_and_scheme(next_url, {request.get_host()}, request.is_secure()):
         return redirect(next_url)
     return redirect('rentals:lease_detail', pk=lease.pk)
+
+
+@login_required
+def lease_notice(request, pk):
+    """Record (or change, or cancel) a month-to-month tenant's notice to move out."""
+    lease = get_object_or_404(Lease.objects.select_related('tenant', 'unit__property'), pk=pk,
+                              unit__property__owner=request.user, is_active=True)
+    if request.method == 'POST' and request.POST.get('action') == 'cancel':
+        lease.end_date = lease.notice_given_on = lease.move_out_reminded_on = None
+        lease.notice_note = ''
+        lease.save(update_fields=['end_date', 'notice_given_on', 'notice_note', 'move_out_reminded_on'])
+        audit.record(owner=request.user, actor=request.user, action='lease.notice_cancelled', lease=lease,
+                     summary=f'Cancelled the move-out notice for {lease.tenant}: they are staying.')
+        messages.success(request, f'Notice cancelled. {lease.tenant} stays on month to month.')
+        return redirect('rentals:lease_detail', pk=lease.pk)
+
+    form = NoticeForm(request.POST or None, lease=lease)
+    if request.method == 'POST' and form.is_valid():
+        data = form.cleaned_data
+        changed = lease.end_date is not None
+        lease.end_date, lease.notice_given_on, lease.notice_note = data['move_out'], data['given_on'], data['note']
+        lease.move_out_reminded_on = None
+        lease.save(update_fields=['end_date', 'notice_given_on', 'notice_note', 'move_out_reminded_on'])
+        audit.record(owner=request.user, actor=request.user, action='lease.notice_given', lease=lease,
+                     summary=f'{"Changed" if changed else "Recorded"} move-out notice: {lease.tenant} moves out of '
+                             f'{lease.unit} on {lease.end_date:%d %b %Y}.')
+        messages.success(request, f'{lease.tenant} moves out on {lease.end_date:%d %b %Y}. Rent is billed up to '
+                                  f'{lease.end_date:%B}; you\'ll get a reminder a few days before.')
+        return redirect('rentals:lease_detail', pk=lease.pk)
+    return render(request, 'rentals/lease_notice.html', {'form': form, 'lease': lease})
 
 
 RECENT_REMINDER = datetime.timedelta(hours=24)

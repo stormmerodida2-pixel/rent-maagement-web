@@ -166,6 +166,11 @@ class Lease(models.Model):
         help_text='Day of the month rent is due (1–28).',
     )
     is_active = models.BooleanField(default=True)
+    # Month-to-month tenancies have no end date until someone gives notice; end_date is then the
+    # planned move-out date (billing stops after that month).
+    notice_given_on = models.DateField(null=True, blank=True)
+    notice_note = models.CharField(max_length=200, blank=True)
+    move_out_reminded_on = models.DateField(null=True, blank=True, editable=False)
 
     class Meta:
         ordering = ['-is_active', 'unit__property__name', 'unit__label']
@@ -177,6 +182,15 @@ class Lease(models.Model):
 
     def __str__(self):
         return f'{self.tenant} @ {self.unit}'
+
+    @property
+    def moving_out(self):
+        """True when notice has been given (or a move-out date set) on a lease that hasn't ended yet."""
+        return self.is_active and self.end_date is not None
+
+    @property
+    def move_out_overdue(self):
+        return self.moving_out and self.end_date < datetime.date.today()
 
     @property
     def account_number(self):

@@ -51,6 +51,23 @@
     <div id="live-recent">{% include 'rentals/dashboard/_recent.html' %}</div>
   </div>
 
+  <div class="stack">
+  {% if moving_out %}
+  <section class="card">
+    <div class="card-header"><h2>Moving out soon</h2></div>
+    <div class="table-wrap"><table class="table"><tbody>
+      {% for lease in moving_out %}
+      <tr>
+        <td><a href="{% url 'rentals:lease_detail' lease.pk %}"><strong>{{ lease.tenant }}</strong></a>
+          <div class="muted small">{{ lease.unit }}</div></td>
+        <td class="num">{% if lease.move_out_overdue %}<a class="btn btn-sm btn-primary" href="{% url 'rentals:lease_end' lease.pk %}">Finish move-out</a>
+          <div class="muted small">was due {{ lease.end_date|date:"d M" }}</div>
+          {% else %}<span class="badge badge-warn">{{ lease.end_date|date:"D d M" }}</span><div class="muted small">in {{ lease.end_date|timeuntil }}</div>{% endif %}</td>
+      </tr>
+      {% endfor %}
+    </tbody></table></div>
+  </section>
+  {% endif %}
   <section class="card">
     <div class="card-header">
       <h2>Open repairs</h2>
@@ -80,5 +97,6 @@
       <div class="empty"><strong>Nothing to fix</strong>Repairs reported by tenants show up here.</div>
     {% endif %}
   </section>
+  </div>
 </div>
 {% endblock %}

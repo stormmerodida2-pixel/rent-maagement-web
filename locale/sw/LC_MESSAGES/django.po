@@ -5,7 +5,7 @@ msgid ""
 msgstr ""
 "Project-Id-Version: Liskodi\n"
 "Report-Msgid-Bugs-To: \n"
-"POT-Creation-Date: 2026-10-14 19:03+0300\n"
+"POT-Creation-Date: 2026-10-14 19:28+0300\n"
 "PO-Revision-Date: YEAR-MO-DA HO:MI+ZONE\n"
 "Last-Translator: FULL NAME <EMAIL@ADDRESS>\n"
 "Language-Team: Kiswahili\n"
@@ -293,6 +293,10 @@ msgstr "Salio"
 #, python-format
 msgid "Rent %(rent)s a month, due on day %(day)s"
 msgstr "Kodi %(rent)s kwa mwezi, hulipwa tarehe %(day)s"
+
+#, python-format
+msgid "You're moving out on %(date)s. Please arrange the handover with your landlord."
+msgstr "Utahama tarehe %(date)s. Tafadhali panga makabidhiano ya nyumba na mwenye nyumba."
 
 msgid "Amount to pay (KES)"
 msgstr "Kiasi cha kulipa (KES)"
