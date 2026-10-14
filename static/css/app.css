@@ -254,15 +254,7 @@ label, .label { display: block; font-size: 13px; font-weight: 500; color: var(--
 .grid-2 { display: grid; grid-template-columns: minmax(0, 3fr) minmax(0, 2fr); gap: 20px; align-items: start; }
 
 @media (max-width: 900px) {
-  .app { grid-template-columns: minmax(0, 1fr); }
-  .sidebar { position: static; height: auto; flex-direction: row; flex-wrap: wrap; align-items: center; padding: 10px 16px; border-right: 0; border-bottom: 1px solid var(--border); }
-  .brand { padding: 0; margin-right: auto; }
-  /* Phones: the menu folds away behind a Menu button and opens as a full list. */
-  .nav { display: none; width: 100%; order: 3; flex-direction: column; padding-top: 6px; }
-  .sidebar.nav-open .nav { display: flex; }
-  .nav a { padding: 10px; }
-  .sidebar-footer { margin: 0; border: 0; padding: 0; }
-  .sidebar-footer .who { display: none; }
+  .app { grid-template-columns: minmax(0, 1fr); grid-template-rows: auto 1fr; }
   .main { padding: 20px 16px 40px; }
   .grid-2 { grid-template-columns: minmax(0, 1fr); }
 }
@@ -497,9 +489,7 @@ html:root .doc .logo { background-image: url("../img/logo-transparent.png"); asp
 .sidebar-footer { flex-wrap: wrap; }
 .sidebar-footer .theme-switch { order: 3; width: 100%; justify-content: space-between; }
 .sidebar-footer .theme-switch button { flex: 1; }
-@media (max-width: 900px) {
-  .sidebar-footer .theme-switch { order: 0; width: auto; }
-}
+
 
 /* ---- Message threads ------------------------------------------------------------------------ */
 
@@ -520,10 +510,67 @@ html:root .doc .logo { background-image: url("../img/logo-transparent.png"); asp
 
 /* ---- Phones ----------------------------------------------------------------------------- */
 
-.nav-toggle { display: none; }
+/* Desktop: the drawer is just the sidebar's contents. Phones: a top bar with a hamburger button that
+   slides the menu in from the left over a dimmed page (app.js handles opening and closing). */
+.drawer { display: flex; flex-direction: column; flex: 1; min-height: 0; gap: 4px; }
+.drawer .nav { overflow-y: auto; }
+.nav-toggle, .drawer-head, .nav-backdrop { display: none; }
+.logout-label { position: absolute; width: 1px; height: 1px; overflow: hidden; clip: rect(0 0 0 0); white-space: nowrap; }
+
 @media (max-width: 900px) {
-  .nav-toggle { display: inline-flex; order: 2; }
-  .sidebar-footer { order: 1; }
+  .sidebar {
+    position: sticky; top: 0; z-index: 40; height: auto; flex-direction: row; align-items: center; gap: 6px;
+    padding: 6px 12px; border-right: 0; border-bottom: 1px solid var(--border);
+  }
+  .sidebar > .brand { padding: 0; }
+  .sidebar .logo { height: 46px; }
+
+  .nav-toggle {
+    display: inline-flex; align-items: center; justify-content: center; position: relative;
+    width: 44px; height: 44px; margin-left: -6px; border: 0; border-radius: var(--radius-sm);
+    background: none; color: var(--text); cursor: pointer;
+  }
+  .nav-toggle:hover, .nav-toggle:focus-visible { background: var(--surface-2); }
+  .nav-toggle svg, .nav-close svg { width: 24px; height: 24px; }
+  .nav-toggle-dot {
+    position: absolute; top: 9px; right: 8px; width: 9px; height: 9px; border-radius: 50%;
+    background: var(--danger); box-shadow: 0 0 0 2px var(--surface);
+  }
+
+  .nav-backdrop {
+    display: block; position: fixed; inset: 0; z-index: 50; background: rgb(15 23 42 / .45);
+    opacity: 0; pointer-events: none; transition: opacity .2s ease;
+  }
+  .drawer {
+    position: fixed; top: 0; bottom: 0; left: 0; z-index: 60; width: min(86vw, 320px);
+    padding: 8px 14px 16px; background: var(--surface); box-shadow: 0 10px 40px rgb(0 0 0 / .25);
+    overflow-y: auto; overscroll-behavior: contain;
+    transform: translateX(-100%); visibility: hidden; transition: transform .25s ease, visibility 0s linear .25s;
+  }
+  .sidebar.nav-open .drawer { transform: none; visibility: visible; transition: transform .25s ease; }
+  .sidebar.nav-open .nav-backdrop { opacity: 1; pointer-events: auto; }
+  .drawer .nav { overflow: visible; }
+  .drawer-head { display: flex; align-items: center; justify-content: space-between; padding-bottom: 4px; }
+  .drawer-head { position: sticky; top: -8px; z-index: 1; margin: -8px -14px 0; padding: 6px 8px 6px 18px; background: var(--surface); border-bottom: 1px solid var(--border); }
+  .drawer-title { font-weight: 650; font-size: 16px; }
+  .nav-close {
+    display: inline-flex; align-items: center; justify-content: center; width: 44px; height: 44px;
+    border: 0; border-radius: var(--radius-sm); background: none; color: var(--text); cursor: pointer;
+  }
+  .nav-close:hover { background: var(--surface-2); }
+  .nav a { padding: 11px 10px; font-size: 15px; }
+  .sidebar-footer { margin-top: 12px; }
+  .logout-label { position: static; width: auto; height: auto; clip: auto; }
+  body.nav-locked { overflow: hidden; }
+
+  /* Page headers: actions get a row of their own, with buttons sharing it evenly. */
+  .page-header { align-items: flex-start; }
+  .page-header .actions { margin-left: 0; width: 100%; }
+  .page-header .actions > .btn, .page-header .actions > form, .page-header .actions > a { flex: 1 1 auto; }
+  .page-header .actions .btn { justify-content: center; }
+}
+@media (prefers-reduced-motion: reduce) {
+  .drawer, .nav-backdrop { transition: none !important; }
 }
 
 /* Tables become one card per row: the first cell is the title, the rest are "label: value" lines,
@@ -539,6 +586,8 @@ html:root .doc .logo { background-image: url("../img/logo-transparent.png"); asp
     padding: 3px 0; border: 0; text-align: right; white-space: normal; }
   table.table.stack td::before { content: attr(data-label); flex: none; color: var(--muted); font-size: 12px;
     text-transform: uppercase; letter-spacing: .04em; text-align: left; }
+  table.table.stack td > .cell-value { min-width: 0; overflow-wrap: anywhere; }
+  table.table.stack td.blank { display: none; }  /* e.g. "Charged" on a payment line */
   table.table.stack td:first-child { display: block; text-align: left; padding-bottom: 6px; }
   table.table.stack td:first-child::before { content: none; }
   table.table.stack td[data-label=""]::before { content: none; }

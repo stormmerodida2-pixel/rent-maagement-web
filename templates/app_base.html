@@ -5,10 +5,19 @@
 {% with url_name=request.resolver_match.url_name %}
 <div class="app">
   <aside class="sidebar">
+    <button type="button" class="nav-toggle" data-nav-toggle aria-controls="main-nav" aria-expanded="false">
+      {% icon 'menu' %}<span class="visually-hidden">Open menu</span>
+      {% if nav_complaints or nav_open_requests or nav_mpesa_missing %}<span class="nav-toggle-dot" title="Something needs your attention"></span>{% endif %}
+    </button>
     <a class="brand" href="{% url 'rentals:dashboard' %}">{% include 'includes/logo.html' %}</a>
 
-    <button type="button" class="btn btn-sm nav-toggle" data-nav-toggle aria-controls="main-nav" aria-expanded="false">{% icon 'menu' %}Menu</button>
-    <nav class="nav" id="main-nav" aria-label="Main">
+    <div class="nav-backdrop" data-nav-close></div>
+    <div class="drawer" id="main-nav">
+    <div class="drawer-head">
+      <span class="drawer-title">Menu</span>
+      <button type="button" class="nav-close" data-nav-close>{% icon 'x' %}<span class="visually-hidden">Close menu</span></button>
+    </div>
+    <nav class="nav" aria-label="Main">
       {% with app=request.resolver_match.app_name %}
       <div class="nav-section">Overview</div>
       <a href="{% url 'rentals:home' %}">{% icon 'home' %}Home page</a>
@@ -46,8 +55,9 @@
       </div>
       {% include 'includes/theme_switch.html' %}
       <form method="post" action="{% url 'logout' %}">{% csrf_token %}
-        <button class="btn btn-ghost btn-sm" title="Log out">{% icon 'logout' %}<span class="visually-hidden">Log out</span></button>
+        <button class="btn btn-ghost btn-sm" title="Log out">{% icon 'logout' %}<span class="logout-label">Log out</span></button>
       </form>
+    </div>
     </div>
   </aside>
 
