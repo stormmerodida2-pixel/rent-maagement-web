@@ -7,7 +7,8 @@
   <aside class="sidebar">
     <a class="brand" href="{% url 'rentals:dashboard' %}">{% include 'includes/logo.html' %}</a>
 
-    <nav class="nav" aria-label="Main">
+    <button type="button" class="btn btn-sm nav-toggle" data-nav-toggle aria-controls="main-nav" aria-expanded="false">{% icon 'menu' %}Menu</button>
+    <nav class="nav" id="main-nav" aria-label="Main">
       {% with app=request.resolver_match.app_name %}
       <div class="nav-section">Overview</div>
       <a href="{% url 'rentals:home' %}">{% icon 'home' %}Home page</a>
