@@ -67,11 +67,20 @@
   </a>
   {% endif %}
 
-  <div class="card settings-item">
-    <span class="avatar">{{ user.get_full_name|default:user.username|initials }}</span>
-    <span class="settings-text"><strong>{{ user.get_full_name|default:user.username }}</strong>
-      <span class="muted small">{{ user.email|default:"No email address" }} · <a href="{% url 'privacy' %}">Privacy</a> · <a href="{% url 'terms' %}">Terms</a></span></span>
-    <form method="post" action="{% url 'logout' %}">{% csrf_token %}<button class="btn btn-sm">{% icon 'logout' %}Log out</button></form>
+  <div class="card settings-group">
+    <div class="settings-item">
+      <span class="avatar settings-avatar">{{ user.get_full_name|default:user.username|initials }}</span>
+      <span class="settings-text"><strong>{{ user.get_full_name|default:user.username }}</strong>
+        <span class="muted small">{{ user.email|default:"No email address" }}{% if user.email and not email_verified %} · <span class="text-danger">not confirmed</span>{% endif %}</span></span>
+    </div>
+    <a class="settings-row settings-link" href="{% url 'accounts:profile' %}">
+      <span class="settings-text"><strong>Profile</strong><span class="muted small">Your name, email and phone number</span></span>{% icon 'arrow-right' %}</a>
+    <a class="settings-row settings-link" href="{% url 'accounts:password_change' %}">
+      <span class="settings-text"><strong>Password</strong><span class="muted small">Change the password you log in with</span></span>{% icon 'arrow-right' %}</a>
+    <div class="settings-row">
+      <span class="settings-text"><span class="muted small"><a href="{% url 'privacy' %}">Privacy</a> · <a href="{% url 'terms' %}">Terms</a></span></span>
+      <form method="post" action="{% url 'logout' %}">{% csrf_token %}<button class="btn btn-sm">{% icon 'logout' %}Log out</button></form>
+    </div>
   </div>
 </div>
 {% endblock %}
