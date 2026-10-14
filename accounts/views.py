@@ -11,6 +11,7 @@ from django.utils import timezone
 from django.utils.decorators import method_decorator
 from django.views.decorators.http import require_POST
 
+from notifications.models import LandlordPreferences
 from payments.models import MpesaAccount
 from rentals.models import Lease, Property, Tenant, Unit
 
@@ -174,4 +175,16 @@ def welcome(request):
         'steps': steps,
         'current': current,
         'done_count': sum(s['done'] for s in steps),
+    })
+
+
+@login_required
+def settings_page(request):
+    """Everything a landlord sets up once, in one place (the sidebar just links here)."""
+    account = MpesaAccount.objects.filter(owner=request.user).first()
+    return render(request, 'accounts/settings.html', {
+        'mpesa_account': account,
+        'mpesa_ready': account is not None and account.is_complete(),
+        'prefs': LandlordPreferences.for_user(request.user),
+        'email_verified': is_verified(request.user),
     })

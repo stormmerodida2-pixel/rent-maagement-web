@@ -38,14 +38,11 @@
       <a href="{% url 'audit:activity' %}" class="{% if app == 'audit' %}active{% endif %}">{% icon 'file' %}Activity</a>
       <a href="{% url 'notifications:sms_list' %}" class="{% if app == 'notifications' %}active{% endif %}">{% icon 'message' %}SMS log</a>
 
-      <div class="nav-section">Settings</div>
-      <a href="{% url 'payments:mpesa_settings' %}" class="{% if url_name == 'mpesa_settings' %}active{% endif %}">{% icon 'settings' %}M-Pesa{% if nav_mpesa_missing %}<span class="count">!</span>{% endif %}</a>
-      <a href="{% url 'notifications:preferences' %}" class="{% if url_name == 'preferences' %}active{% endif %}">{% icon 'bell' %}Notifications</a>
-      <a href="{% url 'support:contact' %}?from={{ request.path|urlencode }}" class="{% if url_name == 'contact' %}active{% endif %}">{% icon 'bell' %}Help &amp; support</a>
-      <button type="button" class="nav-install" data-install hidden>{% icon 'phone' %}Install app</button>
-      <p class="install-hint" data-install-ios hidden>On iPhone: tap <strong>Share</strong> {% icon 'external' 14 %} at the bottom of Safari, then <strong>Add to Home Screen</strong>.</p>
-      {% if user.is_superuser %}<a href="{% url 'admin:index' %}">{% icon 'shield' %}Admin</a>{% endif %}
       {% endwith %}
+    </nav>
+    {# Pinned above the account row, so it's visible however long the menu gets. #}
+    <nav class="nav nav-bottom" aria-label="Settings">
+      <a href="{% url 'accounts:settings' %}" class="{% if url_name == 'settings' or url_name == 'mpesa_settings' or url_name == 'preferences' or url_name == 'contact' %}active{% endif %}">{% icon 'settings' %}Settings{% if nav_mpesa_missing %}<span class="count" title="M-Pesa isn't connected">!</span>{% endif %}</a>
     </nav>
 
     <div class="sidebar-footer">
@@ -53,7 +50,6 @@
         <span class="avatar">{{ user.get_full_name|default:user.username|initials }}</span>
         <div><div class="name small">{{ user.get_full_name|default:user.username }}</div><div class="meta">{% if user.is_superuser %}Administrator{% else %}Landlord{% endif %}</div></div>
       </div>
-      {% include 'includes/theme_switch.html' %}
       <form method="post" action="{% url 'logout' %}">{% csrf_token %}
         <button class="btn btn-ghost btn-sm" title="Log out">{% icon 'logout' %}<span class="logout-label">Log out</span></button>
       </form>

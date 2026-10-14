@@ -183,7 +183,9 @@ class ThemeSwitchTests(TestCase):
             self.assertContains(resp, "localStorage.getItem('theme')", msg_prefix=url)
             self.assertContains(resp, 'js/theme.js', msg_prefix=url)
         self.client.force_login(owner)
-        self.assertContains(self.client.get(reverse('rentals:dashboard')), 'data-theme-choice="auto"')
+        # In the app, the switch lives on the Settings page; every page still applies the saved theme.
+        self.assertContains(self.client.get(reverse('accounts:settings')), 'data-theme-choice="auto"')
+        self.assertContains(self.client.get(reverse('rentals:dashboard')), "localStorage.getItem('theme')")
 
 
 class NavigationTests(TestCase):
@@ -215,7 +217,21 @@ class MobileTests(TestCase):
         self.assertIn('Open menu', page)
         self.assertIn('data-nav-close', drawer)  # the X
         self.assertIn('class="nav-backdrop" data-nav-close', page)  # tapping the dimmed page closes it
-        for item in ('Tenants', 'Payments', 'Notifications', 'theme-switch', 'Log out'):
+        for item in ('Tenants', 'Payments', 'Settings', 'Log out'):
             self.assertIn(item, drawer)
+        for moved in ('Notifications', 'Help &amp; support', 'theme-switch', 'data-install'):
+            self.assertNotIn(moved, drawer)  # these live on the Settings page
         self.assertIn('nav-toggle-dot', page)  # M-Pesa isn't set up yet, so the hamburger shows a dot
         self.assertIn("event.key === 'Escape'", open(finders.find('js/app.js'), encoding='utf-8').read())
+
+    def test_settings_page_gathers_everything(self):
+        owner = get_user_model().objects.create_user('landlord', email='l@example.com')
+        self.client.force_login(owner)
+        page = self.client.get(reverse('accounts:settings'))
+        for item in ('M-Pesa', 'Not connected yet', 'Notifications', 'Monthly report card: email', 'Appearance',
+                     'theme-switch', 'Install the app', 'Help &amp; support', 'Log out', 'l@example.com'):
+            self.assertContains(page, item)
+        self.assertNotContains(page, 'Site administration')  # admins only
+        # The sidebar's one Settings link stays highlighted on the pages it leads to.
+        mpesa = self.client.get(reverse('payments:mpesa_settings')).content.decode()
+        self.assertIn('href="/settings/" class="active"', mpesa)

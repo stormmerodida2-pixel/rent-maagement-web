@@ -232,7 +232,7 @@ label, .label { display: block; font-size: 13px; font-weight: 500; color: var(--
 .auth-logo { text-align: center; margin: -8px 0 18px; }
 .footer-logo .logo { height: 72px; }
 .topbar .logo, .site-nav .logo { height: 64px; }
-.sidebar .logo { height: 118px; }
+.sidebar .logo { height: 96px; }
 @media (max-width: 900px) { .sidebar .logo { height: 56px; } }
 .nav-section { font-size: 11px; text-transform: uppercase; letter-spacing: .06em; color: var(--muted); padding: 14px 10px 6px; }
 .nav a {
@@ -514,6 +514,8 @@ html:root .doc .logo { background-image: url("../img/logo-transparent.png"); asp
    slides the menu in from the left over a dimmed page (app.js handles opening and closing). */
 .drawer { display: flex; flex-direction: column; flex: 1; min-height: 0; gap: 4px; }
 .drawer .nav { overflow-y: auto; }
+.drawer .nav-bottom { flex: none; overflow: visible; margin-top: auto; padding-top: 8px; border-top: 1px solid var(--border); }
+.drawer .nav-bottom + .sidebar-footer { margin-top: 8px; }
 .nav-toggle, .drawer-head, .nav-backdrop { display: none; }
 .logout-label { position: absolute; width: 1px; height: 1px; overflow: hidden; clip: rect(0 0 0 0); white-space: nowrap; }
 

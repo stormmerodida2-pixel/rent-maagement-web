@@ -1,0 +1,59 @@
+{% extends 'app_base.html' %}
+{% load ui %}
+{% block page_title %}Settings{% endblock %}
+{% block content %}
+<div class="page-header">
+  <div><h1>Settings</h1><p class="sub">Payments, notifications, how the app looks, and help.</p></div>
+</div>
+
+<div class="settings-list">
+  <a class="card settings-item" href="{% url 'payments:mpesa_settings' %}">
+    <span class="settings-icon">{% icon 'wallet' %}</span>
+    <span class="settings-text"><strong>M-Pesa</strong>
+      <span class="muted small">{% if mpesa_ready %}Connected · {% if mpesa_account.is_till %}Till{% else %}Paybill{% endif %} {{ mpesa_account.pay_number }}{% if mpesa_account.environment == 'sandbox' %} (testing){% endif %}{% else %}Not connected yet. Connect your Paybill or Till to collect rent.{% endif %}</span></span>
+    {% if not mpesa_ready %}<span class="badge badge-danger">Set up</span>{% endif %}
+    {% icon 'arrow-right' %}
+  </a>
+
+  <a class="card settings-item" href="{% url 'notifications:preferences' %}">
+    <span class="settings-icon">{% icon 'bell' %}</span>
+    <span class="settings-text"><strong>Notifications</strong>
+      <span class="muted small">Monthly report card: {% if prefs.report_email and prefs.report_sms %}email and SMS{% elif prefs.report_email %}email{% elif prefs.report_sms %}SMS{% else %}off{% endif %}{% if prefs.report_email and not email_verified %} (confirm your email to receive it){% endif %}</span></span>
+    {% icon 'arrow-right' %}
+  </a>
+
+  <div class="card settings-item">
+    <span class="settings-icon">{% icon 'sun' %}</span>
+    <span class="settings-text"><strong>Appearance</strong><span class="muted small">Light, dark, or match your device.</span></span>
+    {% include 'includes/theme_switch.html' %}
+  </div>
+
+  <div class="card settings-item" data-install hidden>
+    <span class="settings-icon">{% icon 'phone' %}</span>
+    <span class="settings-text"><strong>Install the app</strong><span class="muted small">Open {{ APP_NAME }} from your home screen, like any other app.</span></span>
+    <span class="btn btn-sm btn-primary">Install</span>
+  </div>
+  <p class="install-hint" data-install-ios hidden>On iPhone: tap <strong>Share</strong> {% icon 'external' 14 %} at the bottom of Safari, then <strong>Add to Home Screen</strong>.</p>
+
+  <a class="card settings-item" href="{% url 'support:contact' %}?from={{ request.path|urlencode }}">
+    <span class="settings-icon">{% icon 'message' %}</span>
+    <span class="settings-text"><strong>Help &amp; support</strong><span class="muted small">Questions, problems or ideas: we'll reply by email.</span></span>
+    {% icon 'arrow-right' %}
+  </a>
+
+  {% if user.is_superuser %}
+  <a class="card settings-item" href="{% url 'admin:index' %}">
+    <span class="settings-icon">{% icon 'shield' %}</span>
+    <span class="settings-text"><strong>Admin</strong><span class="muted small">Site administration.</span></span>
+    {% icon 'arrow-right' %}
+  </a>
+  {% endif %}
+
+  <div class="card settings-item">
+    <span class="avatar">{{ user.get_full_name|default:user.username|initials }}</span>
+    <span class="settings-text"><strong>{{ user.get_full_name|default:user.username }}</strong>
+      <span class="muted small">{{ user.email|default:"No email address" }} · <a href="{% url 'privacy' %}">Privacy</a> · <a href="{% url 'terms' %}">Terms</a></span></span>
+    <form method="post" action="{% url 'logout' %}">{% csrf_token %}<button class="btn btn-sm">{% icon 'logout' %}Log out</button></form>
+  </div>
+</div>
+{% endblock %}

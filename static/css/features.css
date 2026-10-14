@@ -53,3 +53,19 @@
   .rentday { flex-direction: column; text-align: center; }
 }
 @media (prefers-reduced-motion: reduce) { .ring-fill { transition: none; } }
+
+/* --- Settings page ------------------------------------------------------------------------- */
+.settings-list { display: grid; gap: 12px; max-width: 760px; }
+.settings-item { display: flex; align-items: center; gap: 14px; padding: 16px 18px; color: var(--text); }
+a.settings-item:hover { text-decoration: none; border-color: var(--brand); }
+.settings-item > svg { width: 18px; height: 18px; color: var(--muted); flex: none; }
+.settings-icon { display: inline-flex; align-items: center; justify-content: center; flex: none;
+  width: 40px; height: 40px; border-radius: 12px; background: var(--brand-soft); color: var(--brand); }
+.settings-icon svg { width: 20px; height: 20px; }
+.settings-text { flex: 1; min-width: 0; display: flex; flex-direction: column; gap: 2px; }
+.settings-item .theme-switch { flex: none; }
+@media (max-width: 520px) {
+  .settings-item { flex-wrap: wrap; }
+  .settings-item .theme-switch, .settings-item form { width: 100%; }
+  .settings-item .theme-switch button, .settings-item form .btn { flex: 1; width: 100%; justify-content: center; }
+}
