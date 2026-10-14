@@ -4,6 +4,7 @@ import datetime
 from decimal import Decimal
 
 from django.contrib.auth import get_user_model
+from django.contrib.staticfiles import finders
 from django.test import TestCase
 from django.urls import reverse
 
@@ -205,3 +206,16 @@ class MobileTests(TestCase):
         self.assertContains(page, 'id="main-nav"')
         self.assertContains(page, 'js/app.js')  # labels table cells so they stack on phones
         self.assertContains(page, 'name="viewport" content="width=device-width, initial-scale=1"')
+
+    def test_hamburger_opens_a_drawer_with_everything_in_it(self):
+        owner = get_user_model().objects.create_user('landlord')
+        self.client.force_login(owner)
+        page = self.client.get(reverse('rentals:dashboard')).content.decode()
+        drawer = page.split('id="main-nav"')[1].split('</aside>')[0]
+        self.assertIn('Open menu', page)
+        self.assertIn('data-nav-close', drawer)  # the X
+        self.assertIn('class="nav-backdrop" data-nav-close', page)  # tapping the dimmed page closes it
+        for item in ('Tenants', 'Payments', 'Notifications', 'theme-switch', 'Log out'):
+            self.assertIn(item, drawer)
+        self.assertIn('nav-toggle-dot', page)  # M-Pesa isn't set up yet, so the hamburger shows a dot
+        self.assertIn("event.key === 'Escape'", open(finders.find('js/app.js'), encoding='utf-8').read())

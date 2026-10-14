@@ -34,13 +34,34 @@
   document.addEventListener('change', syncConditional);
   document.addEventListener('DOMContentLoaded', syncConditional);
 
-  // Phones: the Menu button opens and closes the main navigation.
-  document.addEventListener('click', function (event) {
-    var toggle = event.target.closest('[data-nav-toggle]');
-    if (!toggle) return;
-    var open = toggle.closest('.sidebar').classList.toggle('nav-open');
+  // Phones: the hamburger slides the menu in. It closes with the X, a tap on the dimmed page, Escape,
+  // or choosing a link; focus moves into the menu and back to the hamburger.
+  function setNav(open) {
+    var sidebar = document.querySelector('.sidebar');
+    var toggle = document.querySelector('[data-nav-toggle]');
+    if (!sidebar || !toggle || sidebar.classList.contains('nav-open') === open) return;
+    sidebar.classList.toggle('nav-open', open);
+    document.body.classList.toggle('nav-locked', open);
     toggle.setAttribute('aria-expanded', String(open));
+    if (open) {
+      var close = sidebar.querySelector('.nav-close');
+      if (close) close.focus();
+    } else {
+      toggle.focus();
+    }
+  }
+  document.addEventListener('click', function (event) {
+    if (event.target.closest('[data-nav-toggle]')) { setNav(true); return; }
+    if (event.target.closest('[data-nav-close]')) { setNav(false); return; }
+    if (event.target.closest('.sidebar.nav-open .nav a')) setNav(false);
   });
+  document.addEventListener('keydown', function (event) {
+    if (event.key === 'Escape') setNav(false);
+  });
+  window.addEventListener('resize', function () {
+    if (window.innerWidth > 900) setNav(false);  // e.g. a tablet turned sideways
+  });
+  window.addEventListener('pageshow', function () { setNav(false); });  // back button: arrive with it closed
 
   // Phones: label every table cell with its column heading, so tables can stack into cards.
   function labelTables() {
@@ -50,7 +71,16 @@
       var labels = Array.prototype.map.call(head.cells, function (th) { return th.textContent.trim(); });
       Array.prototype.forEach.call(table.querySelectorAll('tbody tr, tfoot tr'), function (row) {
         Array.prototype.forEach.call(row.cells, function (cell, i) {
-          if (!cell.hasAttribute('data-label')) cell.setAttribute('data-label', labels[i] || '');
+          if (cell.hasAttribute('data-label')) return;
+          cell.setAttribute('data-label', labels[i] || '');
+          if (!cell.textContent.trim() && !cell.querySelector('input, button, a, svg')) cell.classList.add('blank');
+          // Keep a cell's contents together (e.g. "name · unit") beside its label, instead of spread apart.
+          if (i > 0 && cell.childNodes.length > 1) {
+            var wrap = document.createElement('span');
+            wrap.className = 'cell-value';
+            while (cell.firstChild) wrap.appendChild(cell.firstChild);
+            cell.appendChild(wrap);
+          }
         });
       });
       table.classList.add('stack');
