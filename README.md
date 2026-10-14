@@ -26,14 +26,14 @@ Built with Django. Landlords sign up themselves and do everything in the app. Th
 
 Every page is restricted to the signed-in landlord's own records. Another landlord's record returns 404.
 
-Styles live in `static/css/app.css`, which uses colour tokens. Every page has a **Light / Dark / System** switch (`static/js/theme.js`). The choice is saved in the browser under the same key Django's admin uses, so the app and admin always match. "System" follows the device's setting. Printed statements and receipts stay white like paper. Icons and helpers are in `rentals/templatetags/ui.py`. Set `APP_NAME` in `.env` to rebrand.
+Styles live in `static/css/app.css`, which uses colour tokens. Every page has a **Light / Dark / System** switch (`static/js/theme.js`). The choice is saved in the browser under the same key Django's admin uses, so the app and admin always match. "System" follows the device's setting. Printed statements and receipts stay white like paper. Icons and helpers are in `rentals/templatetags/ui.py`. Set `APP_NAME` in your env file to rebrand.
 
 ## Setup
 
 ```bash
 python3 -m venv venv && source venv/bin/activate
 pip install -r requirements.txt
-cp .env.example .env          # local development settings (DJANGO_DEBUG=1)
+cp .env_local.example .env_local   # settings for your computer (read by settings/local.py)
 python manage.py migrate
 python manage.py createsuperuser
 python manage.py runserver
@@ -42,6 +42,10 @@ python manage.py runserver
 Landlords create their own accounts at `/signup/`. You can also create one from the command line with `python manage.py create_landlord jane`.
 
 ## Project layout
+
+Settings live in `settings/`: `base.py` (shared), `local.py` (your computer; the default for `manage.py` and the tests), `development.py` (a test copy online) and `production.py` (the live site; the default for the server and Docker image). Choose one with `DJANGO_SETTINGS_MODULE`, e.g. `settings.development`. All packages are in `requirements.txt`.
+
+Each settings file reads its own env file: `.env_local` (your computer), `.env_dev` (the test copy online) and `.env_prod` (the live site). They hold passwords and keys, so git ignores them. The committed `.env_local.example`, `.env_dev.example` and `.env_prod.example` show what goes in each: copy one, rename it without `.example`, and fill it in. For a test copy online, deploy with `.env_dev` (it sets `DJANGO_SETTINGS_MODULE=settings.development`).
 
 Each app keeps the same small set of files:
 
@@ -164,7 +168,7 @@ All webhooks are idempotent. Safaricom retries don't create duplicates, and a re
   - logins: 5 failed attempts per username per 15 minutes, and 30 attempts per IP
   - password-reset requests: 5 per IP per hour
 - Rate limits are stored in Django's cache, so use a shared cache (Redis/Memcached) when running more than one process. Behind a reverse proxy, make sure `REMOTE_ADDR` is the real client IP.
-- Set `EMAIL_HOST` and the other email settings in `.env` to send real email (any SMTP provider). Without them, emails are printed to the console.
+- Set `EMAIL_HOST` and the other email settings in your env file (`.env_local`, `.env_dev` or `.env_prod`) to send real email (any SMTP provider). Without them, emails are printed to the console.
 
 ## SMS (Africa's Talking)
 
@@ -206,8 +210,9 @@ Scheduled jobs (no cron needed; times are Nairobi time, and a job missed during 
 2. On the server:
    ```bash
    git clone git@github.com:stormmerodida2-pixel/rent-maagement-web.git rentals && cd rentals
-   cp .env.production.example .env
-   nano .env        # fill in every Required value; the commands to generate secrets are in the file
+   cp .env_prod.example .env_prod
+   nano .env_prod   # fill in every Required value; the commands to generate secrets are in the file
+   export COMPOSE_ENV_FILES=.env_prod   # so every docker compose command below uses it (add to ~/.bashrc)
    docker compose up -d --build
    docker compose exec web python manage.py createsuperuser
    ```
@@ -319,13 +324,13 @@ To deploy without pushing, use **Actions → CI/CD → Run workflow**. To roll b
 
 Run the same checks locally:
 ```bash
-pip install -r requirements-dev.txt
+pip install ruff==0.17.0   # the linter (only needed to run it yourself)
 ruff check . && python manage.py makemigrations --check --dry-run && python manage.py test
 ```
 
 ### Security defaults
 
-- With `DJANGO_DEBUG` off, the app refuses to start without `DJANGO_SECRET_KEY` and `FIELD_ENCRYPTION_KEY`.
+- With the production (or development) settings, the app refuses to start without `DJANGO_SECRET_KEY`, `FIELD_ENCRYPTION_KEY` and `BACKUP_ENCRYPTION_KEY`.
 - HTTP redirects to HTTPS. Cookies are secure-only, HSTS is on, and the security headers are set.
 - Only the domain in `SITE_URL` is accepted as a host.
 - Login limits cover the Django admin's login page too, and share one counter with the app's login, so switching pages gives no extra guesses.

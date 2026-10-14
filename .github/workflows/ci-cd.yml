@@ -23,8 +23,8 @@ jobs:
         with:
           python-version: "3.14"
           cache: pip
-          cache-dependency-path: requirements*.txt
-      - run: pip install -r requirements-dev.txt
+          cache-dependency-path: requirements.txt
+      - run: pip install ruff==0.17.0  # the only tool lint needs
       - run: ruff check --output-format github .
 
   test:
@@ -46,7 +46,6 @@ jobs:
         options: >-
           --health-cmd "redis-cli ping" --health-interval 5s --health-timeout 5s --health-retries 10
     env:
-      DJANGO_DEBUG: "1"
       DATABASE_URL: postgres://rentals:rentals@localhost:5432/rentals
       REDIS_URL: redis://localhost:6379/0
     steps:
@@ -55,15 +54,15 @@ jobs:
         with:
           python-version: "3.14"
           cache: pip
-          cache-dependency-path: requirements*.txt
-      - run: pip install -r requirements-dev.txt
+          cache-dependency-path: requirements.txt
+      - run: pip install -r requirements.txt
       - name: No missing migrations
         run: python manage.py makemigrations --check --dry-run
       - name: Django system checks
         run: python manage.py check
       - name: Production deployment checklist
         env:
-          DJANGO_DEBUG: "0"
+          DJANGO_SETTINGS_MODULE: settings.production
           DJANGO_SECRET_KEY: ci-only-not-secret-0123456789abcdefghijklmnopqrstuvwxyzABCDEFG
           FIELD_ENCRYPTION_KEY: ci-only
           BACKUP_ENCRYPTION_KEY: ci-only
@@ -158,7 +157,7 @@ jobs:
           cd "$APP_DIR"
           git fetch --quiet origin main
           git checkout --quiet --detach "$SHA"
-          docker compose up -d --build --remove-orphans --wait --wait-timeout 300
+          docker compose --env-file .env_prod up -d --build --remove-orphans --wait --wait-timeout 300
           docker image prune -f > /dev/null
           EOF
       - name: Verify the live site

@@ -1,11 +1,12 @@
 # Production stack: Caddy (HTTPS) -> web (gunicorn) + scheduler, with PostgreSQL and Redis.
-# Usage on a server:  cp .env.production.example .env  (fill it in)  &&  docker compose up -d --build
+# Usage on a server:  cp .env_prod.example .env_prod  (fill it in)  &&  docker compose --env-file .env_prod up -d --build
+# A test copy (staging) uses .env_dev instead:  docker compose --env-file .env_dev up -d --build
 
 x-app: &app
   build: .
-  env_file: ${ENV_FILE:-.env}
+  env_file: ${ENV_FILE:-.env_prod}
   environment:
-    DATABASE_URL: postgres://rentals:${POSTGRES_PASSWORD:?set POSTGRES_PASSWORD in .env}@db:5432/rentals
+    DATABASE_URL: postgres://rentals:${POSTGRES_PASSWORD:?set POSTGRES_PASSWORD in your env file}@db:5432/rentals
     REDIS_URL: redis://redis:6379/0
     TRUSTED_PROXY_COUNT: "1"
     BACKUP_DIR: /backups
@@ -41,7 +42,7 @@ services:
     environment:
       POSTGRES_DB: rentals
       POSTGRES_USER: rentals
-      POSTGRES_PASSWORD: ${POSTGRES_PASSWORD:?set POSTGRES_PASSWORD in .env}
+      POSTGRES_PASSWORD: ${POSTGRES_PASSWORD:?set POSTGRES_PASSWORD in your env file}
     volumes:
       - pgdata:/var/lib/postgresql/data
     healthcheck:
@@ -67,7 +68,7 @@ services:
       - "${HTTP_PORT:-80}:80"
       - "${HTTPS_PORT:-443}:443"
     environment:
-      DOMAIN: ${DOMAIN:?set DOMAIN in .env}
+      DOMAIN: ${DOMAIN:?set DOMAIN in your env file}
     volumes:
       - ./Caddyfile:/etc/caddy/Caddyfile:ro
       - caddy_data:/data
