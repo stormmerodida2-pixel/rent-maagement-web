@@ -153,6 +153,12 @@ class C2BPayment(models.Model):
     msisdn = models.CharField('phone', max_length=100, blank=True)
     payer_name = models.CharField(max_length=200, blank=True)
     raw = models.JSONField()
+    source_ip = models.GenericIPAddressField(null=True, blank=True)
+    held_for_review = models.BooleanField(
+        default=False,
+        help_text="Came from an address that isn't Safaricom's, so it wasn't credited automatically. "
+                  'Check the M-Pesa statement before assigning it.',
+    )
     lease = models.ForeignKey(
         Lease, on_delete=models.PROTECT, null=True, blank=True, related_name='c2b_payments',
         help_text='Set this to assign an unmatched payment to a lease.',

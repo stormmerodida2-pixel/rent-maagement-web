@@ -225,6 +225,15 @@ APP_NAME = os.environ.get('APP_NAME', 'Rental Manager')
 MPESA = {
     # Public HTTPS base URL Safaricom can reach for webhooks. Defaults to SITE_URL.
     'CALLBACK_BASE_URL': os.environ.get('MPESA_CALLBACK_BASE_URL', SITE_URL if _site.scheme == 'https' else ''),
+    # Addresses Safaricom sends production callbacks from (IPs or CIDR ranges), per Safaricom's
+    # published list. Callbacks from elsewhere aren't trusted: Paybill payments are held for the
+    # landlord to review and STK results are confirmed with Safaricom instead. "any" turns the
+    # check off. Sandbox accounts are never checked.
+    'CALLBACK_IPS': env_list('MPESA_CALLBACK_IPS', ','.join([
+        '196.201.214.200', '196.201.214.206', '196.201.213.114', '196.201.214.207',
+        '196.201.214.208', '196.201.213.44', '196.201.212.127', '196.201.212.138',
+        '196.201.212.129', '196.201.212.136', '196.201.212.74', '196.201.212.69',
+    ])),
 }
 
 # Fernet key for encrypting landlords' Daraja credentials at rest.

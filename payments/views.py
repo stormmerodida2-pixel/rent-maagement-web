@@ -14,6 +14,7 @@ from django.views.decorators.csrf import csrf_exempt
 from django.views.decorators.http import require_POST
 from django.views.generic import CreateView, ListView
 
+from accounts import ratelimit
 from accounts.verification import is_verified
 from audit import log as audit
 from rentals.crud_views import FormPageMixin
@@ -40,6 +41,12 @@ def _json_body(request):
 @require_POST
 def stk_callback(request, token):
     account = get_object_or_404(MpesaAccount, callback_token=token)
+    ip = ratelimit.client_ip(request)
+    if not mpesa.callback_is_trusted(account, ip):
+        # Not from Safaricom: ignore it. A genuine payment is still picked up, because the
+        # scheduled status check asks Safaricom directly about any prompt left pending.
+        logger.warning('Ignored STK callback for account %s from untrusted address %s', account.pk, ip)
+        return JsonResponse(ACCEPTED)
     try:
         mpesa.handle_stk_callback(account, _json_body(request))
     except (KeyError, TypeError, ValueError):
@@ -67,8 +74,11 @@ def c2b_validation(request, token):
 @require_POST
 def c2b_confirmation(request, token):
     account = get_object_or_404(MpesaAccount, callback_token=token)
+    ip = ratelimit.client_ip(request)
     try:
-        mpesa.handle_c2b_confirmation(account, _json_body(request))
+        mpesa.handle_c2b_confirmation(
+            account, _json_body(request), trusted=mpesa.callback_is_trusted(account, ip), source_ip=ip,
+        )
     except (KeyError, TypeError, ValueError, ArithmeticError):
         logger.exception('Malformed C2B confirmation: %r', request.body[:1000])
     return JsonResponse(ACCEPTED)
@@ -233,6 +243,7 @@ class UnmatchedList(OwnedMixin, ListView):
         ctx['rows'] = [
             (c2b, AssignC2BForm(owner=self.request.user, prefix=f'c{c2b.pk}')) for c2b in ctx['object_list']
         ]
+        ctx['held_count'] = sum(c2b.held_for_review for c2b in ctx['object_list'])
         return ctx
 
 
@@ -244,6 +255,7 @@ def assign_unmatched(request, pk):
     if form.is_valid():
         with transaction.atomic():
             c2b.lease = form.cleaned_data['lease']
+            c2b.held_for_review = False
             mpesa.apply_c2b_payment(c2b)
             c2b.save()
         audit.record(

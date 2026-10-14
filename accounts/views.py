@@ -1,3 +1,4 @@
+import functools
 import logging
 
 from django.conf import settings
@@ -6,6 +7,7 @@ from django.contrib.auth import get_user_model, login
 from django.contrib.auth import views as auth_views
 from django.contrib.auth.decorators import login_required
 from django.shortcuts import redirect, render
+from django.utils.decorators import method_decorator
 from django.views.decorators.http import require_POST
 
 from payments.models import MpesaAccount
@@ -78,26 +80,37 @@ def resend_verification(request):
     return redirect(request.POST.get('next') or 'rentals:dashboard')
 
 
-class LoginView(auth_views.LoginView):
-    """Django's login, throttled per IP and per username to slow down password guessing."""
+def throttle_login(view):
+    """Limit password guessing on any login view (the app's and the Django admin's).
 
-    redirect_authenticated_user = True
+    Counters are shared, so switching between login pages doesn't buy extra guesses. A login
+    view redirects on success and re-shows the form on failure; that's how attempts are judged.
+    """
 
-    def post(self, request, *args, **kwargs):
+    @functools.wraps(view)
+    def wrapped(request, *args, **kwargs):
+        if request.method != 'POST':
+            return view(request, *args, **kwargs)
         ip = ratelimit.client_ip(request)
         username = request.POST.get('username', '')
         if ratelimit.hit('login-ip', ip, LOGIN_WINDOW) > LOGIN_ATTEMPTS_PER_IP or \
                 ratelimit.is_limited('login-user', username, LOGIN_FAILURES_PER_USER):
             return ratelimit.too_many(request, LOGIN_WINDOW // 60)
-        return super().post(request, *args, **kwargs)
+        response = view(request, *args, **kwargs)
+        if response.status_code in (301, 302) and request.user.is_authenticated:
+            ratelimit.reset('login-user', username)
+        else:
+            ratelimit.hit('login-user', username, LOGIN_WINDOW)
+        return response
 
-    def form_invalid(self, form):
-        ratelimit.hit('login-user', self.request.POST.get('username', ''), LOGIN_WINDOW)
-        return super().form_invalid(form)
+    return wrapped
 
-    def form_valid(self, form):
-        ratelimit.reset('login-user', form.get_user().get_username())
-        return super().form_valid(form)
+
+@method_decorator(throttle_login, name='dispatch')
+class LoginView(auth_views.LoginView):
+    """Django's login, throttled per IP and per username to slow down password guessing."""
+
+    redirect_authenticated_user = True
 
 
 class PasswordResetView(auth_views.PasswordResetView):

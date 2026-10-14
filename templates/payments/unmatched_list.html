@@ -6,6 +6,13 @@
   <div><h1>Unmatched M-Pesa payments</h1>
     <p class="sub">Money that reached your Paybill/Till without a recognisable account number. Choose who paid and it's added to their balance.</p></div>
 </div>
+{% if held_count %}
+<div class="alert alert-error" style="margin-bottom:20px">
+  <span><strong>{{ held_count }} payment{{ held_count|pluralize }} {{ held_count|pluralize:"needs,need" }} checking.</strong>
+  {{ held_count|pluralize:"This notification,These notifications" }} didn't come from Safaricom's servers, so {{ held_count|pluralize:"it wasn't,they weren't" }} credited automatically and may be fake.
+  Only assign {{ held_count|pluralize:"it,them" }} if the money shows on your M-Pesa statement.</span>
+</div>
+{% endif %}
 <section class="card">
   {% if rows %}
   <div class="table-wrap">
@@ -14,7 +21,8 @@
       <tbody>
       {% for c2b, form in rows %}
       <tr>
-        <td class="muted nowrap">{{ c2b.trans_time|date:"d M Y, H:i" }}<div class="small">{{ c2b.trans_id }}</div></td>
+        <td class="muted nowrap">{{ c2b.trans_time|date:"d M Y, H:i" }}<div class="small">{{ c2b.trans_id }}</div>
+          {% if c2b.held_for_review %}<div style="margin-top:4px"><span class="badge badge-danger" title="This notification didn't come from Safaricom's servers ({{ c2b.source_ip|default:'unknown address' }}). It may be fake.">Unverified, check statement</span></div>{% endif %}</td>
         <td>{{ c2b.payer_name|default:"Unknown" }}{% if c2b.msisdn|length <= 12 %}<div class="muted small">{{ c2b.msisdn }}</div>{% endif %}</td>
         <td>{% if c2b.bill_ref %}<code>{{ c2b.bill_ref }}</code>{% else %}<span class="muted">none</span>{% endif %}</td>
         <td class="num"><strong>{{ c2b.amount|kes }}</strong></td>

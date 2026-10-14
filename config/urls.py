@@ -9,6 +9,8 @@ from ops.views import healthz
 admin.site.site_header = settings.APP_NAME
 admin.site.site_title = settings.APP_NAME
 admin.site.index_title = 'Manage your rentals'
+# The admin's own login page gets the same password-guessing limits as the app's.
+admin.site.login = account_views.throttle_login(admin.site.login)
 
 urlpatterns = [
     path('healthz/', healthz, name='healthz'),

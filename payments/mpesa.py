@@ -6,6 +6,7 @@ Every call runs against a landlord's own MpesaAccount, so money goes straight to
 import base64
 import datetime
 import hashlib
+import ipaddress
 import logging
 from decimal import ROUND_CEILING, Decimal
 
@@ -400,6 +401,24 @@ def register_c2b_urls(account):
     return data
 
 
+def callback_is_trusted(account, ip):
+    """Did a webhook for this account come from Safaricom? Only enforced for production accounts.
+
+    Safaricom doesn't sign callbacks, so without this anyone who learned an account's webhook URL
+    could report payments that never happened.
+    """
+    if account.environment != MpesaAccount.Environment.PRODUCTION:
+        return True
+    allowed = settings.MPESA['CALLBACK_IPS']
+    if 'any' in allowed:
+        return True
+    try:
+        address = ipaddress.ip_address(ip)
+    except ValueError:
+        return False
+    return any(address in ipaddress.ip_network(net, strict=False) for net in allowed)
+
+
 def match_lease(account, bill_ref, msisdn):
     """Find which of this landlord's leases a payment belongs to: by account number, else by phone."""
     lease = Lease.find_by_account_number(bill_ref, owner=account.owner)
@@ -415,13 +434,18 @@ def match_lease(account, bill_ref, msisdn):
     return leases[0] if len(leases) == 1 else None
 
 
-def handle_c2b_confirmation(account, body):
-    """Store a C2B confirmation and, if it can be matched to a lease, record the payment. Idempotent."""
+def handle_c2b_confirmation(account, body, trusted=True, source_ip=None):
+    """Store a C2B confirmation and, if it can be matched to a lease, record the payment. Idempotent.
+
+    Untrusted confirmations (not from Safaricom's addresses) are stored but held for the landlord
+    to review against their M-Pesa statement; nothing is credited. If the genuine confirmation for
+    the same receipt arrives later, it releases the held record and is applied normally.
+    """
     shortcode = str(body.get('BusinessShortCode', ''))
     if shortcode and shortcode != account.pay_number:
         logger.warning('C2B for shortcode %s arrived on account %s (%s)', shortcode, account.pk, account.pay_number)
     with transaction.atomic():
-        c2b, created = C2BPayment.objects.get_or_create(
+        c2b, created = C2BPayment.objects.select_for_update().get_or_create(
             trans_id=body['TransID'],
             defaults={
                 'account': account,
@@ -435,9 +459,29 @@ def handle_c2b_confirmation(account, body):
                     filter(None, [body.get('FirstName'), body.get('MiddleName'), body.get('LastName')])
                 )[:200],
                 'raw': body,
+                'source_ip': source_ip,
+                'held_for_review': not trusted,
             },
         )
         if not created:
+            released = trusted and c2b.held_for_review and c2b.payment_id is None and c2b.account_id == account.pk
+            if not released:
+                return c2b
+            # The genuine confirmation: use Safaricom's details, not the earlier untrusted copy.
+            c2b.amount = Decimal(str(body['TransAmount']))
+            c2b.bill_ref = (body.get('BillRefNumber') or '')[:100]
+            c2b.msisdn = str(body.get('MSISDN', ''))[:100]
+            c2b.raw, c2b.source_ip, c2b.held_for_review = body, source_ip, False
+        if c2b.held_for_review:
+            logger.warning('Held C2B %s on account %s: came from %s, not a Safaricom address',
+                           c2b.trans_id, account.pk, source_ip)
+            from audit import log as audit
+
+            audit.record(
+                owner=account.owner, action='payment.held',
+                summary=f'Held M-Pesa payment {c2b.trans_id} (KES {c2b.amount:,.2f}) for review: it came '
+                        f"from {source_ip or 'an unknown address'}, not Safaricom. Check your M-Pesa statement.",
+            )
             return c2b
         c2b.lease = match_lease(account, c2b.bill_ref, c2b.msisdn)
         if c2b.lease is None:

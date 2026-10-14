@@ -63,7 +63,7 @@ class C2BPaymentAdmin(OwnerScopedAdmin):
     # their own unmatched payments.
     owner_path = 'account__owner'
     form = C2BPaymentForm
-    list_display = ['trans_time', 'trans_id', 'amount', 'bill_ref', 'payer_name', 'lease', 'matched']
+    list_display = ['trans_time', 'trans_id', 'amount', 'bill_ref', 'payer_name', 'lease', 'matched', 'held_for_review']
     list_filter = [MatchedFilter]
     search_fields = ['trans_id', 'bill_ref', 'payer_name', 'msisdn']
     date_hierarchy = 'trans_time'
@@ -84,6 +84,7 @@ class C2BPaymentAdmin(OwnerScopedAdmin):
     def save_model(self, request, obj, form, change):
         with transaction.atomic():
             if obj.lease_id and obj.payment_id is None:
+                obj.held_for_review = False  # assigned by a person who checked it
                 mpesa.apply_c2b_payment(obj)
             super().save_model(request, obj, form, change)
 

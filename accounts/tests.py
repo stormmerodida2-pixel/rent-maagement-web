@@ -160,3 +160,19 @@ class WelcomeTests(TestCase):
         resp = self.client.get(reverse('accounts:welcome'))
         self.assertIsNone(resp.context['current'])
         self.assertNotContains(self.client.get(reverse('rentals:dashboard')), 'Finish setting up')
+
+
+class AdminLoginThrottleTests(TestCase):
+    def setUp(self):
+        cache.clear()
+        get_user_model().objects.create_superuser('root', password='right-password-1')
+
+    def test_admin_login_is_limited_and_shares_the_counter(self):
+        for _ in range(5):
+            self.client.post('/admin/login/', {'username': 'root', 'password': 'wrong'})
+        self.assertEqual(self.client.post('/admin/login/', {'username': 'root', 'password': 'right-password-1'}).status_code, 429)
+        self.assertEqual(self.client.post(reverse('login'), {'username': 'root', 'password': 'right-password-1'}).status_code, 429)
+
+    def test_admin_login_still_works(self):
+        resp = self.client.post('/admin/login/?next=/admin/', {'username': 'root', 'password': 'right-password-1'})
+        self.assertRedirects(resp, '/admin/', fetch_redirect_response=False)

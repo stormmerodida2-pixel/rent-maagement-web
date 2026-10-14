@@ -264,6 +264,11 @@ ruff check . && python manage.py makemigrations --check --dry-run && python mana
 - With `DJANGO_DEBUG` off, the app refuses to start without `DJANGO_SECRET_KEY` and `FIELD_ENCRYPTION_KEY`.
 - HTTP redirects to HTTPS. Cookies are secure-only, HSTS is on, and the security headers are set.
 - Only the domain in `SITE_URL` is accepted as a host.
+- Login limits cover the Django admin's login page too, and share one counter with the app's login, so switching pages gives no extra guesses.
+- **M-Pesa callbacks are checked against Safaricom's published IP addresses** (`MPESA_CALLBACK_IPS`) for production accounts. Safaricom doesn't sign callbacks, so this stops someone who learns a webhook URL from reporting fake payments:
+  - **A Paybill notification from elsewhere is held, not credited.** It appears under Unmatched payments marked "Unverified, check statement", and is recorded in the Activity log. If the genuine notification for the same receipt then arrives from Safaricom, it replaces the held copy and is credited normally.
+  - **An STK result from elsewhere is ignored.** The 5-minute status check asks Safaricom directly instead.
+  - Sandbox accounts aren't checked.
 - Behind Caddy, `TRUSTED_PROXY_COUNT=1` makes the login and sign-up limits see each visitor's real IP. Without it, every visitor would look like the proxy and share one limit.
 
 To try the stack on your own computer, add yourself to the docker group first (`sudo usermod -aG docker $USER`, then log out and in).
