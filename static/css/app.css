@@ -77,14 +77,11 @@
   }
 }
 
-/* Dark mode keeps the same light logo, on a white rounded panel so its dark lettering stays visible. */
-:root[data-theme="dark"] .logo {
-  background-color: #fff; border-radius: 12px; background-origin: content-box; padding: 4px 6px;
-}
+/* Dark mode: logo-on-dark.png, the same logo (same shapes, size and framing, transparent background)
+   recoloured to read on dark pages: navy and grey become light, greens stay green. */
+:root[data-theme="dark"] .logo { background-image: url("../img/logo-on-dark.png"); }
 @media (prefers-color-scheme: dark) {
-  :root:not([data-theme="light"]):not([data-theme="dark"]) .logo {
-    background-color: #fff; border-radius: 12px; background-origin: content-box; padding: 4px 6px;
-  }
+  :root:not([data-theme="light"]):not([data-theme="dark"]) .logo { background-image: url("../img/logo-on-dark.png"); }
 }
 
 /* ---- Base ---------------------------------------------------------------- */
@@ -226,7 +223,7 @@ label, .label { display: block; font-size: 13px; font-weight: 500; color: var(--
 .brand:hover { text-decoration: none; }
 /* The logo is logo-transparent.png: logo.jpeg (same size and framing, nothing cropped or stretched)
    with its grey background made transparent, so it blends into any light page. The box takes the
-   image's own proportions. In dark mode it sits on a white panel (see the dark-mode rules above). */
+   image's own proportions. Dark mode uses a recoloured copy (see the dark-mode rules above). */
 .logo {
   display: inline-block; flex: none; height: 56px; aspect-ratio: 1408 / 768;
   background: url("../img/logo-transparent.png") center / contain no-repeat;
