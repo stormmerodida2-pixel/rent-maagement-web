@@ -11,7 +11,6 @@ from accounts.verification import mark_verified
 from audit.models import AuditEntry
 from notifications.move_out import send_move_out_reminders
 
-from .forms import end_of_next_month
 from .models import Lease
 from .tests import make_lease
 
@@ -32,11 +31,11 @@ class MoveOutNoticeTests(TestCase):
     def test_new_leases_are_month_to_month(self):
         self.assertNotContains(self.client.get(reverse('rentals:lease_create')), 'name="end_date"')
 
-    def test_defaults_to_the_end_of_next_month(self):
-        self.assertContains(self.client.get(self.url), f'value="{end_of_next_month().isoformat()}"')
+    def test_defaults_to_the_end_of_a_rent_month(self):
+        self.assertContains(self.client.get(self.url), f'value="{self.lease.default_move_out().isoformat()}"')
 
     def test_record_notice_shows_everywhere_and_stops_billing_after(self):
-        move_out = end_of_next_month()
+        move_out = self.lease.default_move_out()
         resp = self.give_notice(move_out, note='Moving to Nakuru')
         self.assertRedirects(resp, reverse('rentals:lease_detail', args=[self.lease.pk]))
         self.lease.refresh_from_db()
@@ -48,16 +47,18 @@ class MoveOutNoticeTests(TestCase):
         self.assertContains(self.client.get(reverse('rentals:dashboard')), 'Moving out soon')
         portal = self.client.get(reverse('rentals:tenant_portal', args=[self.lease.tenant.portal_token]))
         self.assertContains(portal, "moving out on")
-        # Billing: the move-out month is billed, the month after isn't.
-        self.assertTrue(self.lease.ensure_charge_for(move_out)[0])
-        self.assertIsNone(self.lease.ensure_charge_for(move_out + datetime.timedelta(days=1))[0])
+        # Billing: the rent month ending on the move-out date is billed; the next one isn't.
+        next_rent_day = move_out + datetime.timedelta(days=1)
+        last_month = next_rent_day.replace(day=1) - datetime.timedelta(days=1)
+        self.assertTrue(self.lease.ensure_charge_for(last_month)[0])
+        self.assertIsNone(self.lease.ensure_charge_for(next_rent_day)[0])
         self.assertTrue(AuditEntry.objects.filter(action='lease.notice_given').exists())
         # Finishing the move-out starts from the agreed date.
         end_page = self.client.get(reverse('rentals:lease_end', args=[self.lease.pk]))
         self.assertContains(end_page, f'value="{move_out.isoformat()}"')
 
     def test_cancel_notice(self):
-        self.give_notice(end_of_next_month())
+        self.give_notice(self.lease.default_move_out())
         self.client.post(self.url, {'action': 'cancel'})
         self.lease.refresh_from_db()
         self.assertIsNone(self.lease.end_date)

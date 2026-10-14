@@ -44,7 +44,7 @@ Landlords create their own accounts at `/signup/`. You can also create one from 
 ## Day-to-day flow
 
 1. Follow the getting-started checklist: add a property with its units, add tenants, then start a lease. Starting a lease bills the current month straight away.
-2. Bill rent: `python manage.py generate_rent_charges` bills the current month's rent and service charges for every active lease and adds any late fees that are due. It is safe to run repeatedly, so put it in a daily cron job. New leases are billed for their first month when they start.
+2. Bill rent: `python manage.py generate_rent_charges` bills each active lease's rent and service charge for the month, 5 days before that tenant's rent day, and adds any late fees that are due. It is safe to run repeatedly, so put it in a daily cron job. New leases are billed for their first month when they start.
 3. Tenants pay in one of three ways, and each M-Pesa payment is recorded automatically:
    - **Paybill**: the tenant pays the Paybill with their lease's account number (`LEASE<id>`, shown on the lease page).
    - **STK push**: you click **Send STK prompt** on a lease page, or the tenant clicks **Pay with M-Pesa** on their portal. The PIN prompt pops up on their phone.
@@ -256,6 +256,12 @@ docker compose exec web python manage.py check --deploy
   - log repairs and update them
 - Staff never see totals, reports, payment lists, exports, settings or other landlord pages. A middleware sends any staff request outside `/staff/` back to the staff area, so new pages are covered automatically.
 - Everything staff do appears in **Activity** with "(staff)" after their name.
+
+### Rent days and moving out (month-to-month tenancies)
+
+- **Rent day = move-in day.** A tenant who moves in on the 12th pays a full month every 12th; each payment covers 12th to 11th. Statements show "Rent 12 Oct – 11 Nov 2026". Rent days of the 29th–31st fall back to the last day of shorter months. You can set a different rent day on the lease; existing leases keep theirs.
+- Each tenant's rent is billed **5 days before their rent day**, by the daily 06:00 job, so nobody shows as owing before it's nearly due.
+- **Move-out notice:** "Record move-out notice" on a lease. The date defaults to the end of a rent month at least a month away. No new rent month is billed after it. A reminder email goes out 3 days before, and "Finish move-out" settles the deposit.
 
 ### Search engines
 

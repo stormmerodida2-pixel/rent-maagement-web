@@ -154,7 +154,7 @@ def statement(lease, limit=24):
     """Charges, credits and payments in date order with a running balance, newest first."""
     entries = []
     for c in lease.charges.all():
-        entry = {'date': c.period if c.kind == RentCharge.Kind.RENT else c.due_date,
+        entry = {'date': c.due_date,  # rent: the rent day its month starts on
                  'kind': 'charge', 'description': c.label, 'charge_id': c.pk}
         if c.amount < 0:
             entry['payment'] = -c.amount  # credits reduce what's owed, like a payment

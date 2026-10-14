@@ -51,7 +51,9 @@ class ReportTests(TestCase):
 
     def test_print_statement_and_receipt(self):
         statement = self.client.get(reverse('reports:lease_statement', args=[self.lease.pk]))
-        self.assertContains(statement, f'Rent for {self.month:%B %Y}')
+        # Rent covers a month from the rent day (the 5th here): "Rent 5 Oct – 4 Nov 2026".
+        start, end = self.lease.cycle_start(self.month), self.lease.cycle_end(self.month)
+        self.assertContains(statement, f'Rent {start.day} {start:%b} – {end.day} {end:%b %Y}')
         self.assertContains(statement, 'Amount due')
         receipt = self.client.get(reverse('reports:payment_receipt', args=[self.payment.pk]))
         self.assertContains(receipt, 'KES 6,000.00')

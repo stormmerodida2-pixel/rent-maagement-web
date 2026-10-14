@@ -5,7 +5,7 @@ msgid ""
 msgstr ""
 "Project-Id-Version: Liskodi\n"
 "Report-Msgid-Bugs-To: \n"
-"POT-Creation-Date: 2026-10-14 19:28+0300\n"
+"POT-Creation-Date: 2026-10-14 19:51+0300\n"
 "PO-Revision-Date: YEAR-MO-DA HO:MI+ZONE\n"
 "Last-Translator: FULL NAME <EMAIL@ADDRESS>\n"
 "Language-Team: Kiswahili\n"
@@ -157,6 +157,14 @@ msgstr "Pesa iliyorudishwa kwa mpangaji"
 
 msgid "Other"
 msgstr "Nyingine"
+
+#, python-format
+msgid "Rent %(start)s – %(end)s"
+msgstr "Kodi %(start)s – %(end)s"
+
+#, python-format
+msgid "%(kind)s %(start)s – %(end)s"
+msgstr "%(kind)s %(start)s – %(end)s"
 
 #, python-format
 msgid "Rent for %(month)s"

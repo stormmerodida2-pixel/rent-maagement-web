@@ -142,6 +142,9 @@ class Tenant(models.Model):
         self.save(update_fields=['portal_token'])
 
 
+BILL_AHEAD_DAYS = 5  # rent is billed this many days before each tenant's rent day
+
+
 class Lease(models.Model):
     unit = models.ForeignKey(Unit, on_delete=models.PROTECT, related_name='leases')
     tenant = models.ForeignKey(Tenant, on_delete=models.PROTECT, related_name='leases')
@@ -160,10 +163,12 @@ class Lease(models.Model):
     late_fee_grace_days = models.PositiveSmallIntegerField(
         default=3, help_text='Days after the due date before a late fee is added.',
     )
+    # The rent day. Each month's rent covers the cycle from this day to the day before it next month
+    # (moved in on the 12th: 12 Oct – 11 Nov). 29–31 fall back to the last day of shorter months.
     due_day = models.PositiveSmallIntegerField(
-        default=5,
-        validators=[MinValueValidator(1), MaxValueValidator(28)],
-        help_text='Day of the month rent is due (1–28).',
+        'rent day', default=5,
+        validators=[MinValueValidator(1), MaxValueValidator(31)],
+        help_text='Day of the month rent is due. Each payment covers a month from this day.',
     )
     is_active = models.BooleanField(default=True)
     # Month-to-month tenancies have no end date until someone gives notice; end_date is then the
@@ -238,10 +243,9 @@ class Lease(models.Model):
         period = period.replace(day=1)
         if period < self.start_date.replace(day=1):
             return None, False
-        if self.end_date and period > self.end_date:
-            return None, False
-        last_day = calendar.monthrange(period.year, period.month)[1]
-        due_date = period.replace(day=min(self.due_day, last_day))
+        due_date = self.cycle_start(period)
+        if self.end_date and due_date > self.end_date:
+            return None, False  # this month's cycle would start after they've moved out
         if self.service_charge:
             RentCharge.all_objects.get_or_create(
                 lease=self, period=period, kind=RentCharge.Kind.SERVICE,
@@ -252,6 +256,28 @@ class Lease(models.Model):
             lease=self, period=period, kind=RentCharge.Kind.RENT,
             defaults={'amount': self.monthly_rent, 'due_date': due_date},
         )
+
+    def cycle_start(self, month):
+        """The rent day in the month containing `month` (the 31st becomes the 30th, 28th… in short months)."""
+        last_day = calendar.monthrange(month.year, month.month)[1]
+        return month.replace(day=min(self.due_day, last_day))
+
+    def cycle_end(self, month):
+        """Last day covered by the rent due in the month containing `month`: the day before the next rent day."""
+        next_month = (month.replace(day=1) + datetime.timedelta(days=32)).replace(day=1)
+        return self.cycle_start(next_month) - datetime.timedelta(days=1)
+
+    def bill_from(self, month):
+        """When to bill the rent due in `month`: a few days ahead of the rent day, never before the 1st."""
+        return max(month.replace(day=1), self.cycle_start(month) - datetime.timedelta(days=BILL_AHEAD_DAYS))
+
+    def default_move_out(self, today=None):
+        """For a notice given today: the end of the first rent month that leaves at least a month's notice."""
+        today = today or datetime.date.today()
+        month = today.replace(day=1)
+        while self.cycle_end(month) < today + datetime.timedelta(days=30):
+            month = (month + datetime.timedelta(days=32)).replace(day=1)
+        return self.cycle_end(month)
 
     def apply_late_fee(self, today=None):
         """Add this month's late fee if rent is unpaid past the grace period. Returns the charge or None."""
@@ -352,6 +378,13 @@ class RentCharge(Voidable):
         """What the charge is for, in the active language (tenants may read Kiswahili)."""
         if self.description:
             return translate_description(self.description)
+        if self.kind in (self.Kind.RENT, self.Kind.SERVICE) and self.due_date.day != 1:
+            # A rent-day cycle, e.g. "Rent 12 Oct – 11 Nov 2026".
+            end = self.lease.cycle_end(self.period)
+            dates = {'start': date_format(self.due_date, 'j M'), 'end': date_format(end, 'j M Y')}
+            if self.kind == self.Kind.RENT:
+                return gettext('Rent %(start)s – %(end)s') % dates
+            return gettext('%(kind)s %(start)s – %(end)s') % {'kind': self.get_kind_display(), **dates}
         month = date_format(self.period, 'F Y')
         if self.kind == self.Kind.RENT:
             return gettext('Rent for %(month)s') % {'month': month}

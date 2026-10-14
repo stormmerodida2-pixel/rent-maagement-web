@@ -8,7 +8,7 @@ from rentals.models import Lease
 
 class Command(BaseCommand):
     help = (
-        "Bill this month's rent and service charges for every active lease, then add late fees "
+        "Bill this month's rent and service charges (a few days before each tenant's rent day), then add late fees "
         'where rent is unpaid past the grace period. Safe to run repeatedly; run daily from cron.'
     )
 
@@ -23,8 +23,12 @@ class Command(BaseCommand):
             period = datetime.date.today().replace(day=1)
 
         leases = Lease.objects.filter(is_active=True)
+        today = datetime.date.today()
         created = 0
         for lease in leases:
+            # Each tenant is billed a few days before their own rent day (an explicit --month bills now).
+            if not options['month'] and today < lease.bill_from(period):
+                continue
             _, was_created = lease.ensure_charge_for(period)
             created += was_created
         self.stdout.write(self.style.SUCCESS(f'Created {created} rent charge(s) for {period:%B %Y}.'))
