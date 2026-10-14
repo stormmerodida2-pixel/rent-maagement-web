@@ -2,7 +2,7 @@ from django.conf import settings
 
 
 def branding(request):
-    context = {'APP_NAME': settings.APP_NAME}
+    context = {'APP_NAME': settings.APP_NAME, 'SITE_URL': settings.SITE_URL}
     user = getattr(request, 'user', None)
     if user is not None and user.is_authenticated and request.resolver_match \
             and request.resolver_match.app_name in ('rentals', 'payments', 'maintenance', 'notifications', 'accounts', 'reports', 'audit', 'support', 'announcements'):
