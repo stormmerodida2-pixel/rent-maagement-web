@@ -132,7 +132,7 @@ class TwoFactorTests(TestCase):
         self.assertFalse(TwoFactor.objects.filter(user=self.user).exists())
 
     def test_staff_can_use_it_too(self):
-        from staff.models import StaffMember
+        from ..models import StaffMember
 
         owner = get_user_model().objects.create_user('landlord')
         StaffMember.objects.create(owner=owner, user=self.user)

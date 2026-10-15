@@ -33,7 +33,7 @@ Styles live in `static/css/app.css`, which uses colour tokens. Every page has a 
 ```bash
 python3 -m venv venv && source venv/bin/activate
 pip install -r requirements.txt
-cp .env_local.example .env_local   # settings for your computer (read by settings/local.py)
+touch .env_local   # settings for your computer (read by settings/local.py); empty works to start
 python manage.py migrate
 python manage.py createsuperuser
 python manage.py runserver
@@ -45,7 +45,7 @@ Landlords create their own accounts at `/signup/`. You can also create one from 
 
 Settings live in `settings/`: `base.py` (shared), `local.py` (your computer; the default for `manage.py` and the tests), `development.py` (a test copy online) and `production.py` (the live site; the default for the server and Docker image). Choose one with `DJANGO_SETTINGS_MODULE`, e.g. `settings.development`. All packages are in `requirements.txt`.
 
-Each settings file reads its own env file: `.env_local` (your computer), `.env_dev` (the test copy online) and `.env_prod` (the live site). They hold passwords and keys, so git ignores them. The committed `.env_local.example`, `.env_dev.example` and `.env_prod.example` show what goes in each: copy one, rename it without `.example`, and fill it in. For a test copy online, deploy with `.env_dev` (it sets `DJANGO_SETTINGS_MODULE=settings.development`).
+Each settings file reads its own env file: `.env_local` (your computer), `.env_dev` (the test copy online) and `.env_prod` (the live site). They hold passwords and keys, so git ignores them. `.env_local` can start empty. On a server, `.env_prod` needs the values listed under **First deploy**; `.env_dev` needs the same, plus `DJANGO_SETTINGS_MODULE=settings.development` and `ENV_FILE=.env_dev`, with sandbox credentials and different keys from the live site.
 
 Each app keeps the same small set of files:
 
@@ -210,12 +210,23 @@ Scheduled jobs (no cron needed; times are Nairobi time, and a job missed during 
 2. On the server:
    ```bash
    git clone git@github.com:stormmerodida2-pixel/rent-maagement-web.git rentals && cd rentals
-   cp .env_prod.example .env_prod
-   nano .env_prod   # fill in every Required value; the commands to generate secrets are in the file
+   nano .env_prod   # the values below
    export COMPOSE_ENV_FILES=.env_prod   # so every docker compose command below uses it (add to ~/.bashrc)
    docker compose up -d --build
    docker compose exec web python manage.py createsuperuser
    ```
+   `.env_prod` needs at least:
+   ```bash
+   DOMAIN=rent.example.com
+   SITE_URL=https://rent.example.com
+   DJANGO_SECRET_KEY=        # python3 -c "import secrets; print(secrets.token_urlsafe(50))"
+   FIELD_ENCRYPTION_KEY=     # python3 -c "from cryptography.fernet import Fernet; print(Fernet.generate_key().decode())"
+   BACKUP_ENCRYPTION_KEY=    # generated the same way; keep a copy OFF the server
+   POSTGRES_PASSWORD=        # python3 -c "import secrets; print(secrets.token_urlsafe(24))"
+   EMAIL_HOST=smtp.gmail.com  EMAIL_PORT=587  EMAIL_USE_TLS=1  EMAIL_HOST_USER=  EMAIL_HOST_PASSWORD=  DEFAULT_FROM_EMAIL=  SUPPORT_EMAIL=
+   SMS_BACKEND=africastalking  AT_USERNAME=  AT_API_KEY=  AT_SENDER_ID=
+   ```
+   (one per line). Optional: `APP_NAME`, `SENTRY_DSN`, `DJANGO_HSTS_SECONDS`, `BACKUP_KEEP_DAYS`, `SESSION_IDLE_MINUTES`, `CSP_REPORT_ONLY`, `WEB_CONCURRENCY`, `MPESA_CALLBACK_IPS`, and `LEGAL_ENTITY_NAME`, `LEGAL_ADDRESS`, `PRIVACY_EMAIL` for the privacy and terms pages.
 3. Open `https://your-domain/healthz/`. It should say `"status": "ok"` with `"scheduler": "ok"`, and the site should load over HTTPS.
 4. **Keep a copy of `FIELD_ENCRYPTION_KEY` somewhere safe** (a password manager). Without it, the M-Pesa credentials saved in a backup can't be decrypted.
 5. M-Pesa webhooks use `SITE_URL` automatically. Each landlord clicks **Register** under Settings → M-Pesa.

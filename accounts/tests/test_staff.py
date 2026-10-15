@@ -16,7 +16,7 @@ from notifications.models import SmsMessage
 from payments.models import MpesaAccount, MpesaTransaction, Payment
 from rentals.tests import make_lease
 
-from .models import StaffMember
+from ..models import StaffMember
 
 D = Decimal
 
@@ -103,7 +103,7 @@ class StaffTests(TestCase):
                                                checkout_request_id=f'ws_{lease.pk}_{amount}')
 
     def test_prompt_and_watch_for_the_payment(self):
-        with mock.patch('staff.views.mpesa.stk_push', side_effect=self.fake_push) as push:
+        with mock.patch('accounts.views.mpesa.stk_push', side_effect=self.fake_push) as push:
             resp = self.client.post(reverse('staff:send_prompt', args=[self.owes.pk]), {'amount': '15000'})
         push.assert_called_once()
         self.assertEqual(push.call_args.args[0], self.owes)  # the tenant's own number, never one staff typed
@@ -119,7 +119,7 @@ class StaffTests(TestCase):
         self.assertTrue(AuditEntry.objects.filter(action='staff.prompt_sent').exists())
 
     def test_cannot_prompt_someone_elses_tenant(self):
-        with mock.patch('staff.views.mpesa.stk_push', side_effect=self.fake_push) as push:
+        with mock.patch('accounts.views.mpesa.stk_push', side_effect=self.fake_push) as push:
             resp = self.client.post(reverse('staff:send_prompt', args=[self.stranger.pk]), {'amount': '100'})
         self.assertEqual(resp.status_code, 404)
         push.assert_not_called()

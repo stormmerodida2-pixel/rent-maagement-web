@@ -6,7 +6,7 @@ Settings shared by every environment. Don't point DJANGO_SETTINGS_MODULE here; u
 - settings.production   the live site (the default for the server: wsgi.py and the Docker image)
 
 Secrets and anything that differs between servers come from environment variables (loaded from .env
-if present). See .env.example and the "Deploying" section of README.md.
+if present). See the "Deploying" section of README.md.
 """
 
 import os
@@ -39,7 +39,7 @@ def env_list(name, default=''):
 def require(name, why):
     """Stop with a clear message when a setting the server can't run without is missing."""
     if not os.environ.get(name):
-        raise ImproperlyConfigured(f'{name} must be set: {why} See .env.production.example.')
+        raise ImproperlyConfigured(f'{name} must be set: {why} See "First deploy" in README.md.')
     return os.environ[name]
 
 
@@ -81,7 +81,6 @@ INSTALLED_APPS = [
     'audit',
     'support',
     'announcements',
-    'staff',
     'listings',
     'ops',
 ]
@@ -94,7 +93,7 @@ MIDDLEWARE = [
     'django.middleware.common.CommonMiddleware',
     'django.middleware.csrf.CsrfViewMiddleware',
     'django.contrib.auth.middleware.AuthenticationMiddleware',
-    'staff.utils.StaffAreaMiddleware',  # staff accounts only reach /staff/
+    'accounts.utils.StaffAreaMiddleware',  # staff accounts only reach /staff/
     'django.contrib.messages.middleware.MessageMiddleware',
     'django.middleware.clickjacking.XFrameOptionsMiddleware',
 ]

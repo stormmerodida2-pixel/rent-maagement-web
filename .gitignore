@@ -10,7 +10,6 @@ db.sqlite3
 .env
 .env.*
 .env_*
-!.env_*.example
 
 # Generated
 staticfiles/

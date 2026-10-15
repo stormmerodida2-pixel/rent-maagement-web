@@ -6,6 +6,7 @@ from django.contrib.sitemaps.views import sitemap
 from django.urls import include, path, reverse
 
 from accounts import views as account_views
+from accounts.urls import staff_patterns
 from ops.views import healthz
 
 from . import views
@@ -38,7 +39,7 @@ urlpatterns = [
          name='password_reset_confirm'),
     path('password-reset/done/', auth_views.PasswordResetCompleteView.as_view(), name='password_reset_complete'),
     path('', include('listings.urls')),
-    path('', include('staff.urls')),
+    path('', include(staff_patterns)),
     path('', include('accounts.urls')),
     path('payments/', include('payments.urls')),
     path('maintenance/', include('maintenance.urls')),
