@@ -1,8 +1,9 @@
 from django.conf import settings
 from django.contrib import admin
 from django.contrib.auth import views as auth_views
+from django.contrib.auth.views import redirect_to_login
 from django.contrib.sitemaps.views import sitemap
-from django.urls import include, path
+from django.urls import include, path, reverse
 
 from accounts import views as account_views
 from ops.views import healthz
@@ -14,7 +15,9 @@ admin.site.site_header = settings.APP_NAME
 admin.site.site_title = settings.APP_NAME
 admin.site.index_title = 'Manage your rentals'
 # The admin's own login page gets the same password-guessing limits as the app's.
-admin.site.login = account_views.throttle_login(admin.site.login)
+# The admin logs in through the app's own login page, so it gets the same throttling and two-step check.
+admin.site.login = lambda request, extra_context=None: redirect_to_login(
+    request.GET.get('next') or reverse('admin:index'), login_url=reverse('login'))
 
 urlpatterns = [
     path('healthz/', healthz, name='healthz'),

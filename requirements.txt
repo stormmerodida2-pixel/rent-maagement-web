@@ -11,7 +11,9 @@ pillow==12.3.0
 psycopg-binary==3.3.6
 psycopg==3.3.6
 pycparser==3.11
+pyotp==2.10.0
 python-dotenv==1.2.4
+qrcode==8.2
 redis==8.1.0
 requests==2.34.2
 sentry-sdk==2.72.0
