@@ -3,6 +3,7 @@
 import datetime
 import logging
 from concurrent.futures import ThreadPoolExecutor
+from decimal import Decimal
 
 import requests
 from django.conf import settings
@@ -165,6 +166,17 @@ def _kes(amount):
     return f'KES {amount:,.0f}'
 
 
+def _how_to_pay(lease):
+    """"Pay via M-Pesa Paybill …" in the active language (call inside tenant_language)."""
+    account = MpesaAccount.objects.filter(owner_id=lease.unit.property.owner_id).first()
+    if account is None or not account.is_complete():
+        return _('Pay online')
+    if account.is_till:
+        return _('Pay via M-Pesa Till %(till)s, or online') % {'till': account.pay_number}
+    return _('Pay via M-Pesa Paybill %(paybill)s, account %(account)s, or online') % {
+        'paybill': account.pay_number, 'account': lease.account_number}
+
+
 def reminder_text(lease, balance):
     """The reminder SMS, in the tenant's language."""
     with tenant_language(lease.tenant):
@@ -175,14 +187,7 @@ def reminder_text(lease, balance):
                 _(', due %(date)s') % {'date': date_format(latest.due_date, 'd M')}
                 if latest.due_date >= datetime.date.today() else _(', now overdue')
             )
-        account = MpesaAccount.objects.filter(owner_id=lease.unit.property.owner_id).first()
-        if account is None or not account.is_complete():
-            how = _('Pay online')
-        elif account.is_till:
-            how = _('Pay via M-Pesa Till %(till)s, or online') % {'till': account.pay_number}
-        else:
-            how = _('Pay via M-Pesa Paybill %(paybill)s, account %(account)s, or online') % {
-                'paybill': account.pay_number, 'account': lease.account_number}
+        how = _how_to_pay(lease)
         return _('Hi %(name)s, your rent balance for %(unit)s is %(balance)s%(when)s. %(how)s: %(link)s') % {
             'name': lease.tenant.full_name.split()[0], 'unit': lease.unit.label, 'balance': _kes(balance),
             'when': when, 'how': how, 'link': lease.tenant.portal_url(),
@@ -364,4 +369,65 @@ def send_move_out_reminders(today=None):
         lease.move_out_reminded_on = today  # once per notice, even if nothing could be delivered
         lease.save(update_fields=['move_out_reminded_on'])
         sent += delivered
+    return sent
+
+
+# --- Payment plans ---------------------------------------------------------------------------------------
+
+PLAN_REMIND_DAYS_BEFORE = 2
+
+
+def plan_agreed_text(plan):
+    """Sent when a plan is set up, so the tenant has the agreement in writing."""
+    lease = plan.lease
+    first = plan.instalments.first()
+    count = plan.instalments.count()
+    with tenant_language(lease.tenant):
+        every = {'weekly': _('every week'), 'fortnightly': _('every 2 weeks'), 'monthly': _('every month')}[plan.frequency]
+        return _('Hi %(name)s, as agreed you will clear %(total)s in %(count)s payments of %(each)s %(every)s, '
+                 'starting %(date)s, on top of your normal rent. %(how)s: %(link)s') % {
+            'name': lease.tenant.full_name.split()[0], 'total': _kes(plan.total), 'count': count,
+            'each': _kes(plan.instalment), 'every': every, 'date': date_format(first.due_date, 'D j M'),
+            'how': _how_to_pay(lease), 'link': lease.tenant.portal_url(),
+        }
+
+
+def plan_reminder_text(plan, instalment, amount_due):
+    lease = plan.lease
+    with tenant_language(lease.tenant):
+        return _('Hi %(name)s, your payment plan instalment of %(amount)s is due on %(date)s. %(how)s: %(link)s') % {
+            'name': lease.tenant.full_name.split()[0], 'amount': _kes(amount_due),
+            'date': date_format(instalment.due_date, 'D j M'), 'how': _how_to_pay(lease),
+            'link': lease.tenant.portal_url(),
+        }
+
+
+def send_plan_reminders(today=None):
+    """SMS tenants two days before each plan instalment (once each). Completes plans that are cleared."""
+    from rentals.models import PaymentPlan
+    from rentals.utils import refresh_plan
+
+    today = today or datetime.date.today()
+    sent = 0
+    for plan in PaymentPlan.objects.filter(status=PaymentPlan.Status.ACTIVE).select_related('lease__tenant',
+                                                                                             'lease__unit__property'):
+        progress = refresh_plan(plan, today)
+        if progress['done']:
+            continue
+        # The next instalment still to come; a missed one is rolled into its amount below.
+        nxt = next((r['instalment'] for r in progress['rows']
+                    if r['state'] != 'paid' and r['instalment'].due_date >= today), None)
+        if nxt is None or nxt.reminded_on is not None:
+            continue
+        if nxt.due_date - datetime.timedelta(days=PLAN_REMIND_DAYS_BEFORE) > today:
+            continue
+        # What they need to have paid by that date to be on track (includes anything missed before it).
+        running = sum((r['instalment'].amount for r in progress['rows']
+                       if r['instalment'].due_date <= nxt.due_date), Decimal('0'))
+        amount_due = running - progress['paid']
+        send_sms(plan.lease.tenant.phone, plan_reminder_text(plan, nxt, amount_due), plan.lease,
+                 SmsMessage.Kind.REMINDER)
+        nxt.reminded_on = today
+        nxt.save(update_fields=['reminded_on'])
+        sent += 1
     return sent

@@ -1,0 +1,36 @@
+{% extends 'app_base.html' %}
+{% load ui %}
+{% block page_title %}Payment plans{% endblock %}
+{% block content %}
+<div class="page-header">
+  <div><h1>Payment plans</h1><p class="sub">Tenants clearing arrears in instalments, and whether they're keeping to it. Set one up from a tenant's page.</p></div>
+</div>
+<section class="card">
+  <div class="toolbar">
+    <nav class="tabs" aria-label="Filter plans">
+      <a href="?status=active" class="{% if status == 'active' %}active{% endif %}">Active</a>
+      <a href="?status=completed" class="{% if status == 'completed' %}active{% endif %}">Cleared</a>
+      <a href="?status=cancelled" class="{% if status == 'cancelled' %}active{% endif %}">Cancelled</a>
+    </nav>
+    {% if status == 'active' and behind %}<span class="spacer"></span><span class="badge badge-danger">{{ behind }} behind</span>{% endif %}
+  </div>
+  {% if rows %}
+  <div class="table-wrap"><table class="table">
+    <thead><tr><th>Tenant</th><th>Plan</th><th>Progress</th><th>Next</th><th></th></tr></thead>
+    <tbody>
+    {% for r in rows %}{% with plan=r.plan p=r.progress %}
+    <tr>
+      <td><a href="{% url 'rentals:lease_detail' plan.lease_id %}"><strong>{{ plan.lease.tenant }}</strong></a><div class="muted small">{{ plan.lease.unit }}</div></td>
+      <td class="small">{{ plan.total|kes }} as {{ plan.instalment|kes }} {{ plan.get_frequency_display|lower }}</td>
+      <td style="min-width:160px"><div class="small">{{ p.paid|kes }} of {{ plan.total|kes }}</div><div class="progress"><span style="width:{{ p.percent }}%"></span></div></td>
+      <td class="small nowrap">{% if p.next and plan.status == 'active' %}{{ p.next.amount|kes }}<div class="muted">{{ p.next.due_date|date:"D d M" }}</div>{% else %}—{% endif %}</td>
+      <td class="num">{% if plan.status == 'completed' %}<span class="badge badge-success">Cleared</span>{% elif plan.status == 'cancelled' %}<span class="badge">Cancelled</span>{% elif p.on_track %}<span class="badge badge-success">On track</span>{% else %}<span class="badge badge-danger">{{ p.missed }} missed</span>{% endif %}</td>
+    </tr>
+    {% endwith %}{% endfor %}
+    </tbody>
+  </table></div>
+  {% else %}
+  <div class="empty"><strong>No {% if status == 'completed' %}cleared{% elif status == 'cancelled' %}cancelled{% else %}active{% endif %} plans</strong>{% if status == 'active' %}Open a tenant who owes and choose "Set up payment plan".{% endif %}</div>
+  {% endif %}
+</section>
+{% endblock %}

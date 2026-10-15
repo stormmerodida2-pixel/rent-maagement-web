@@ -1,0 +1,30 @@
+{% extends 'app_base.html' %}
+{% load ui %}
+{% block page_title %}Payment plan · {{ lease.tenant }}{% endblock %}
+{% block content %}
+<div class="form-page">
+<div class="page-header"><div>
+  <h1>Payment plan for {{ lease.tenant }}</h1>
+  <p class="sub">{{ lease.unit }} · owes {{ lease.balance|kes }}. Agree how they'll clear it in instalments, <strong>on top of their normal rent</strong>. They get a reminder two days before each payment.</p>
+</div></div>
+<section class="card form-card">
+  <div class="card-body">
+    <form method="post" novalidate>
+      {% csrf_token %}
+      {% include 'includes/form_fields.html' %}
+      {% if schedule %}
+      <h2 style="margin:18px 0 8px;font-size:16px">{{ schedule|length }} payment{{ schedule|length|pluralize }}</h2>
+      <table class="table plan-table"><tbody>
+        {% for due, amount in schedule %}<tr><td>{{ due|date:"D d M Y" }}</td><td class="num">{{ amount|kes }}</td></tr>{% endfor %}
+      </tbody></table>
+      {% endif %}
+      <div class="form-actions">
+        <button type="submit" name="preview" value="1" class="btn {% if not schedule %}btn-primary{% endif %}">{% if schedule %}Update preview{% else %}Preview the payments{% endif %}</button>
+        {% if schedule %}<button type="submit" name="save" value="1" class="btn btn-primary" data-confirm="{{ schedule|length }} payment{{ schedule|length|pluralize }}, starting {{ schedule.0.0|date:'D d M' }}." data-confirm-title="Agree this plan?" data-confirm-ok="Agree plan">Agree plan</button>{% endif %}
+        <a class="btn btn-ghost" href="{% url 'rentals:lease_detail' lease.pk %}">Cancel</a>
+      </div>
+    </form>
+  </div>
+</section>
+</div>
+{% endblock %}

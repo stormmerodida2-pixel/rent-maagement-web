@@ -371,6 +371,52 @@ def translate_description(text):
     return text
 
 
+class PaymentPlan(models.Model):
+    """An agreement to clear arrears in instalments, e.g. KES 45,000 as KES 10,000 every Friday.
+
+    Progress is measured as: payments since the plan started, minus rent and charges that have fallen due
+    since then. So paying the new month's rent plus an instalment moves the plan on by the instalment.
+    """
+
+    class Frequency(models.TextChoices):
+        WEEKLY = 'weekly', 'Every week'
+        FORTNIGHTLY = 'fortnightly', 'Every 2 weeks'
+        MONTHLY = 'monthly', 'Every month'
+
+    class Status(models.TextChoices):
+        ACTIVE = 'active', 'Active'
+        COMPLETED = 'completed', 'Completed'
+        CANCELLED = 'cancelled', 'Cancelled'
+
+    lease = models.ForeignKey(Lease, on_delete=models.CASCADE, related_name='payment_plans')
+    total = models.DecimalField('amount to clear (KES)', max_digits=10, decimal_places=2)
+    instalment = models.DecimalField('each payment (KES)', max_digits=10, decimal_places=2)
+    frequency = models.CharField(max_length=12, choices=Frequency.choices, default=Frequency.WEEKLY)
+    first_due = models.DateField('first payment on')
+    note = models.CharField(max_length=200, blank=True)
+    status = models.CharField(max_length=10, choices=Status.choices, default=Status.ACTIVE)
+    started_at = models.DateTimeField(default=timezone.now)
+    ended_at = models.DateTimeField(null=True, blank=True)
+
+    class Meta:
+        ordering = ['-started_at']
+        constraints = [models.UniqueConstraint(fields=['lease'], condition=Q(status='active'),
+                                               name='one_active_plan_per_lease')]
+
+    def __str__(self):
+        return f'{self.lease.tenant}: KES {self.total:,.0f} as KES {self.instalment:,.0f} {self.get_frequency_display().lower()}'
+
+
+class PlanInstalment(models.Model):
+    plan = models.ForeignKey(PaymentPlan, on_delete=models.CASCADE, related_name='instalments')
+    due_date = models.DateField()
+    amount = models.DecimalField(max_digits=10, decimal_places=2)
+    reminded_on = models.DateField(null=True, blank=True)
+
+    class Meta:
+        ordering = ['due_date']
+
+
 class RentChange(models.Model):
     """A planned rent change for a month-to-month lease, starting with the first rent day on or after
     `effective_from`. Applied automatically when that month is billed."""

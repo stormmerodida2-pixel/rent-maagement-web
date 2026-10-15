@@ -6,6 +6,7 @@ from django.utils import timezone
 from notifications.models import SmsMessage
 from notifications.utils import reminder_text, send_rent_reminder
 from rentals.models import Lease
+from rentals.utils import on_track_plan
 
 
 class Command(BaseCommand):
@@ -32,6 +33,8 @@ class Command(BaseCommand):
             balance = lease.balance
             if balance <= 0:
                 continue
+            if on_track_plan(lease):
+                continue  # they're keeping to a payment plan: its own reminders are enough
             if options['dry_run']:
                 self.stdout.write(f'{lease.tenant.phone}: {reminder_text(lease, balance)}')
                 continue

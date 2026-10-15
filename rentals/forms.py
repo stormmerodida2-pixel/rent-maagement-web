@@ -1,9 +1,10 @@
 import datetime
+from decimal import Decimal
 
 from django import forms
 from django.core.exceptions import ValidationError
 
-from .models import Lease, Property, RentCharge, Tenant, Unit
+from .models import Lease, PaymentPlan, Property, RentCharge, Tenant, Unit
 
 DATE = forms.DateInput(attrs={'type': 'date'}, format='%Y-%m-%d')
 
@@ -350,4 +351,40 @@ class BulkRentChangeForm(forms.Form):
             self.add_error('value', 'Enter the new rent.')
         if mode in ('percent', 'amount') and value == 0:
             self.add_error('value', 'Enter how much to change it by.')
+        return cleaned
+
+
+def next_weekday(day, weekday):
+    return day + datetime.timedelta(days=(weekday - day.weekday()) % 7 or 7)
+
+
+class PaymentPlanForm(forms.Form):
+    total = forms.DecimalField(label='Amount to clear (KES)', min_value=1, max_digits=10, decimal_places=2)
+    instalment = forms.DecimalField(label='Each payment (KES)', min_value=1, max_digits=10, decimal_places=2)
+    frequency = forms.ChoiceField(label='How often', choices=PaymentPlan.Frequency.choices)
+    first_due = forms.DateField(label='First payment on', widget=DATE)
+    note = forms.CharField(label='Note', max_length=200, required=False,
+                           help_text='e.g. "Agreed on the phone, 14 Oct".')
+    notify = forms.BooleanField(label='Send the tenant the plan by SMS', required=False, initial=True)
+
+    def __init__(self, *args, lease, **kwargs):
+        super().__init__(*args, **kwargs)
+        owed = max(lease.balance, 0)
+        self.initial.setdefault('total', owed)
+        self.initial.setdefault('instalment', max((owed / 4).quantize(Decimal('1')), 1) if owed else None)
+        self.initial.setdefault('first_due', next_weekday(datetime.date.today(), 4))  # next Friday
+
+    def clean_first_due(self):
+        day = self.cleaned_data['first_due']
+        if day < datetime.date.today():
+            raise ValidationError("The first payment can't be in the past.")
+        return day
+
+    def clean(self):
+        cleaned = super().clean()
+        total, each = cleaned.get('total'), cleaned.get('instalment')
+        if total and each and each > total:
+            self.add_error('instalment', 'Each payment is more than the amount to clear.')
+        elif total and each and total / each > 104:
+            self.add_error('instalment', 'That would take more than 104 payments. Make each payment bigger.')
         return cleaned

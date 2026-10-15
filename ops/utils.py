@@ -84,6 +84,7 @@ JOBS = [
     Job('send_report_cards', 'send_report_cards', daily_at=datetime.time(7, 0)),
     Job('send_move_out_reminders', 'send_move_out_reminders', daily_at=datetime.time(8, 0)),
     Job('send_rent_reminders', 'send_rent_reminders', daily_at=datetime.time(9, 0)),
+    Job('send_plan_reminders', 'send_plan_reminders', daily_at=datetime.time(9, 30)),
 ]
 
 

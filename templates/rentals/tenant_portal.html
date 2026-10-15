@@ -44,7 +44,7 @@
   </section>
   {% endif %}
 
-  {% for lease, balance in lease_rows %}
+  {% for lease, balance, plan_row in lease_rows %}
   <section class="card">
     <div class="card-header">
       <h2>{{ lease.unit }}</h2>
@@ -59,6 +59,15 @@
         <div class="muted small">{% blocktranslate with rent=lease.monthly_rent|kes day=lease.due_day %}Rent {{ rent }} a month, due on day {{ day }}{% endblocktranslate %}</div>
       </div>
       {% with change=lease.pending_rent_change %}{% if change %}<div class="alert alert-info small">{% icon 'calendar' 16 %}<span>{% blocktranslate with new=change.new_rent|kes date=change.starts_on|date:"j F Y" %}Your rent changes to {{ new }} a month from {{ date }}.{% endblocktranslate %}</span></div>{% endif %}{% endwith %}
+      {% if plan_row %}{% with plan=plan_row.plan p=plan_row.progress %}
+      <div class="plan-box">
+        <strong>{% translate "Your payment plan" %}</strong>
+        <div class="small">{% blocktranslate with paid=p.paid|kes total=plan.total|kes %}{{ paid }} of {{ total }} paid{% endblocktranslate %}</div>
+        <div class="progress"><span style="width:{{ p.percent }}%"></span></div>
+        {% if p.next %}<div class="small">{% blocktranslate with amount=p.next.amount|kes date=p.next.due_date|date:"l j F" %}Next: {{ amount }} by {{ date }}, on top of your rent.{% endblocktranslate %}</div>{% endif %}
+        {% if p.missed %}<div class="small text-danger">{% blocktranslate with n=p.missed %}Missed payments: {{ n }}. Please catch up as soon as you can.{% endblocktranslate %}</div>{% endif %}
+      </div>
+      {% endwith %}{% endif %}
       {% if lease.moving_out %}<div class="alert alert-info small">{% icon 'calendar' 16 %}<span>{% blocktranslate with date=lease.end_date|date:"j F Y" %}You're moving out on {{ date }}. Please arrange the handover with your landlord.{% endblocktranslate %}</span></div>{% endif %}
 
       {% if mpesa_account and mpesa_account.is_complete %}

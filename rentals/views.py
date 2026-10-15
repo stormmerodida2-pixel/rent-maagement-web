@@ -20,15 +20,15 @@ from audit import utils as audit
 from maintenance.forms import TenantMaintenanceForm
 from maintenance.models import MaintenanceRequest
 from notifications.models import SmsMessage
-from notifications.utils import reminder_text, send_personal_sms, send_rent_reminder
+from notifications.utils import plan_agreed_text, reminder_text, send_personal_sms, send_rent_reminder, send_sms
 from payments import mpesa
 from payments.forms import StkPushForm
 from payments.models import C2BPayment, MpesaAccount, Payment
 
 from . import utils as rent_changes
-from .forms import BulkRentChangeForm, NoticeForm, RentChangeForm
-from .utils import tenant_page
-from .models import Lease, Property, RentCharge, Tenant, Unit
+from .forms import BulkRentChangeForm, NoticeForm, PaymentPlanForm, RentChangeForm
+from .utils import create_plan, on_track_plan, plan_progress, plan_schedule, refresh_plan, tenant_page
+from .models import Lease, PaymentPlan, Property, RentCharge, Tenant, Unit
 
 
 def home(request):
@@ -107,6 +107,9 @@ def dashboard(request):
         'setup_done': sum(step['done'] for step in steps),
         'setup_total': len(steps),
         'setup_next': next((step for step in steps if not step['done']), None),
+        'plans': [{'plan': p, 'progress': refresh_plan(p)} for p in
+                  PaymentPlan.objects.filter(lease__unit__property__owner=user, status=PaymentPlan.Status.ACTIVE)
+                  .select_related('lease__tenant', 'lease__unit').order_by('started_at')[:8]],
     })
 
 
@@ -190,9 +193,12 @@ def lease_detail(request, pk):
         unit__property__owner=request.user,
     )
     balance = lease.balance
+    plan = lease.payment_plans.filter(status=PaymentPlan.Status.ACTIVE).prefetch_related('instalments').first()
     return render(request, 'rentals/lease_detail.html', {
         'lease': lease,
         'balance': balance,
+        'plan': plan,
+        'plan_progress': refresh_plan(plan) if plan else None,
         'statement': statement(lease),
         'deposit_held': lease.deposit_held,
         'voided': sorted(
@@ -297,6 +303,57 @@ def property_rent_change(request, pk):
     return render(request, 'rentals/rent_change_bulk.html', {'form': form, 'property': prop, 'preview': preview})
 
 
+@login_required
+def plan_create(request, pk):
+    """Agree a payment plan for a tenant's arrears: fill in, preview the schedule, then save."""
+    lease = get_object_or_404(Lease.objects.select_related('tenant', 'unit__property'), pk=pk,
+                              unit__property__owner=request.user, is_active=True)
+    if lease.payment_plans.filter(status=PaymentPlan.Status.ACTIVE).exists():
+        messages.info(request, 'This tenant already has a payment plan. Cancel it first to agree a new one.')
+        return redirect('rentals:lease_detail', pk=lease.pk)
+    form = PaymentPlanForm(request.POST or None, lease=lease)
+    schedule = None
+    if request.method == 'POST' and form.is_valid():
+        data = form.cleaned_data
+        if 'save' in request.POST:
+            plan = create_plan(lease, total=data['total'], instalment=data['instalment'], frequency=data['frequency'],
+                               first_due=data['first_due'], note=data['note'], actor=request.user)
+            sent = ''
+            if data['notify']:
+                msg = send_sms(lease.tenant.phone, plan_agreed_text(plan), lease, SmsMessage.Kind.OTHER)
+                sent = ' They have been sent the plan by SMS.' if msg.status != SmsMessage.Status.FAILED else ''
+            messages.success(request, f'Payment plan agreed: {plan.instalments.count()} payments.{sent}')
+            return redirect('rentals:lease_detail', pk=lease.pk)
+        schedule = plan_schedule(data['total'], data['instalment'], data['frequency'], data['first_due'])
+    return render(request, 'rentals/plan_form.html', {'form': form, 'lease': lease, 'schedule': schedule})
+
+
+@login_required
+@require_POST
+def plan_cancel(request, pk):
+    plan = get_object_or_404(PaymentPlan.objects.select_related('lease__tenant'), pk=pk,
+                             lease__unit__property__owner=request.user, status=PaymentPlan.Status.ACTIVE)
+    plan.status, plan.ended_at = PaymentPlan.Status.CANCELLED, timezone.now()
+    plan.save(update_fields=['status', 'ended_at'])
+    audit.record(owner=request.user, actor=request.user, action='lease.plan_cancelled', lease=plan.lease,
+                 summary=f'Cancelled the payment plan for {plan.lease.tenant}.')
+    messages.success(request, 'Payment plan cancelled. Normal balance reminders apply again.')
+    return redirect('rentals:lease_detail', pk=plan.lease_id)
+
+
+@login_required
+def plan_list(request):
+    status = request.GET.get('status', 'active')
+    plans = (PaymentPlan.objects.filter(lease__unit__property__owner=request.user)
+             .select_related('lease__tenant', 'lease__unit__property').prefetch_related('instalments'))
+    if status in PaymentPlan.Status.values:
+        plans = plans.filter(status=status)
+    rows = [{'plan': p, 'progress': refresh_plan(p) if p.status == PaymentPlan.Status.ACTIVE else plan_progress(p)}
+            for p in plans]
+    return render(request, 'rentals/plan_list.html', {'rows': rows, 'status': status,
+                                                       'behind': sum(1 for r in rows if not r['progress']['on_track'])})
+
+
 RECENT_REMINDER = datetime.timedelta(hours=24)
 
 
@@ -344,8 +401,8 @@ def remind_all(request):
     for lease, balance in owing:
         text = reminder_text(lease, balance)
         rows.append({'lease': lease, 'balance': balance, 'text': text, 'parts': _sms_parts(text),
-                     'reminded_at': last_reminded.get(lease.pk)})
-    selected = [r for r in rows if not r['reminded_at']]
+                     'reminded_at': last_reminded.get(lease.pk), 'on_plan': on_track_plan(lease)})
+    selected = [r for r in rows if not r['reminded_at'] and not r['on_plan']]
     return render(request, 'rentals/remind_all.html', {
         'rows': rows,
         'selected_count': len(selected),
@@ -353,6 +410,14 @@ def remind_all(request):
         'cost_each': settings.SMS_COST_PER_PART,
         'estimated_cost': round(sum(r['parts'] for r in selected) * settings.SMS_COST_PER_PART, 2),
     })
+
+
+def _portal_plan(lease):
+    plan = lease.payment_plans.filter(status=PaymentPlan.Status.ACTIVE).first()
+    if plan is None:
+        return None
+    progress = refresh_plan(plan)
+    return None if progress['done'] else {'plan': plan, 'progress': progress}
 
 
 @tenant_page
@@ -394,7 +459,7 @@ def tenant_portal(request, token):
 
     return render(request, 'rentals/tenant_portal.html', {
         'tenant': tenant,
-        'lease_rows': [(lease, lease.balance) for lease in leases],
+        'lease_rows': [(lease, lease.balance, _portal_plan(lease)) for lease in leases],
         'payments': Payment.objects.filter(lease__tenant=tenant).select_related('lease__unit')[:10],
         'requests': tenant.maintenance_requests.select_related('unit')[:10],
         'open_complaints': tenant.complaints.exclude(status='resolved').count(),

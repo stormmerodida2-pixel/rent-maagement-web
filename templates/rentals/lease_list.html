@@ -4,7 +4,7 @@
 {% block content %}
 <div class="page-header">
   <div><h1>Tenants</h1><p class="sub">Who lives where, their rent, and what they owe.</p></div>
-  <div class="actions"><a class="btn" href="{% url 'rentals:tenant_list' %}">{% icon 'users' %}Contacts</a><a class="btn btn-primary" href="{% url 'rentals:lease_create' %}">{% icon 'plus' %}Move a tenant in</a></div>
+  <div class="actions"><a class="btn" href="{% url 'rentals:tenant_list' %}">{% icon 'users' %}Contacts</a><a class="btn" href="{% url 'rentals:plan_list' %}">{% icon 'calendar' %}Payment plans</a><a class="btn btn-primary" href="{% url 'rentals:lease_create' %}">{% icon 'plus' %}Move a tenant in</a></div>
 </div>
 <section class="card">
   <div class="toolbar">

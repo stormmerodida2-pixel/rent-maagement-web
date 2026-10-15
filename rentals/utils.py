@@ -1,5 +1,6 @@
 """Helpers for the rentals app: phone numbers, tenant language, billing, rent changes and view mixins."""
 
+import calendar
 import csv
 import datetime
 import io
@@ -13,14 +14,14 @@ from openpyxl.styles import Font, PatternFill
 from django.contrib import messages
 from django.contrib.auth.mixins import LoginRequiredMixin
 from django.db import transaction
-from django.db.models import ProtectedError
+from django.db.models import ProtectedError, Sum
 from django.shortcuts import redirect
 from django.utils import timezone, translation
 
 from audit import utils as audit
 from notifications.models import SmsMessage
 
-from .models import Lease, MeterReading, RentChange, RentCharge, Tenant, Unit
+from .models import Lease, MeterReading, PaymentPlan, PlanInstalment, RentChange, RentCharge, Tenant, Unit
 
 
 # --- Phone numbers -----------------------------------------------------------------------------------
@@ -550,3 +551,84 @@ def import_template():
     out = io.BytesIO()
     book.save(out)
     return out.getvalue()
+
+
+# --- Payment plans for arrears ----------------------------------------------------------------------
+
+def plan_schedule(total, instalment, frequency, first_due):
+    """[(due_date, amount)]: equal instalments, the last one smaller if it doesn't divide evenly."""
+    dates, amounts, left, due = [], [], total, first_due
+    while left > 0 and len(dates) < 104:  # two years of weekly payments at most
+        amount = min(instalment, left)
+        dates.append(due)
+        amounts.append(amount)
+        left -= amount
+        if frequency == PaymentPlan.Frequency.WEEKLY:
+            due += datetime.timedelta(days=7)
+        elif frequency == PaymentPlan.Frequency.FORTNIGHTLY:
+            due += datetime.timedelta(days=14)
+        else:
+            nxt = (due.replace(day=1) + datetime.timedelta(days=32)).replace(day=1)
+            due = nxt.replace(day=min(first_due.day, calendar.monthrange(nxt.year, nxt.month)[1]))
+    return list(zip(dates, amounts, strict=True))
+
+
+@transaction.atomic
+def create_plan(lease, *, total, instalment, frequency, first_due, note, actor):
+    plan = PaymentPlan.objects.create(lease=lease, total=total, instalment=instalment, frequency=frequency,
+                                      first_due=first_due, note=note)
+    PlanInstalment.objects.bulk_create(PlanInstalment(plan=plan, due_date=d, amount=a)
+                                       for d, a in plan_schedule(total, instalment, frequency, first_due))
+    audit.record(owner=lease.unit.property.owner, actor=actor, action='lease.plan_created', lease=lease,
+                 summary=f'Payment plan for {lease.tenant}: KES {total:,.0f} as KES {instalment:,.0f} '
+                         f'{plan.get_frequency_display().lower()} from {first_due:%d %b %Y}.')
+    return plan
+
+
+def plan_progress(plan, today=None):
+    """How a plan is going: what's been paid towards it, each instalment's state, and whether it's on track.
+
+    Paid towards the plan = payments since it started, minus rent and charges added since then that have
+    fallen due. Paying the new month's rent plus an instalment therefore moves the plan on by the instalment.
+    """
+    from payments.models import Payment  # payments imports these models; keep this module importable first
+
+    today = today or datetime.date.today()
+    paid = Payment.objects.filter(lease=plan.lease, paid_at__gte=plan.started_at) \
+        .aggregate(t=Sum('amount'))['t'] or Decimal('0')
+    added = RentCharge.objects.filter(lease=plan.lease, created_at__gte=plan.started_at, due_date__lte=today) \
+        .aggregate(t=Sum('amount'))['t'] or Decimal('0')
+    towards = min(max(paid - added, Decimal('0')), plan.total)
+    rows, running, missed, next_due = [], Decimal('0'), 0, None
+    for inst in plan.instalments.all():
+        before, running = running, running + inst.amount
+        if towards >= running:
+            state = 'paid'
+        elif inst.due_date < today:
+            state = 'missed' if towards <= before else 'part'
+            missed += 1
+        else:
+            state = 'part' if towards > before else ('due' if inst.due_date == today else 'upcoming')
+        if state != 'paid' and next_due is None:
+            next_due = inst
+        rows.append({'instalment': inst, 'state': state})
+    return {
+        'paid': towards, 'left': plan.total - towards, 'percent': int(towards * 100 / plan.total) if plan.total else 100,
+        'rows': rows, 'missed': missed, 'on_track': missed == 0, 'next': next_due,
+        'done': towards >= plan.total,
+    }
+
+
+def refresh_plan(plan, today=None):
+    """Mark a plan completed once it's cleared. Returns its progress."""
+    progress = plan_progress(plan, today)
+    if progress['done'] and plan.status == PaymentPlan.Status.ACTIVE:
+        plan.status, plan.ended_at = PaymentPlan.Status.COMPLETED, timezone.now()
+        plan.save(update_fields=['status', 'ended_at'])
+    return progress
+
+
+def on_track_plan(lease):
+    """The lease's active payment plan if the tenant is keeping to it, else None."""
+    plan = lease.payment_plans.filter(status=PaymentPlan.Status.ACTIVE).first()
+    return plan if plan and plan_progress(plan)['on_track'] else None

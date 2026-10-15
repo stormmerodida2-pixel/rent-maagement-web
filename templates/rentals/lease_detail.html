@@ -19,11 +19,33 @@
     <a class="btn" href="{% url 'rentals:tenant_update' lease.tenant_id %}?next={{ request.path|urlencode }}">Edit tenant</a>
     <a class="btn" href="{% url 'rentals:lease_update' lease.pk %}">Edit rent &amp; details</a>
     {% if lease.is_active %}<a class="btn" href="{% url 'rentals:rent_change' lease.pk %}">Change rent</a>{% endif %}
+    {% if lease.is_active and balance > 0 and not plan %}<a class="btn" href="{% url 'rentals:plan_create' lease.pk %}">Set up payment plan</a>{% endif %}
     {% if lease.is_active and not lease.moving_out %}<a class="btn" href="{% url 'rentals:lease_notice' lease.pk %}">{% icon 'calendar' %}Record move-out notice</a>{% endif %}
     {% if lease.is_active %}<a class="btn text-danger" href="{% url 'rentals:lease_end' lease.pk %}">Move out</a>{% endif %}
   </div>
 </div>
 
+{% if plan %}{% with p=plan_progress %}
+<section class="card plan-card" style="margin-bottom:20px">
+  <div class="card-header"><h2>Payment plan</h2>
+    {% if p.done %}<span class="badge badge-success">Cleared</span>{% elif p.on_track %}<span class="badge badge-success">On track</span>{% else %}<span class="badge badge-danger">Behind: {{ p.missed }} missed</span>{% endif %}
+    <span class="spacer"></span>
+    <form method="post" action="{% url 'rentals:plan_cancel' plan.pk %}">{% csrf_token %}<button class="btn btn-sm btn-ghost" data-confirm="Normal balance reminders will start again." data-confirm-ok="Cancel plan" data-confirm-danger>Cancel plan</button></form>
+  </div>
+  <div class="card-body stack">
+    <div><strong>{{ p.paid|kes }}</strong> of {{ plan.total|kes }} paid towards the plan · {{ plan.instalment|kes }} {{ plan.get_frequency_display|lower }}{% if plan.note %} · <span class="muted">“{{ plan.note }}”</span>{% endif %}</div>
+    <div class="progress"><span style="width:{{ p.percent }}%"></span></div>
+    {% if p.next %}<div class="small">Next: <strong>{{ p.next.amount|kes }}</strong> on {{ p.next.due_date|date:"D d M" }}{% if p.missed %} <span class="text-danger">(plus what was missed)</span>{% endif %}</div>{% endif %}
+    <details><summary class="small">All {{ p.rows|length }} payments</summary>
+      <table class="table plan-table"><tbody>
+        {% for r in p.rows %}<tr><td>{{ r.instalment.due_date|date:"D d M Y" }}</td><td class="num">{{ r.instalment.amount|kes }}</td>
+          <td class="num">{% if r.state == 'paid' %}<span class="badge badge-success">Paid</span>{% elif r.state == 'missed' %}<span class="badge badge-danger">Missed</span>{% elif r.state == 'part' %}<span class="badge badge-warn">Part paid</span>{% elif r.state == 'due' %}<span class="badge badge-info">Due today</span>{% else %}<span class="muted small">Upcoming</span>{% endif %}</td></tr>{% endfor %}
+      </tbody></table>
+      <p class="helptext">Counted as: payments since the plan started, minus rent and charges that have fallen due since then.</p>
+    </details>
+  </div>
+</section>
+{% endwith %}{% endif %}
 {% with change=lease.pending_rent_change %}{% if change %}
 <div class="alert alert-info moveout-banner">
   {% icon 'calendar' 18 %}
