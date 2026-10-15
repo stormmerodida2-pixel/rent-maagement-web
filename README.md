@@ -224,7 +224,7 @@ Scheduled jobs (no cron needed; times are Nairobi time, and a job missed during 
 
 ```bash
 docker compose logs -f web scheduler          # logs
-git pull && docker compose up -d --build      # deploy an update (migrations run automatically)
+sudo systemctl start liskodi-autodeploy  # deploy now (it also runs by itself every 2 minutes; see "Automatic deploys")
 docker compose exec web python manage.py check --deploy
 ```
 
@@ -296,31 +296,37 @@ Every push and pull request runs `.github/workflows/ci-cd.yml`:
 1. **Lint:** `ruff` looks for likely bugs (unused or undefined names, risky patterns). Style is not checked.
 2. **Tests:** the full suite on **PostgreSQL 17 and Redis**, like production. It also fails on missing migrations and on errors in Django's deployment checklist.
 3. **Production stack smoke test:** builds the Docker image and starts the whole Compose stack. It then checks `/healthz/` through Caddy over HTTPS, confirms pages render and HTTP redirects to HTTPS, and takes a real `pg_dump` backup.
-4. **Deploy:** only on `main`, only after 1–3 pass, and only once you've switched it on. It connects to the server over SSH, checks out exactly the tested commit, and rebuilds with `docker compose up -d --build --wait`. It then fails loudly if the live `/healthz/` doesn't come back healthy.
 
 Dependabot opens weekly pull requests for dependency updates, and CI tests each one.
 
-**Switching deploys on** (once the server is set up as above):
+### Automatic deploys
 
-1. On the server, create a deploy key for GitHub Actions and allow it to log in:
-   ```bash
-   ssh-keygen -t ed25519 -f ~/.ssh/github_deploy -N "" -C github-actions
-   cat ~/.ssh/github_deploy.pub >> ~/.ssh/authorized_keys
-   ```
-   The server also needs to be able to `git fetch`, so add a read-only **deploy key** for the server to the repo (repo Settings → Deploy keys).
-2. In the GitHub repo, go to **Settings → Secrets and variables → Actions**.
-   - **Secrets:**
-     - `DEPLOY_SSH_KEY`: the contents of `~/.ssh/github_deploy` (the private key)
-     - `DEPLOY_KNOWN_HOSTS`: the output of `ssh-keyscan your-server` (run it from your own computer, and check the fingerprint)
-   - **Variables:**
-     - `DEPLOY_HOST`: the server's address
-     - `DEPLOY_USER`: the SSH user (must be allowed to run `docker`)
-     - `DEPLOY_PATH`: e.g. `/home/deploy/rentals`
-     - `SITE_URL`: e.g. `https://rent.example.com`
-     - `DEPLOY_ENABLED`: `true`
-3. Optional: under **Settings → Environments → production**, add yourself as a required reviewer, so each deploy waits for your click.
+Every push to `main` goes live by itself once those checks pass. The **server pulls** the new version, so GitHub never logs in to it: SSH stays limited to your own address and no server keys are stored on GitHub.
 
-To deploy without pushing, use **Actions → CI/CD → Run workflow**. To roll back, revert the bad commit and push.
+`deploy/autodeploy.sh` runs on the server every 2 minutes (systemd timer `liskodi-autodeploy.timer`):
+
+1. If `main` hasn't moved, it does nothing.
+2. It asks GitHub whether the CI run for the new commit passed. If CI is still running, it checks again next time. If it failed, it skips that commit.
+3. It checks out the commit and rebuilds (`docker compose … up -d --build --wait`); migrations run as the web container starts. Caddy restarts only if the Caddyfile changed.
+4. If the new version doesn't come up healthy, it returns to the previous one and won't retry that commit until a newer one arrives. Database migrations that already ran aren't undone, so fix forward with a new commit.
+
+A merge is usually live about 10 minutes after you click Merge: CI takes ~8 minutes, then up to 2 minutes until the next check, plus the build.
+
+**On the server:**
+```bash
+journalctl -u liskodi-autodeploy -n 50 --no-pager   # what it did, newest last
+sudo systemctl start liskodi-autodeploy            # check now instead of waiting
+sudo systemctl disable --now liskodi-autodeploy.timer   # pause automatic deploys
+```
+
+**Installing it on a new server** (the app in `/home/ubuntu/app`, `.env_prod` filled in, first `docker compose up` done):
+```bash
+sudo cp ~/app/deploy/liskodi-autodeploy.service ~/app/deploy/liskodi-autodeploy.timer /etc/systemd/system/
+sudo systemctl daemon-reload && sudo systemctl enable --now liskodi-autodeploy.timer
+```
+The service always runs the newest `deploy/autodeploy.sh` from `main`, so changes to the script roll out too. If your repository is private, the server needs a read-only deploy key (repo Settings → Deploy keys) to `git fetch`.
+
+To roll back, revert the bad commit and merge: the revert deploys like any other change.
 
 Run the same checks locally:
 ```bash

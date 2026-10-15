@@ -1,0 +1,12 @@
+[Unit]
+Description=Liskodi: deploy the latest main that passed CI
+After=network-online.target docker.service
+Wants=network-online.target
+
+[Service]
+Type=oneshot
+User=ubuntu
+# Runs the deploy script from the latest main, so changes to the script itself roll out too.
+# (Does nothing until main contains the script.)
+ExecStart=/bin/bash -c 'cd /home/ubuntu/app && git fetch --quiet origin main && if git cat-file -e origin/main:deploy/autodeploy.sh 2>/dev/null; then exec bash <(git show origin/main:deploy/autodeploy.sh); fi'
+TimeoutStartSec=30min
