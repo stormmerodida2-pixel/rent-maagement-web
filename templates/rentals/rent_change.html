@@ -12,7 +12,7 @@
 <div class="alert alert-info" style="margin-bottom:16px">{% icon 'calendar' 18 %}
   <span>Already planned: <strong>{{ pending.new_rent|kes }}</strong> from {{ pending.starts_on|date:"d M Y" }}{% if pending.notified_at %} (tenant told by SMS {{ pending.notified_at|date:"d M" }}){% endif %}. Saving below replaces it.</span>
   <span class="spacer"></span>
-  <form method="post">{% csrf_token %}<input type="hidden" name="action" value="cancel"><button class="btn btn-sm">Cancel this change</button></form>
+  <form method="post">{% csrf_token %}<input type="hidden" name="action" value="cancel"><button class="btn btn-sm" data-confirm="Their rent stays at {{ lease.monthly_rent|floatformat:0 }}." data-confirm-ok="Cancel change">Cancel this change</button></form>
 </div>
 {% endif %}
 

@@ -32,7 +32,7 @@
 
       <div class="form-actions">
         <button type="submit" name="preview" value="1" class="btn {% if preview is None %}btn-primary{% endif %}">Preview</button>
-        {% if preview %}<button type="submit" name="confirm" value="1" class="btn btn-primary">Plan {{ preview|length }} change{{ preview|length|pluralize }}{% if form.notify.value %} and send SMS{% endif %}</button>{% endif %}
+        {% if preview %}<button type="submit" name="confirm" value="1" class="btn btn-primary" data-confirm="{{ preview|length }} tenant{{ preview|length|pluralize }} get{{ preview|length|pluralize:'s,' }} a new rent from their next rent day after the date you chose.{% if form.notify.value %} They'll each get an SMS now.{% endif %}" data-confirm-title="Plan these rent changes?" data-confirm-ok="Plan changes">Plan {{ preview|length }} change{{ preview|length|pluralize }}{% if form.notify.value %} and send SMS{% endif %}</button>{% endif %}
         <a class="btn btn-ghost" href="{% url 'rentals:property_detail' property.pk %}">Cancel</a>
       </div>
     </form>

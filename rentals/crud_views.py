@@ -1,6 +1,6 @@
 """In-app pages for landlords to manage properties, units, tenants and leases."""
 
-from decimal import Decimal
+from decimal import Decimal, InvalidOperation
 
 from django.contrib import messages
 from django.contrib.auth.decorators import login_required
@@ -13,12 +13,12 @@ from django.views.generic import CreateView, DeleteView, DetailView, FormView, L
 from audit import utils as audit
 from payments.forms import VoidForm
 
-from .utils import (
-    BillingError, format_number, last_reading, record_water_reading, settle_move_out, void_reading,
-)
 from .forms import ChargeForm, EndLeaseForm, LeaseForm, PropertyForm, TenantForm, UnitForm, WaterReadingsForm
-from .utils import OwnedMixin, SafeDeleteMixin
 from .models import Lease, MeterReading, Property, RentCharge, Tenant, Unit
+from .utils import (
+    BillingError, OwnedMixin, SafeDeleteMixin, format_number, last_reading, record_water_reading, settle_move_out,
+    void_reading,
+)
 
 
 class NextUrlMixin:
@@ -132,6 +132,45 @@ class PropertyDetail(OwnedMixin, DetailView):
         )
 
 
+@login_required
+def property_rents(request, pk):
+    """Set every unit's type, bedrooms and usual rent on one page (units often differ in price)."""
+    prop = get_object_or_404(Property, pk=pk, owner=request.user)
+    units = list(prop.units.order_by('label'))
+    errors = {}
+    if request.method == 'POST':
+        changes = []
+        for unit in units:
+            rent_text = request.POST.get(f'rent-{unit.pk}', '').replace(',', '').strip()
+            beds_text = request.POST.get(f'bedrooms-{unit.pk}', '').strip()
+            unit_type = request.POST.get(f'type-{unit.pk}', '').strip()[:40]
+            try:
+                rent = Decimal(rent_text)
+                beds = int(beds_text)
+                if rent < 0 or beds < 0 or beds > 20:
+                    raise ValueError
+            except (InvalidOperation, ValueError):
+                errors[unit.pk] = 'Check this row'
+                continue
+            if (rent, beds, unit_type) != (unit.default_rent, unit.bedrooms, unit.unit_type):
+                changes.append(f'{unit.label}: KES {unit.default_rent:,.0f} -> {rent:,.0f}'
+                               if rent != unit.default_rent else f'{unit.label}: details')
+                unit.default_rent, unit.bedrooms, unit.unit_type = rent, beds, unit_type
+        if errors:
+            messages.error(request, 'Some rows need fixing. Rents must be numbers like 18000.')
+        else:
+            for unit in units:
+                unit.save(update_fields=['default_rent', 'bedrooms', 'unit_type'])
+            if changes:
+                audit.record(owner=request.user, actor=request.user, action='property.rents_updated',
+                             summary=f'Updated units at {prop}: ' + '; '.join(changes)[:250])
+            messages.success(request, f'Saved {len(changes)} unit{"s" if len(changes) != 1 else ""}.'
+                             if changes else 'Nothing changed.')
+            return redirect('rentals:property_detail', pk=prop.pk)
+    rows = [{'unit': u, 'lease': u.active_lease(), 'error': errors.get(u.pk)} for u in units]
+    return render(request, 'rentals/property_rents.html', {'property': prop, 'rows': rows})
+
+
 class UnitCreate(OwnedMixin, FormPageMixin, CreateView):
     """Add a unit to one of the landlord's properties (also posted to from the property page)."""
 
@@ -190,7 +229,7 @@ class UnitDelete(OwnedMixin, SafeDeleteMixin, DeleteView):
     owner_path = 'property__owner'
     template_name = 'confirm_delete.html'
     form_takes_owner = False
-    protected_message = 'This unit has lease history, so it can\'t be deleted.'
+    protected_message = 'This unit has rental history, so it can\'t be deleted.'
 
     def get_success_url(self):
         return reverse('rentals:property_detail', args=[self.object.property_id])
@@ -227,7 +266,7 @@ class TenantCreate(OwnedMixin, FormPageMixin, CreateView):
     page_title = 'Add a tenant'
     submit_label = 'Add tenant'
     cancel_url = reverse_lazy('rentals:tenant_list')
-    success_message = 'Added {obj}. Now start a lease for them.'
+    success_message = 'Added {obj}. Now move them into a unit.'
 
     def get_success_url(self):
         return reverse('rentals:lease_create') + f'?tenant={self.object.pk}'
@@ -253,7 +292,7 @@ class TenantDelete(OwnedMixin, SafeDeleteMixin, DeleteView):
     template_name = 'confirm_delete.html'
     form_takes_owner = False
     success_url = reverse_lazy('rentals:tenant_list')
-    protected_message = 'This tenant has lease history, so they can\'t be deleted.'
+    protected_message = 'This tenant has rental history, so they can\'t be deleted.'
 
 
 # --- Leases -----------------------------------------------------------------------------
@@ -292,10 +331,10 @@ class LeaseCreate(OwnedMixin, FormPageMixin, CreateView):
     audit_action = 'lease.started'
     form_class = LeaseForm
     owner_path = 'unit__property__owner'
-    page_title = 'Start a lease'
-    submit_label = 'Start lease'
+    page_title = 'Move a tenant in'
+    submit_label = 'Move in'
     cancel_url = reverse_lazy('rentals:lease_list')
-    success_message = 'Lease started for {obj.tenant} in {obj.unit}.'
+    success_message = '{obj.tenant} moved into {obj.unit}.'
 
     def get_initial(self):
         initial = super().get_initial()
@@ -311,10 +350,10 @@ class LeaseCreate(OwnedMixin, FormPageMixin, CreateView):
 class LeaseUpdate(OwnedMixin, FormPageMixin, UpdateView):
     model = Lease
     audit_action = 'lease.edited'
-    audit_summary = 'Edited lease {obj}.'
+    audit_summary = 'Edited rent and details for {obj}.'
     form_class = LeaseForm
     owner_path = 'unit__property__owner'
-    page_title = 'Edit lease'
+    page_title = 'Edit rent & details'
 
     def get_success_url(self):
         return reverse('rentals:lease_detail', args=[self.object.pk])
@@ -330,8 +369,8 @@ class LeaseEnd(OwnedMixin, FormPageMixin, FormView):
 
     form_class = EndLeaseForm
     form_takes_owner = False
-    page_title = 'End lease'
-    submit_label = 'End lease'
+    page_title = 'Move out'
+    submit_label = 'Move out'
 
     def dispatch(self, request, *args, **kwargs):
         if not request.user.is_authenticated:
@@ -362,6 +401,8 @@ class LeaseEnd(OwnedMixin, FormPageMixin, FormView):
         if held > 0:
             parts.append(f'Deposit held: KES {held:,.0f} (counted as paid if they paid what was billed).')
         ctx['intro'] = ' '.join(parts)
+        ctx['confirm'] = (f'{self.lease.tenant} moves out of {self.lease.unit} and the unit becomes vacant. '
+                          'This settles their deposit and can\'t be undone.')
         return ctx
 
     def form_valid(self, form):
@@ -491,6 +532,7 @@ def charge_void(request, pk):
         note = ' It won\'t be billed again for this month. Use "Add charge" if you need to bill a corrected amount.'
     return render(request, 'form_page.html', {
         'form': form, 'page_title': 'Void charge', 'submit_label': 'Void charge', 'cancel_url': back,
+        'confirm': 'It will no longer count towards what they owe. The voided charge stays in the records.',
         'intro': f'"{charge.label}", KES {charge.amount:,.2f}, for {charge.lease.tenant}. '
                  f'It will no longer count towards their balance.{note}',
     })
@@ -522,6 +564,7 @@ def reading_void(request, pk):
     charge = RentCharge.objects.filter(pk=reading.charge_id).first()
     return render(request, 'form_page.html', {
         'form': form, 'page_title': 'Void meter reading', 'submit_label': 'Void reading', 'cancel_url': back,
+        'confirm': 'The reading, and the water charge made from it, will be voided.',
         'intro': f'Reading {format_number(reading.value)} for {reading.unit} on {reading.reading_date:%d %b %Y}.'
                  + (f' Its water charge of KES {charge.amount:,.2f} will be voided too.' if charge else '')
                  + ' The previous reading becomes the starting point again.',

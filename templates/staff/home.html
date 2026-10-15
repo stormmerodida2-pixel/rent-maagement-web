@@ -43,7 +43,7 @@
         <label class="visually-hidden" for="amt-{{ lease.pk }}">Amount (KES)</label>
         <input id="amt-{{ lease.pk }}" name="amount" type="number" inputmode="numeric" min="1" step="1" required
                value="{% if r.balance > 0 %}{{ r.balance|floatformat:0 }}{% else %}{{ lease.monthly_rent|floatformat:0 }}{% endif %}">
-        <button class="btn btn-primary">{% icon 'phone' %}Send M-Pesa prompt</button>
+        <button class="btn btn-primary" data-confirm="A prompt for KES {amount} will pop up on {{ lease.tenant.full_name }}'s phone, asking for their M-Pesa PIN." data-confirm-title="Send M-Pesa prompt?" data-confirm-ok="Send prompt">{% icon 'phone' %}Send M-Pesa prompt</button>
       </form>
       {% endif %}
       <a class="btn" href="{% url 'staff:record_cash' lease.pk %}">{% icon 'wallet' %}Record cash</a>

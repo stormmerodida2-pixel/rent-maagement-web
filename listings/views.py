@@ -148,10 +148,10 @@ def application_action(request, pk):
         audit.record(owner=request.user, actor=request.user, action='listing.application_approved',
                      summary=f'Approved {application.name} for {listing.unit} and added them as a tenant.')
         if Lease.objects.filter(unit=listing.unit, is_active=True).exists():
-            messages.success(request, f'{tenant} has been added as a tenant. Their lease can start once the current '
-                                      'tenant has moved out ("Finish move-out" on that lease).')
+            messages.success(request, f'{tenant} has been added as a tenant. They can move in once the current tenant '
+                                      'has moved out ("Finish move-out" on their page).')
             return redirect('listings:detail', pk=listing.pk)
-        messages.success(request, f'{tenant} has been added as a tenant. Check the lease details and start it.')
+        messages.success(request, f'{tenant} has been added as a tenant. Check their rent and details, then move them in.')
         return redirect(f"{reverse('rentals:lease_create')}?unit={listing.unit_id}&tenant={tenant.pk}")
     raise Http404
 

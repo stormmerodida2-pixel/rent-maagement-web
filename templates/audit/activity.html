@@ -20,7 +20,7 @@
         <td class="muted nowrap">{{ e.created_at|date:"d M Y, H:i" }}</td>
         <td class="nowrap">{% if e.actor %}{{ e.actor_label }}{% else %}<span class="badge">System</span>{% endif %}</td>
         <td style="min-width:300px">
-          {{ e.summary }}{% if e.lease %} · <a class="small" href="{% url 'rentals:lease_detail' e.lease_id %}">lease</a>{% endif %}
+          {{ e.summary }}{% if e.lease %} · <a class="small" href="{% url 'rentals:lease_detail' e.lease_id %}">tenant</a>{% endif %}
           {% if e.changes %}<div class="small muted" style="margin-top:4px">{% for field, pair in e.changes.items %}{{ field }}: {{ pair.0|default:"—" }} → <strong>{{ pair.1|default:"—" }}</strong>{% if not forloop.last %}; {% endif %}{% endfor %}</div>{% endif %}
         </td>
       </tr>
@@ -29,6 +29,6 @@
     </table>
   </div>
   {% include 'includes/pagination.html' %}
-  {% else %}<div class="empty"><strong>Nothing yet</strong>Changes to payments, charges, leases and tenants will appear here.</div>{% endif %}
+  {% else %}<div class="empty"><strong>Nothing yet</strong>Changes to payments, charges and tenants will appear here.</div>{% endif %}
 </section>
 {% endblock %}

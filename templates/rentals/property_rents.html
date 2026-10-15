@@ -1,0 +1,34 @@
+{% extends 'app_base.html' %}
+{% load ui %}
+{% block page_title %}Set rents · {{ property.name }}{% endblock %}
+{% block content %}
+<div class="page-header">
+  <div><h1>Set rents at {{ property.name }}</h1>
+    <p class="sub">Each unit's type and usual rent, all on one page. This is what new tenants are offered. People already living there keep their own rent; use <strong>Change rent</strong> on their page (or for the whole property) to change it with notice.</p></div>
+  <div class="actions"><a class="btn" href="{% url 'rentals:property_rent_change' property.pk %}">Change current tenants' rent</a></div>
+</div>
+<form method="post" novalidate>
+  {% csrf_token %}
+  <section class="card">
+    <div class="table-wrap"><table class="table rents-table">
+      <thead><tr><th>Unit</th><th>Type</th><th>Bedrooms</th><th class="num">Usual rent (KES)</th><th>Tenant now</th></tr></thead>
+      <tbody>
+      {% for r in rows %}
+      <tr{% if r.error %} class="row-error"{% endif %}>
+        <td><strong>{{ r.unit.label }}</strong>{% if r.error %}<div class="text-danger small">{{ r.error }}</div>{% endif %}</td>
+        <td><input name="type-{{ r.unit.pk }}" value="{{ r.unit.unit_type }}" list="unit-types" placeholder="e.g. Bedsitter" aria-label="Type of {{ r.unit.label }}"></td>
+        <td><input name="bedrooms-{{ r.unit.pk }}" type="number" min="0" max="20" value="{{ r.unit.bedrooms }}" class="input-narrow" aria-label="Bedrooms in {{ r.unit.label }}"></td>
+        <td class="num"><input name="rent-{{ r.unit.pk }}" type="number" min="0" step="50" inputmode="numeric" value="{{ r.unit.default_rent|floatformat:0 }}" class="input-rent" aria-label="Rent for {{ r.unit.label }}"></td>
+        <td>{% if r.lease %}{{ r.lease.tenant }} <span class="muted small">pays {{ r.lease.monthly_rent|kes }}</span>{% else %}<span class="badge badge-warn">Vacant</span>{% endif %}</td>
+      </tr>
+      {% empty %}<tr><td colspan="5" class="muted">No units yet.</td></tr>
+      {% endfor %}
+      </tbody>
+    </table></div>
+  </section>
+  <div class="form-actions" style="margin-top:16px">
+    <button type="submit" class="btn btn-primary">Save rents</button>
+    <a class="btn btn-ghost" href="{% url 'rentals:property_detail' property.pk %}">Cancel</a>
+  </div>
+</form>
+{% endblock %}

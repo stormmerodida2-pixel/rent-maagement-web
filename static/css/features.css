@@ -172,6 +172,24 @@ a.staff-card-link:hover { text-decoration: none; border-color: var(--brand); }
 .listing-facts .label { font-size: 12px; text-transform: uppercase; letter-spacing: .04em; color: var(--muted); }
 .listing-facts strong { font-size: 18px; }
 
+/* --- Pop-ups (SweetAlert2), in the app's own colours and dark mode ------------------------------ */
+.swal2-container { z-index: 2000; }
+.swal2-popup.swal-popup { background: var(--surface); color: var(--text); border-radius: 16px; font-family: inherit;
+  border: 1px solid var(--border); }
+.swal-popup .swal2-title { color: var(--text); font-size: 20px; }
+.swal-popup .swal2-html-container { color: var(--text-2); font-size: 15px; }
+.swal-popup .swal2-actions { gap: 10px; }
+.swal-popup .swal2-actions .btn { margin: 0; }
+.swal2-popup.swal-toast { box-shadow: 0 8px 30px rgb(0 0 0 / .18); }
+.swal-toast .swal2-title { font-size: 14px; margin: 0 6px; }
+.swal-toast .swal2-timer-progress-bar { background: var(--brand); }
+
+/* --- Set rents table ---------------------------------------------------------------------------- */
+.rents-table input { width: 100%; min-width: 0; }
+.rents-table .input-narrow { max-width: 80px; }
+.rents-table .input-rent { max-width: 140px; text-align: right; margin-left: auto; display: block; }
+.rents-table tr.row-error td { background: color-mix(in srgb, var(--danger) 8%, transparent); }
+
 /* --- Two-step login ---------------------------------------------------------------------------- */
 .code-input { font-size: 20px; letter-spacing: .15em; font-variant-numeric: tabular-nums; }
 .qr { width: 200px; max-width: 100%; margin: 10px 0; padding: 8px; background: #fff; border-radius: 12px; }

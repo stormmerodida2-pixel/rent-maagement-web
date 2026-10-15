@@ -43,10 +43,10 @@
         {% if swahili_readers and not a.has_swahili %}<div class="alert alert-info small">{{ swahili_readers }} of them read{{ swahili_readers|pluralize:"s," }} Kiswahili. {% if a.status == 'draft' %}<a href="{% url 'announcements:update' a.pk %}">Add a Kiswahili version</a>, or they'll get the English.{% else %}They'll get the English.{% endif %}</div>{% endif %}
         {% if a.status == 'draft' %}
         <form method="post" class="row">{% csrf_token %}
-          <button name="action" value="send" class="btn btn-primary" {% if not recipients %}disabled{% endif %}>
+          <button name="action" value="send" class="btn btn-primary" {% if not recipients %}disabled{% endif %} data-confirm="{% if a.scheduled_for %}It will go out at the scheduled time.{% else %}{{ recipients|length }} tenant{{ recipients|length|pluralize }} will get it{% if a.send_sms %} by SMS, which can't be recalled{% endif %}.{% endif %}" data-confirm-title="Send this announcement?" data-confirm-ok="Send">
             {% if a.scheduled_for %}Schedule for {{ a.scheduled_for|date:"d M, H:i" }}{% else %}Send to {{ recipients|length }} tenant{{ recipients|length|pluralize }} now{% endif %}</button>
           <a class="btn" href="{% url 'announcements:update' a.pk %}">Edit</a>
-          <button name="action" value="delete" class="btn btn-ghost text-danger">Delete draft</button>
+          <button name="action" value="delete" class="btn btn-ghost text-danger" data-confirm="This draft will be deleted." data-confirm-ok="Delete" data-confirm-danger>Delete draft</button>
         </form>
         {% else %}
         <form method="post">{% csrf_token %}<button name="action" value="cancel" class="btn">Unschedule</button></form>
@@ -63,7 +63,7 @@
         {% if sms_stats %}<p class="small">SMS: {% for status, n in sms_stats.items %}{% badge status status|capfirst %} {{ n }}{% if not forloop.last %} · {% endif %}{% endfor %}
           {% if sms_stats.failed %}<a href="{% url 'notifications:sms_list' %}">see why</a>{% endif %}</p>{% endif %}
         {% if a.status == 'sent' and a.show_on_portal %}
-        <form method="post">{% csrf_token %}<button name="action" value="unpublish" class="btn">Remove from tenants' pages</button></form>
+        <form method="post">{% csrf_token %}<button name="action" value="unpublish" class="btn" data-confirm="It disappears from tenants' rent pages. SMS already sent stay sent." data-confirm-ok="Remove">Remove from tenants' pages</button></form>
         {% endif %}
       </div>
     </section>

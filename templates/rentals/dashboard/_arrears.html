@@ -3,7 +3,7 @@
     <h2>Tenants in arrears</h2>
     <span class="spacer"></span>
     {% if arrears %}<a class="btn btn-sm btn-primary" href="{% url 'rentals:remind_all' %}">{% icon 'bell' %}Remind everyone who owes ({{ arrears|length }})</a>{% endif %}
-    <a class="small" href="{% url 'rentals:lease_list' %}">All leases</a>
+    <a class="small" href="{% url 'rentals:lease_list' %}">All tenants</a>
   </div>
   {% if arrears %}
   <div class="table-wrap">
@@ -34,8 +34,8 @@
     <div class="empty"><strong>Everyone is paid up 🎉</strong>No outstanding balances right now.</div>
   {% else %}
     <div class="empty">
-      <strong>No active leases yet</strong>
-      Add a property, a tenant and a lease to start collecting rent.
+      <strong>No tenants yet</strong>
+      Add a property, then move a tenant in to start collecting rent.
       <div style="margin-top:14px"><a class="btn btn-primary btn-sm" href="{% url 'rentals:property_create' %}">{% icon 'plus' %}Add a property</a></div>
     </div>
   {% endif %}

@@ -5,7 +5,7 @@
 <div class="page-header"><div>
   <h1>{% if lease.moving_out %}Change move-out notice{% else %}Record move-out notice{% endif %}</h1>
   <p class="sub">{{ lease.tenant }} · {{ lease.unit }}. Rent keeps being billed up to the move-out month, then stops.
-    On the day, use <strong>End lease</strong> to settle the deposit and free the unit.</p>
+    On the day, use <strong>Move out</strong> to settle the deposit and free the unit.</p>
 </div></div>
 <section class="card form-card">
   <div class="card-body">
@@ -21,7 +21,7 @@
     <form method="post" style="margin-top:18px;border-top:1px solid var(--border);padding-top:16px">{% csrf_token %}
       <input type="hidden" name="action" value="cancel">
       <p class="muted small" style="margin:0 0 8px">Changed their mind? Cancel the notice and they stay on month to month.</p>
-      <button class="btn">They're staying: cancel notice</button>
+      <button class="btn" data-confirm="They stay on month to month and rent keeps being billed." data-confirm-ok="Cancel notice">They're staying: cancel notice</button>
     </form>
     {% endif %}
   </div>

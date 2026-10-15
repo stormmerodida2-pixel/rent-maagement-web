@@ -59,8 +59,9 @@ class PropertyForm(OwnedForm):
 class UnitForm(forms.ModelForm):
     class Meta:
         model = Unit
-        fields = ['label', 'bedrooms', 'default_rent']
+        fields = ['label', 'unit_type', 'bedrooms', 'default_rent']
         labels = {'default_rent': 'Monthly rent (KES)'}
+        widgets = {'unit_type': forms.TextInput(attrs={'list': 'unit-types'})}
 
     def __init__(self, *args, property, **kwargs):
         self.property = property
@@ -184,9 +185,9 @@ class NoticeForm(forms.Form):
     def clean_move_out(self):
         move_out = self.cleaned_data['move_out']
         if move_out < datetime.date.today():
-            raise ValidationError('That date has passed. If they have already left, use "End lease" instead.')
+            raise ValidationError('That date has passed. If they have already left, use "Move out" instead.')
         if move_out < self.lease.start_date:
-            raise ValidationError('The move-out date is before the lease started.')
+            raise ValidationError('The move-out date is before they moved in.')
         return move_out
 
     def clean_given_on(self):
@@ -218,7 +219,7 @@ class EndLeaseForm(forms.Form):
     def clean_end_date(self):
         end = self.cleaned_data['end_date']
         if end < self.lease.start_date:
-            raise ValidationError('The lease cannot end before it started.')
+            raise ValidationError('They can\'t move out before they moved in.')
         return end
 
     def clean(self):

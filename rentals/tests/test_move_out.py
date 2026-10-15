@@ -65,9 +65,9 @@ class MoveOutNoticeTests(TestCase):
         self.assertFalse(self.lease.moving_out)
         self.assertTrue(AuditEntry.objects.filter(action='lease.notice_cancelled').exists())
 
-    def test_past_dates_point_to_end_lease(self):
+    def test_past_dates_point_to_move_out(self):
         resp = self.give_notice(TODAY - datetime.timedelta(days=1))
-        self.assertContains(resp, 'use &quot;End lease&quot; instead')
+        self.assertContains(resp, 'use &quot;Move out&quot; instead')
 
     def test_overdue_move_out_prompts_to_finish(self):
         Lease.objects.filter(pk=self.lease.pk).update(end_date=TODAY - datetime.timedelta(days=2))

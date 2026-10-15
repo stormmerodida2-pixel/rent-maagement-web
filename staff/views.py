@@ -162,6 +162,7 @@ def record_cash(request, pk):
         'form': form, 'title': f'Record cash from {lease.tenant}',
         'intro': f'{lease.unit} · owes KES {max(lease.balance, 0):,.0f}. The tenant gets an SMS receipt.',
         'submit': 'Record cash',
+        'confirm': f'Record KES {{amount}} cash from {lease.tenant}? They will get an SMS receipt with your name.',
     })
 
 
