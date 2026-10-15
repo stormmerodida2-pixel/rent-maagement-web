@@ -1,5 +1,5 @@
 # Production stack: Caddy (HTTPS) -> web (gunicorn) + scheduler, with PostgreSQL and Redis.
-# Usage on a server:  cp .env_prod.example .env_prod  (fill it in)  &&  docker compose --env-file .env_prod up -d --build
+# Usage on a server:  fill in .env_prod (see "First deploy" in README.md)  &&  docker compose --env-file .env_prod up -d --build
 # A test copy (staging) uses .env_dev instead:  docker compose --env-file .env_dev up -d --build
 
 x-app: &app

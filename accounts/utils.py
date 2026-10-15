@@ -1,4 +1,4 @@
-"""Helpers for accounts: rate limiting, email verification and two-step login."""
+"""Helpers for accounts: rate limiting, email verification, two-step login, and keeping staff in their area."""
 
 import hashlib
 import secrets
@@ -11,12 +11,12 @@ from django.conf import settings
 from django.core import signing
 from django.core.cache import cache
 from django.core.mail import send_mail
-from django.shortcuts import render
+from django.shortcuts import redirect, render
 from django.template.loader import render_to_string
 from django.urls import reverse
 from django.utils import timezone
 
-from .models import profile_for
+from .models import profile_for, staff_for
 
 
 # --- Rate limiting -----------------------------------------------------------------------------------
@@ -192,3 +192,23 @@ def is_trusted_device(request, two_factor):
     except signing.BadSignature:
         return False
     return data.get('u') == two_factor.user_id and data.get('v') == two_factor.trust_version
+
+
+# --- Staff area middleware -----------------------------------------------------------------------------------
+
+# Everything else (dashboard, reports, payments, settings…) is off limits to staff accounts.
+STAFF_ALLOWED = ('/staff/', '/logout/', '/login/', '/static/', '/sw.js', '/manifest.webmanifest', '/offline/',
+                 '/privacy/', '/terms/', '/healthz/', '/robots.txt', '/t/')
+
+
+class StaffAreaMiddleware:
+    """Keep staff accounts inside the staff area: deny by default, so new landlord pages are covered too."""
+
+    def __init__(self, get_response):
+        self.get_response = get_response
+
+    def __call__(self, request):
+        request.staff = staff_for(request.user)
+        if request.staff is not None and not request.path.startswith(STAFF_ALLOWED):
+            return redirect('staff:home')
+        return self.get_response(request)
