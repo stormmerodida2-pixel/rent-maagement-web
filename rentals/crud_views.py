@@ -4,7 +4,9 @@ from decimal import Decimal, InvalidOperation
 
 from django.contrib import messages
 from django.contrib.auth.decorators import login_required
+from django.db import transaction
 from django.db.models import Count, F, Q
+from django.http import HttpResponse
 from django.shortcuts import get_object_or_404, redirect, render
 from django.urls import reverse, reverse_lazy
 from django.utils.http import url_has_allowed_host_and_scheme
@@ -16,8 +18,8 @@ from payments.forms import VoidForm
 from .forms import ChargeForm, EndLeaseForm, LeaseForm, PropertyForm, TenantForm, UnitForm, WaterReadingsForm
 from .models import Lease, MeterReading, Property, RentCharge, Tenant, Unit
 from .utils import (
-    BillingError, OwnedMixin, SafeDeleteMixin, format_number, last_reading, record_water_reading, settle_move_out,
-    void_reading,
+    BillingError, ImportError_, OwnedMixin, SafeDeleteMixin, apply_import, check_import, format_number,
+    import_template, last_reading, read_spreadsheet, record_water_reading, settle_move_out, void_reading,
 )
 
 
@@ -169,6 +171,76 @@ def property_rents(request, pk):
             return redirect('rentals:property_detail', pk=prop.pk)
     rows = [{'unit': u, 'lease': u.active_lease(), 'error': errors.get(u.pk)} for u in units]
     return render(request, 'rentals/property_rents.html', {'property': prop, 'rows': rows})
+
+
+IMPORT_SESSION_KEY = 'import_preview'
+IMPORT_MAX_BYTES = 5 * 1024 * 1024
+
+
+@login_required
+def import_template_download(request):
+    response = HttpResponse(import_template(),
+                            content_type='application/vnd.openxmlformats-officedocument.spreadsheetml.sheet')
+    response['Content-Disposition'] = 'attachment; filename="rentipay-import-template.xlsx"'
+    return response
+
+
+@login_required
+def property_import(request):
+    """Bring units and tenants in from a spreadsheet: upload, check the preview, then confirm."""
+    properties = Property.objects.filter(owner=request.user).order_by('name')
+    ctx = {'properties': properties, 'selected': request.GET.get('property', '')}
+    action = request.POST.get('action')
+
+    if request.method == 'POST' and action == 'preview':
+        choice, new_name = request.POST.get('property', ''), request.POST.get('new_property', '').strip()
+        upload = request.FILES.get('file')
+        prop = properties.filter(pk=choice).first() if choice.isdigit() else None
+        ctx.update(selected=choice, new_property=new_name)
+        if prop is None and not new_name:
+            ctx['error'] = 'Choose a property, or type a name for a new one.'
+        elif prop is None and properties.filter(name__iexact=new_name).exists():
+            ctx['error'] = f'You already have a property called "{new_name}". Choose it from the list instead.'
+        elif upload is None:
+            ctx['error'] = 'Choose the file to upload.'
+        elif upload.size > IMPORT_MAX_BYTES:
+            ctx['error'] = 'That file is over 5 MB. Split it into smaller files.'
+        else:
+            try:
+                rows = read_spreadsheet(upload)
+            except ImportError_ as exc:
+                ctx['error'] = str(exc)
+            else:
+                checked = check_import(rows, request.user, prop)
+                request.session[IMPORT_SESSION_KEY] = {'property': prop.pk if prop else None,
+                                                       'new_property': new_name, 'rows': rows}
+                ok = [r for r in checked if not r['errors']]
+                ctx.update(checked=checked, ok_count=len(ok), error_count=len(checked) - len(ok),
+                           tenant_count=sum(1 for r in ok if r['tenant']),
+                           target=prop.name if prop else new_name)
+        return render(request, 'rentals/property_import.html', ctx)
+
+    if request.method == 'POST' and action == 'confirm':
+        data = request.session.get(IMPORT_SESSION_KEY)
+        if not data:
+            messages.error(request, 'That preview has expired. Please upload the file again.')
+            return redirect('rentals:property_import')
+        with transaction.atomic():
+            prop = properties.filter(pk=data['property']).first() if data['property'] else \
+                Property.objects.create(owner=request.user, name=data['new_property'])
+            if prop is None:
+                return redirect('rentals:property_import')
+            checked = check_import(data['rows'], request.user, prop)  # again: things may have changed
+            units, tenancies = apply_import(checked, request.user, prop, request.user)
+        request.session.pop(IMPORT_SESSION_KEY, None)
+        skipped = sum(1 for r in checked if r['errors'])
+        messages.success(request, f'Imported {units} unit{"s" if units != 1 else ""} and {tenancies} '
+                                  f'tenant{"s" if tenancies != 1 else ""} into {prop}.'
+                         + (f' {skipped} row{"s" if skipped != 1 else ""} with problems skipped.' if skipped else ''))
+        return redirect('rentals:property_detail', pk=prop.pk)
+
+    request.session.pop(IMPORT_SESSION_KEY, None)
+    return render(request, 'rentals/property_import.html', ctx)
 
 
 class UnitCreate(OwnedMixin, FormPageMixin, CreateView):

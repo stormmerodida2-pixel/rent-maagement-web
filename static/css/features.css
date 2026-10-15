@@ -188,7 +188,7 @@ a.staff-card-link:hover { text-decoration: none; border-color: var(--brand); }
 .rents-table input { width: 100%; min-width: 0; }
 .rents-table .input-narrow { max-width: 80px; }
 .rents-table .input-rent { max-width: 140px; text-align: right; margin-left: auto; display: block; }
-.rents-table tr.row-error td { background: color-mix(in srgb, var(--danger) 8%, transparent); }
+.table tr.row-error td { background: color-mix(in srgb, var(--danger) 8%, transparent); }
 
 /* --- Two-step login ---------------------------------------------------------------------------- */
 .code-input { font-size: 20px; letter-spacing: .15em; font-variant-numeric: tabular-nums; }

@@ -19,6 +19,8 @@ urlpatterns = [
 
     path('properties/', crud.PropertyList.as_view(), name='property_list'),
     path('properties/new/', crud.PropertyCreate.as_view(), name='property_create'),
+    path('properties/import/', crud.property_import, name='property_import'),
+    path('properties/import/template.xlsx', crud.import_template_download, name='import_template'),
     path('properties/<int:pk>/', crud.PropertyDetail.as_view(), name='property_detail'),
     path('properties/<int:pk>/edit/', crud.PropertyUpdate.as_view(), name='property_update'),
     path('properties/<int:pk>/rents/', crud.property_rents, name='property_rents'),
