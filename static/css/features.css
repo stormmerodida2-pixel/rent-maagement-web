@@ -210,3 +210,13 @@ a.staff-card-link:hover { text-decoration: none; border-color: var(--brand); }
   white-space: nowrap; }
 .logo-lockup-lg .logo-tagline { font-size: 13.5px; }
 @media (max-width: 900px) { .sidebar .logo-tagline { display: none; } }  /* phone top bar: logo only */
+
+/* --- Login, sign-up and other card pages ---------------------------------------------------------- */
+/* Heading and intro line centred under the centred logo. */
+.auth-card > h1, .auth-card > h1 + p { text-align: center; }
+@media (max-width: 520px) {
+  /* Room on both sides instead of touching the screen edges. */
+  .auth-card { margin: 3vh 16px 0; padding: 26px 20px; }
+  /* The card shows the big logo, so skip the small one in the top bar (one logo on screen). */
+  body:has(.auth-logo) .topbar > .brand { display: none; }
+}
