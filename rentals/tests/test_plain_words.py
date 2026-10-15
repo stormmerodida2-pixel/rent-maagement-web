@@ -101,3 +101,13 @@ class SetRentsTests(TestCase):
     def test_private(self):
         self.client.force_login(get_user_model().objects.create_user('other'))
         self.assertEqual(self.client.get(self.url).status_code, 404)
+
+
+class GettingStartedTests(TestCase):
+    def test_setup_lives_on_the_dashboard_not_the_menu(self):
+        owner = get_user_model().objects.create_user('newlandlord', password='pw')
+        self.client.force_login(owner)
+        page = self.client.get(reverse('rentals:dashboard')).content.decode()
+        nav = page.split('aria-label="Main"')[1].split('</nav>')[0]
+        self.assertNotIn('Getting started', nav)
+        self.assertIn('Continue setup', page)

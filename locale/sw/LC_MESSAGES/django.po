@@ -96,7 +96,7 @@ msgid "You are %(amount)s in credit."
 msgstr "Una ziada ya %(amount)s."
 
 msgid "You are fully paid up."
-msgstr "Umelipa kodi yote."
+msgstr "Hudaiwi chochote."
 
 #, python-format
 msgid "Received %(amount)s cash for %(unit)s, recorded by %(name)s. Thank you! %(status)s"
@@ -110,18 +110,18 @@ msgid "every week"
 msgstr "kila wiki"
 
 msgid "every 2 weeks"
-msgstr "kila wiki 2"
+msgstr "kila baada ya wiki mbili"
 
 msgid "every month"
 msgstr "kila mwezi"
 
 #, python-format
 msgid "Hi %(name)s, as agreed you will clear %(total)s in %(count)s payments of %(each)s %(every)s, starting %(date)s, on top of your normal rent. %(how)s: %(link)s"
-msgstr "Habari %(name)s, kama tulivyokubaliana utalipa %(total)s kwa malipo %(count)s ya %(each)s %(every)s, kuanzia %(date)s, pamoja na kodi yako ya kawaida. %(how)s: %(link)s"
+msgstr "Habari %(name)s, kama tulivyokubaliana, utalipa deni la %(total)s kwa awamu %(count)s za %(each)s %(every)s, kuanzia %(date)s, pamoja na kodi yako ya kawaida. %(how)s: %(link)s"
 
 #, python-format
 msgid "Hi %(name)s, your payment plan instalment of %(amount)s is due on %(date)s. %(how)s: %(link)s"
-msgstr "Habari %(name)s, awamu ya mpango wako wa malipo ya %(amount)s inatakiwa tarehe %(date)s. %(how)s: %(link)s"
+msgstr "Habari %(name)s, awamu ya %(amount)s ya mpango wako wa malipo inapaswa kulipwa tarehe %(date)s. %(how)s: %(link)s"
 
 msgid "M-Pesa"
 msgstr "M-Pesa"
@@ -130,7 +130,7 @@ msgid "Cash"
 msgstr "Pesa taslimu"
 
 msgid "Bank transfer"
-msgstr "Benki"
+msgstr "Uhamisho wa benki"
 
 msgid "Amount must be at least KES 1."
 msgstr "Kiasi lazima kiwe angalau KES 1."
@@ -231,7 +231,7 @@ msgid "What is it about?"
 msgstr "Inahusu nini?"
 
 msgid "Subject"
-msgstr "Kichwa"
+msgstr "Mada"
 
 msgid "Your reply"
 msgstr "Jibu lako"
@@ -259,7 +259,7 @@ msgid "You've sent a lot of messages today. Please try again tomorrow."
 msgstr "Umetuma jumbe nyingi leo. Tafadhali jaribu tena kesho."
 
 msgid "Sent. Your landlord has been notified, and you will get an SMS when they reply."
-msgstr "Umetumwa. Mwenye nyumba amearifiwa, na utapata SMS akijibu."
+msgstr "Ujumbe umetumwa. Mwenye nyumba amearifiwa, na utapata SMS akijibu."
 
 msgid "Reply sent."
 msgstr "Jibu limetumwa."
@@ -314,7 +314,7 @@ msgid "Balance due"
 msgstr "Unadaiwa"
 
 msgid "Paid up"
-msgstr "Umelipa"
+msgstr "Hudaiwi"
 
 msgid "View statement"
 msgstr "Angalia taarifa ya akaunti"
@@ -330,7 +330,7 @@ msgstr "Salio"
 
 #, python-format
 msgid "Rent %(rent)s a month, due on day %(day)s"
-msgstr "Kodi %(rent)s kwa mwezi, hulipwa tarehe %(day)s"
+msgstr "Kodi %(rent)s kwa mwezi, hulipwa kila tarehe %(day)s"
 
 #, python-format
 msgid "Your rent changes to %(new)s a month from %(date)s."
@@ -341,15 +341,15 @@ msgstr "Mpango wako wa malipo"
 
 #, python-format
 msgid "%(paid)s of %(total)s paid"
-msgstr "%(paid)s kati ya %(total)s zimelipwa"
+msgstr "Umelipa %(paid)s kati ya %(total)s"
 
 #, python-format
 msgid "Next: %(amount)s by %(date)s, on top of your rent."
-msgstr "Inayofuata: %(amount)s kufikia %(date)s, pamoja na kodi yako."
+msgstr "Awamu inayofuata: %(amount)s kufikia %(date)s, pamoja na kodi yako."
 
 #, python-format
 msgid "Missed payments: %(n)s. Please catch up as soon as you can."
-msgstr "Malipo uliyokosa: %(n)s. Tafadhali lipa haraka iwezekanavyo."
+msgstr "Awamu ulizokosa: %(n)s. Tafadhali lipa haraka iwezekanavyo."
 
 #, python-format
 msgid "You're moving out on %(date)s. Please arrange the handover with your landlord."
@@ -522,7 +522,7 @@ msgid "Send reply"
 msgstr "Tuma jibu"
 
 msgid "Your landlord marked this resolved. Replying opens it again."
-msgstr "Mwenye nyumba ameweka hili kuwa limetatuliwa. Ukijibu, litafunguliwa tena."
+msgstr "Mwenye nyumba ameliweka hili kama limetatuliwa. Ukijibu, litafunguliwa tena."
 
 msgid "Message your landlord"
 msgstr "Mtumie mwenye nyumba ujumbe"

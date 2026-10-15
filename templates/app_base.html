@@ -22,7 +22,6 @@
       <div class="nav-section">Overview</div>
       <a href="{% url 'rentals:home' %}">{% icon 'home' %}Home page</a>
       <a href="{% url 'rentals:dashboard' %}" class="{% if url_name == 'dashboard' %}active{% endif %}">{% icon 'grid' %}Dashboard</a>
-      {% if nav_setup_incomplete %}<a href="{% url 'accounts:welcome' %}" class="{% if url_name == 'welcome' %}active{% endif %}">{% icon 'arrow-right' %}Getting started</a>{% endif %}
 
       <div class="nav-section">Manage</div>
       <a href="{% url 'rentals:property_list' %}" class="{% if 'property' in url_name or 'unit_' in url_name %}active{% endif %}">{% icon 'building' %}Properties</a>

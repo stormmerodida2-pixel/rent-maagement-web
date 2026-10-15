@@ -51,7 +51,7 @@ class LanguageTests(TestCase):
         payment = Payment.objects.create(lease=self.sw, amount=D('5000'), method='mpesa', reference='SJK1')
         self.assertEqual(receipt_text(payment, D('10000')),
                          'Tumepokea KES 5,000 (M-Pesa SJK1) kwa A1. Asante! Salio: KES 10,000.')
-        self.assertIn('Umelipa kodi yote.', receipt_text(payment, D('0')))
+        self.assertIn('Hudaiwi chochote.', receipt_text(payment, D('0')))
 
     def test_reply_alert_in_kiswahili(self):
         complaint = Complaint.objects.create(owner=self.owner, tenant=self.sw.tenant, lease=self.sw, subject='Maji')
@@ -79,7 +79,7 @@ class LanguageTests(TestCase):
         self.assertContains(resp, 'Asante, ombi lako limetumwa kwa mwenye nyumba.')
         resp = self.client.post(reverse('support:tenant_messages', args=[self.sw.tenant.portal_token]),
                                 {'category': 'services', 'subject': 'Maji', 'message': 'Hakuna maji'}, follow=True)
-        self.assertContains(resp, 'Umetumwa.')
+        self.assertContains(resp, 'Ujumbe umetumwa.')
         self.assertContains(resp, 'Tuma jibu')
 
     def test_receipt_and_statement_follow_the_tenant_not_the_viewer(self):
