@@ -16,7 +16,12 @@ def new_callback_token():
 
 
 class MpesaAccount(models.Model):
-    """A landlord's own Daraja app and Paybill/Till, so rent goes straight to them."""
+    """A landlord's own Paybill/Till, so rent goes straight to them.
+
+    The Paybill/Till number alone is enough to start: tenants are told where to pay, and payments come in
+    from uploaded M-Pesa statements. Adding the landlord's Daraja app keys makes payments appear instantly
+    and enables M-Pesa PIN prompts.
+    """
 
     class Environment(models.TextChoices):
         SANDBOX = 'sandbox', 'Sandbox (testing)'
@@ -32,17 +37,18 @@ class MpesaAccount(models.Model):
     environment = models.CharField(max_length=10, choices=Environment.choices, default=Environment.SANDBOX)
     payment_type = models.CharField(max_length=10, choices=PaymentType.choices, default=PaymentType.PAYBILL)
     shortcode = models.CharField(
-        'business short code', max_length=20,
-        help_text='Your Paybill number. For a Till, the Head Office / Store number used for STK Push.',
+        'business short code', max_length=20, blank=True,
+        help_text='Your Paybill number. For a Till, the Head Office / Store number used for M-Pesa prompts.',
     )
     till_number = models.CharField(max_length=20, blank=True, help_text='The Buy Goods till number tenants pay to.')
-    consumer_key = EncryptedTextField()
-    consumer_secret = EncryptedTextField()
-    passkey = EncryptedTextField(help_text='Lipa Na M-Pesa Online passkey issued by Safaricom.')
+    consumer_key = EncryptedTextField(blank=True)
+    consumer_secret = EncryptedTextField(blank=True)
+    passkey = EncryptedTextField(blank=True, help_text='Lipa Na M-Pesa Online passkey issued by Safaricom.')
     # Secret path segment in this account's webhook URLs; identifies which landlord a callback is for.
     callback_token = models.CharField(max_length=40, unique=True, default=new_callback_token, editable=False)
     verified_at = models.DateTimeField(null=True, blank=True)
     c2b_registered_at = models.DateTimeField('Paybill URLs registered', null=True, blank=True)
+    statement_imported_at = models.DateTimeField('last M-Pesa statement upload', null=True, blank=True)
     last_error = models.CharField(max_length=255, blank=True)
     created_at = models.DateTimeField(auto_now_add=True)
     updated_at = models.DateTimeField(auto_now=True)
@@ -56,6 +62,8 @@ class MpesaAccount(models.Model):
     def clean(self):
         if self.payment_type == self.PaymentType.TILL and not self.till_number:
             raise ValidationError({'till_number': 'Enter the till number tenants pay to.'})
+        if self.payment_type == self.PaymentType.PAYBILL and not self.shortcode:
+            raise ValidationError({'shortcode': 'Enter your Paybill number.'})
 
     @property
     def is_till(self):
@@ -71,9 +79,15 @@ class MpesaAccount(models.Model):
         return 'CustomerBuyGoodsOnline' if self.is_till else 'CustomerPayBillOnline'
 
     def is_complete(self):
+        """Daraja is connected: payments arrive instantly and M-Pesa PIN prompts can be sent."""
         return all([self.shortcode, self.consumer_key, self.consumer_secret, self.passkey]) and (
             not self.is_till or self.till_number
         )
+
+    @property
+    def has_pay_number(self):
+        """Tenants can be told where to pay (enough for statement uploads)."""
+        return bool(self.pay_number)
 
 
 class Payment(Voidable):
@@ -140,8 +154,14 @@ class MpesaTransaction(models.Model):
 
 
 class C2BPayment(models.Model):
-    """A payment a tenant made directly to the Paybill/Till, as reported by the C2B confirmation URL."""
+    """A payment a tenant made directly to the Paybill/Till: reported live by Safaricom's C2B confirmation
+    URL, or read from an M-Pesa statement the landlord uploaded."""
 
+    class Source(models.TextChoices):
+        LIVE = 'live', 'Safaricom (live)'
+        STATEMENT = 'statement', 'M-Pesa statement'
+
+    source = models.CharField(max_length=10, choices=Source.choices, default=Source.LIVE)
     account = models.ForeignKey(
         MpesaAccount, on_delete=models.PROTECT, null=True, blank=True, related_name='c2b_payments'
     )

@@ -5,7 +5,7 @@ msgid ""
 msgstr ""
 "Project-Id-Version: Rentipay\n"
 "Report-Msgid-Bugs-To: \n"
-"POT-Creation-Date: 2026-10-15 13:12+0300\n"
+"POT-Creation-Date: 2026-10-15 16:07+0300\n"
 "PO-Revision-Date: YEAR-MO-DA HO:MI+ZONE\n"
 "Last-Translator: FULL NAME <EMAIL@ADDRESS>\n"
 "Language-Team: Kiswahili\n"
@@ -367,6 +367,9 @@ msgstr "Ombi la M-Pesa litatokea kwenye %(phone)s. Weka PIN yako ili kulipa."
 
 msgid "Or pay from the M-Pesa menu"
 msgstr "Au lipa kupitia menyu ya M-Pesa"
+
+msgid "Pay from the M-Pesa menu"
+msgstr "Lipa kupitia menyu ya M-Pesa"
 
 msgid "Till no."
 msgstr "Nambari ya Till"

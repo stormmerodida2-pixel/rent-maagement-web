@@ -139,9 +139,22 @@ Each landlord connects **their own** Paybill or Till, so rent goes straight to t
 
 ### Each landlord (in the app: Settings → M-Pesa)
 
-1. Create an app at https://developer.safaricom.co.ke with Lipa Na M-Pesa enabled.
-2. Enter the environment, Paybill or Till details, consumer key and secret, and passkey. In sandbox, use shortcode `174379` and the passkey shown on the form.
-3. Click **Test**, then **Register** (Paybill URLs). After changing `MPESA_CALLBACK_BASE_URL`, re-register everyone with `python manage.py mpesa_register_c2b`.
+Setup is two steps, and only the first is needed to start:
+
+1. **Where tenants pay.** Enter the Paybill number, or the Till number. Tenants then see it in their SMS reminders, on their rent page and on receipts, and payments are recorded by uploading the M-Pesa statement (see below). No Daraja app is needed.
+2. **Connect Daraja (optional).** With the landlord's own Daraja app, payments appear the moment tenants pay, and landlords and caretakers can send M-Pesa PIN prompts. The page walks through creating the app and going live. Enter the app type (Sandbox or Live), the consumer key and secret, and the passkey (for a Till, also the Head Office / Store number). Then click **Test** and **Register**. In sandbox, use short code `174379` and the passkey shown on the form. After changing `MPESA_CALLBACK_BASE_URL`, re-register everyone with `python manage.py mpesa_register_c2b`.
+
+Daraja errors are explained in plain words, for example a missing "M-Pesa Express" product on the app, keys from a Sandbox app used as Live, or a short code that hasn't gone live yet. A Paybill that is already registered counts as registered.
+
+### M-Pesa statement uploads
+
+**Payments → Upload M-Pesa statement** (or the dashboard reminder, shown weekly to landlords without Daraja). The landlord downloads their Paybill/Till statement from Safaricom's M-Pesa business portal as Excel or CSV and uploads it unchanged; the account details above the table are skipped.
+
+- Only money paid in is read; charges, money paid out, failed transactions and totals are ignored.
+- Rows are matched like live payments (account number, then phone). In the preview only, a unique house number also matches (e.g. a tenant who typed "A4"), labelled "By house number" so the landlord can check it.
+- Receipts already in Rentipay are skipped, so overlapping date ranges are safe. Payments nobody matched go to **Payments → Unmatched** to assign.
+- SMS receipts to tenants are off by default (the payments may be weeks old) and can be ticked on.
+- Landlords with Daraja can also use it to catch up on payments made before they connected.
 
 Each M-Pesa account has its own secret token in its webhook URLs (`/payments/hooks/<token>/...`). That token identifies which landlord a callback belongs to. The paths avoid the word "mpesa" because Safaricom rejects C2B URLs that contain it.
 

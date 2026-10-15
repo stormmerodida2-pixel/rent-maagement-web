@@ -1,0 +1,81 @@
+{% extends 'app_base.html' %}
+{% load ui %}
+{% block page_title %}Upload M-Pesa statement{% endblock %}
+{% block content %}
+<div class="page-header">
+  <div><h1>Upload M-Pesa statement</h1>
+    <p class="sub">Record the rent tenants paid to your {{ account.get_payment_type_display }} {{ account.pay_number }}. Payments are matched to tenants by account number or phone, and anything already recorded is skipped, so it's safe to upload overlapping dates.</p></div>
+</div>
+
+{% if checked is not None %}
+  <section class="card" style="margin-bottom:16px">
+    <div class="card-body row">
+      <div style="flex:1;min-width:240px">
+        <strong>{{ counts.match }} payment{{ counts.match|pluralize }} matched to tenants</strong>{% if counts.unmatched %}, <strong>{{ counts.unmatched }}</strong> to assign by hand{% endif %} · {{ new_total|kes }} in total.
+        <div class="muted small">
+          {% if counts.recorded %}{{ counts.recorded }} already in Rentipay will be skipped. {% endif %}
+          {% if counts.unmatched %}Unmatched payments go to <em>Unmatched payments</em>, where you choose the tenant. {% endif %}
+          {% if counts.error %}<span class="text-danger">{{ counts.error }} row{{ counts.error|pluralize }} couldn't be read and will be skipped.</span>{% endif %}
+        </div>
+      </div>
+      {% with new=counts.match|add:counts.unmatched %}
+      <form method="post">{% csrf_token %}
+        <button name="action" value="confirm" class="btn btn-primary" {% if not new %}disabled{% endif %}
+                data-confirm="{{ new }} payment{{ new|pluralize }} will be recorded." data-confirm-title="Record these payments?" data-confirm-ok="Record payments">Record {{ new }} payment{{ new|pluralize }}</button>
+      </form>
+      {% endwith %}
+      <a class="btn btn-ghost" href="{% url 'payments:statement_upload' %}">Upload a different file</a>
+    </div>
+  </section>
+  <section class="card">
+    <div class="table-wrap"><table class="table">
+      <thead><tr><th>Receipt</th><th>When</th><th>Paid by</th><th>Account no.</th><th class="num">Amount</th><th>What happens</th></tr></thead>
+      <tbody>
+      {% for r in checked %}
+      <tr{% if r.state == 'error' %} class="row-error"{% endif %}>
+        <td class="nowrap"><code>{{ r.receipt }}</code></td>
+        <td class="small nowrap">{{ r.time }}</td>
+        <td class="small">{{ r.name|default:"—" }}{% if r.phone %}<div class="muted">{{ r.phone }}</div>{% endif %}</td>
+        <td class="small">{{ r.account|default:"—" }}</td>
+        <td class="num">{{ r.amount|kes }}</td>
+        <td class="small">
+          {% if r.state == 'match' %}<span class="badge {% if r.by_house %}badge-info{% else %}badge-success{% endif %}">{% if r.by_house %}By house number{% else %}Matched{% endif %}</span> {{ r.lease.tenant }} · {{ r.lease.unit }}
+          {% elif r.state == 'unmatched' %}<span class="badge badge-warn">Assign by hand</span>
+          {% elif r.state == 'recorded' %}<span class="badge">Already recorded</span>
+          {% else %}<span class="text-danger">{{ r.error }}</span>{% endif %}
+        </td>
+      </tr>
+      {% endfor %}
+      </tbody>
+    </table></div>
+  </section>
+{% else %}
+<div class="form-page">
+<section class="card form-card">
+  <div class="card-body">
+    {% if error %}<div class="alert alert-error" style="margin-bottom:14px">{{ error }}</div>{% endif %}
+    <ol class="setup-steps" style="margin-bottom:18px">
+      <li>Sign in to Safaricom's <strong>M-Pesa business portal</strong> (<span class="nowrap">org.ke.m-pesa.com</span>) with your business login.</li>
+      <li>Open the statement for your {{ account.get_payment_type_display }}, choose the dates (for example, since your last upload), and download it as <strong>Excel or CSV</strong>.</li>
+      <li>Upload it here as it is, check the preview, then record the payments.</li>
+    </ol>
+    <form method="post" enctype="multipart/form-data" novalidate>
+      {% csrf_token %}
+      <div class="field">
+        <label for="{{ form.file.id_for_label }}">{{ form.file.label }}</label>
+        <input id="{{ form.file.id_for_label }}" name="file" type="file" accept=".xlsx,.csv,application/vnd.openxmlformats-officedocument.spreadsheetml.sheet,text/csv" required>
+        {{ form.file.errors }}
+      </div>
+      <div class="field field-check">
+        {{ form.send_receipts }}<label for="{{ form.send_receipts.id_for_label }}">{{ form.send_receipts.label }}</label>
+        <span class="helptext">{{ form.send_receipts.help_text }}</span>
+      </div>
+      <div class="form-actions"><button name="action" value="preview" class="btn btn-primary">Preview</button>
+        <a class="btn btn-ghost" href="{% url 'payments:payment_list' %}">Cancel</a></div>
+    </form>
+  </div>
+</section>
+<p class="muted small" style="margin-top:14px">{% if account.statement_imported_at %}Last upload: {{ account.statement_imported_at|date:"d M Y, H:i" }}. {% endif %}{% if not account.is_complete %}Tired of uploading? <a href="{% url 'payments:mpesa_settings' %}">Connect Daraja</a> and payments appear by themselves the moment tenants pay.{% endif %}</p>
+</div>
+{% endif %}
+{% endblock %}

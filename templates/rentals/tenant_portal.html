@@ -70,7 +70,8 @@
       {% endwith %}{% endif %}
       {% if lease.moving_out %}<div class="alert alert-info small">{% icon 'calendar' 16 %}<span>{% blocktranslate with date=lease.end_date|date:"j F Y" %}You're moving out on {{ date }}. Please arrange the handover with your landlord.{% endblocktranslate %}</span></div>{% endif %}
 
-      {% if mpesa_account and mpesa_account.is_complete %}
+      {% if mpesa_account and mpesa_account.has_pay_number %}
+      {% if mpesa_account.is_complete %}
       <form method="post">
         {% csrf_token %}
         <input type="hidden" name="action" value="pay">
@@ -83,9 +84,10 @@
         <button type="submit" class="btn btn-primary btn-lg btn-block" style="margin-top:12px">{% icon 'phone' %}{% translate "Pay with M-Pesa" %}</button>
         <p class="helptext" style="text-align:center">{% blocktranslate with phone=tenant.phone %}An M-Pesa prompt will appear on {{ phone }}. Enter your PIN to pay.{% endblocktranslate %}</p>
       </form>
+      {% endif %}
 
       <div class="pay-box">
-        <strong>{% translate "Or pay from the M-Pesa menu" %}</strong>
+        <strong>{% if mpesa_account.is_complete %}{% translate "Or pay from the M-Pesa menu" %}{% else %}{% translate "Pay from the M-Pesa menu" %}{% endif %}</strong>
         {% if mpesa_account.is_till %}
         <div class="muted small">Lipa na M-Pesa → Buy Goods and Services</div>
         <dl><dt>{% translate "Till no." %}</dt><dd>{{ mpesa_account.pay_number }}</dd></dl>

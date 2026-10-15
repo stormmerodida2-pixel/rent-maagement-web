@@ -5,6 +5,7 @@
 <div class="page-header">
   <div><h1>Payments</h1><p class="sub">Every shilling received, from M-Pesa, cash and bank.</p></div>
   <div class="actions">
+    <a class="btn" href="{% url 'payments:statement_upload' %}">{% icon 'file' %}Upload M-Pesa statement</a>
     <a class="btn" href="{% url 'reports:payments_csv' %}{% if month %}?month={{ month }}{% endif %}">Export CSV</a>
     <a class="btn btn-primary" href="{% url 'payments:payment_create' %}">{% icon 'plus' %}Record cash/bank payment</a>
   </div>

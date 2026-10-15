@@ -1,6 +1,7 @@
 import datetime
 import json
 import logging
+from decimal import Decimal
 
 from django.contrib import messages
 from django.contrib.auth.decorators import login_required
@@ -22,8 +23,11 @@ from rentals.utils import OwnedMixin
 from rentals.models import Lease
 
 from . import mpesa
-from .forms import AssignC2BForm, ManualPaymentForm, MovePaymentForm, MpesaAccountForm, StkPushForm, VoidForm
+from .forms import (
+    AssignC2BForm, ManualPaymentForm, MovePaymentForm, MpesaAccountForm, StatementUploadForm, StkPushForm, VoidForm,
+)
 from .models import C2BPayment, MpesaAccount, MpesaTransaction, Payment
+from .utils import STATEMENT_MAX_BYTES, StatementError, apply_statement, check_statement, read_statement
 
 logger = logging.getLogger(__name__)
 
@@ -131,7 +135,12 @@ def mpesa_settings(request):
                     summary=f'Changed M-Pesa settings ({account.get_payment_type_display()} {account.pay_number}).',
                     changes=audit.form_changes(form),
                 )
-                messages.success(request, 'M-Pesa settings saved. Next, test the connection.')
+                if account.is_complete():
+                    messages.success(request, 'M-Pesa settings saved. Next, test the connection.')
+                else:
+                    messages.success(request, f'Saved. Tenants will be told to pay to your '
+                                              f'{account.get_payment_type_display()} {account.pay_number}. '
+                                              'Upload your M-Pesa statement to record their payments.')
                 return redirect('payments:mpesa_settings')
         elif account is None:
             messages.error(request, 'Save your M-Pesa details first.')
@@ -153,7 +162,7 @@ def mpesa_settings(request):
             return redirect('payments:mpesa_settings')
 
     hooks = {}
-    if account:
+    if account and account.is_complete():
         try:
             hooks = {
                 label: mpesa.hook_url(account, name)
@@ -346,3 +355,53 @@ def stk_check(request, pk):
         else:
             messages.info(request, 'Still waiting for the tenant to respond on their phone.')
     return redirect('rentals:lease_detail', pk=txn.lease_id)
+
+
+STATEMENT_SESSION_KEY = 'statement_upload'
+
+
+@login_required
+def statement_upload(request):
+    """Record payments from an M-Pesa statement: upload it, check the preview, then confirm."""
+    account = MpesaAccount.objects.filter(owner=request.user).first()
+    if account is None or not account.has_pay_number:
+        messages.info(request, 'First add the Paybill or Till number your tenants pay to.')
+        return redirect('payments:mpesa_settings')
+    form = StatementUploadForm(request.POST or None, request.FILES or None)
+    ctx = {'form': form, 'account': account}
+    action = request.POST.get('action')
+
+    if request.method == 'POST' and action == 'confirm':
+        data = request.session.get(STATEMENT_SESSION_KEY)
+        if not data:
+            messages.error(request, 'That preview has expired. Please upload the statement again.')
+            return redirect('payments:statement_upload')
+        checked = check_statement(data['rows'], account)  # again: payments may have arrived meanwhile
+        matched, unmatched = apply_statement(checked, account, request.user, send_receipts=data['send_receipts'])
+        del request.session[STATEMENT_SESSION_KEY]
+        if unmatched:
+            messages.success(request, f'Recorded {matched} payment{"s" if matched != 1 else ""}. '
+                                      f'{unmatched} couldn\'t be matched to a tenant: assign them below.')
+            return redirect('payments:unmatched_list')
+        messages.success(request, f'Recorded {matched} payment{"s" if matched != 1 else ""} from your statement.')
+        return redirect('payments:payment_list')
+
+    if request.method == 'POST' and form.is_valid():
+        upload = form.cleaned_data['file']
+        if upload.size > STATEMENT_MAX_BYTES:
+            ctx['error'] = 'That file is over 5 MB. Download a shorter date range.'
+        else:
+            try:
+                rows = read_statement(upload)
+            except StatementError as exc:
+                ctx['error'] = str(exc)
+            else:
+                checked = check_statement(rows, account)
+                request.session[STATEMENT_SESSION_KEY] = {
+                    'rows': rows, 'send_receipts': form.cleaned_data['send_receipts']}
+                counts = {state: sum(1 for r in checked if r['state'] == state)
+                          for state in ('match', 'unmatched', 'recorded', 'error')}
+                ctx.update(checked=checked, counts=counts,
+                           new_total=sum(Decimal(r['amount']) for r in checked if r['state'] in ('match', 'unmatched')))
+    return render(request, 'payments/statement_upload.html', ctx)
+

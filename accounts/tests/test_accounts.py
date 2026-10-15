@@ -162,7 +162,7 @@ class WelcomeTests(TestCase):
         make_lease(user)
         resp = self.client.get(reverse('accounts:welcome'))
         self.assertEqual(resp.context['done_count'], 3)
-        self.assertEqual(resp.context['current']['title'], 'Connect M-Pesa')
+        self.assertEqual(resp.context['current']['title'], 'Add your Paybill or Till')
 
         account = make_account(user)
         account.verified_at = account.created_at

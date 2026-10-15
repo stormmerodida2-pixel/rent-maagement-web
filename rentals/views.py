@@ -88,11 +88,23 @@ def dashboard_numbers(user):
     }
 
 
+STATEMENT_NUDGE_AFTER = datetime.timedelta(days=7)
+
+
+def statement_due(account):
+    """Without Daraja, payments only arrive by statement upload: nudge once a week."""
+    if account is None or not account.has_pay_number or account.is_complete():
+        return False
+    return account.statement_imported_at is None or \
+        timezone.now() - account.statement_imported_at > STATEMENT_NUDGE_AFTER
+
+
 @login_required
 def dashboard(request):
     user = request.user
     numbers = dashboard_numbers(user)
     steps = setup_steps(user)
+    account = MpesaAccount.objects.filter(owner=user).first()
     hour = timezone.localtime().hour
     greeting = 'Good morning' if hour < 12 else 'Good afternoon' if hour < 17 else 'Good evening'
     return render(request, 'rentals/dashboard.html', {
@@ -100,7 +112,8 @@ def dashboard(request):
         'greeting': greeting,
         'open_requests': numbers['open_requests'][:8],
         'unmatched_c2b': C2BPayment.objects.filter(account__owner=user, payment__isnull=True).count(),
-        'mpesa_account': MpesaAccount.objects.filter(owner=user).first(),
+        'mpesa_account': account,
+        'statement_due': statement_due(account),
         'setup_incomplete': not all(step['done'] for step in steps),
         'moving_out': Lease.objects.filter(unit__property__owner=user, is_active=True, end_date__isnull=False)
         .select_related('tenant', 'unit__property').order_by('end_date')[:8],

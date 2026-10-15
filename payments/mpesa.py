@@ -80,13 +80,22 @@ def get_access_token(account, use_cache=True):
             auth=(account.consumer_key, account.consumer_secret),
             timeout=TIMEOUT,
         )
-        if resp.status_code in (400, 401):
-            raise MpesaError('Safaricom rejected the consumer key/secret. Check they belong to this environment.')
+    except requests.RequestException as exc:
+        raise MpesaError("Couldn't reach Safaricom just now. Test again in a minute. "
+                         f'({exc.__class__.__name__})') from exc
+    if resp.status_code in (400, 401):
+        chosen, other = (('Sandbox', 'Live') if account.environment == MpesaAccount.Environment.SANDBOX
+                         else ('Live', 'Sandbox'))
+        raise MpesaError(
+            'Safaricom rejected the consumer key and secret. Copy them again from your app on the Daraja '
+            f'portal (no spaces), and check it is a {chosen} app: keys from a {other} app only work with '
+            f'"{other}" chosen here.')
+    try:
         resp.raise_for_status()
         data = resp.json()
         token = data['access_token']
     except (requests.RequestException, ValueError, KeyError) as exc:
-        raise MpesaError(f'Could not get M-Pesa access token: {exc}') from exc
+        raise MpesaError(f'Safaricom sent an unexpected reply. Test again in a minute. ({exc})') from exc
     # Tokens last 3600s; refresh a little early.
     cache.set(key, token, int(data.get('expires_in', 3599)) - 60)
     return token
@@ -102,11 +111,38 @@ def _post(account, path, payload):
         )
         data = resp.json()
     except (requests.RequestException, ValueError) as exc:
-        raise MpesaError(f'Daraja request to {path} failed: {exc}') from exc
+        raise MpesaError(f"Couldn't reach Safaricom just now. Try again in a minute. ({path}: {exc})") from exc
     if resp.status_code != 200 or str(data.get('ResponseCode', '0')) != '0':
         msg = data.get('errorMessage') or data.get('ResponseDescription') or resp.text
-        raise MpesaError(f'Daraja rejected the request: {msg}', code=str(data.get('errorCode', '')))
+        code = str(data.get('errorCode', ''))
+        raise MpesaError(explain_daraja_error(code, msg), code=code)
     return data
+
+
+# Daraja's own error text is terse; these say what the landlord should do about it.
+DARAJA_HINTS = [
+    ('no apiproduct match', "Your Daraja app doesn't include this service. On the Daraja portal, open your app "
+                            'and add "M-Pesa Express" (for prompts) and "C2B" (for Paybill/Till payments).'),
+    ('invalid businessshortcode', "Safaricom doesn't recognise that short code for these keys. Check the "
+                                  "Paybill or store number, and that it's linked to this Daraja app."),
+    ('merchant does not exist', "That short code isn't linked to your Daraja app yet. Finish \"Go Live\" on "
+                                'the Daraja portal for this Paybill/Till, then test again.'),
+    ('wrong credentials', 'Safaricom rejected the passkey. Use the passkey Safaricom emailed when you went '
+                          'live (or the sandbox passkey with the sandbox short code).'),
+    ('invalid access token', "Safaricom didn't accept the session. Test the connection again."),
+    ('already registered', 'ALREADY_REGISTERED'),
+    ('duplicate notification', 'ALREADY_REGISTERED'),
+]
+ALREADY_REGISTERED = 'Your Paybill/Till is already registered with Safaricom.'
+
+
+def explain_daraja_error(code, message):
+    text = f'{code} {message}'.lower()
+    for needle, hint in DARAJA_HINTS:
+        if needle in text:
+            hint = ALREADY_REGISTERED if hint == 'ALREADY_REGISTERED' else hint
+            return f'{hint} (Safaricom said: {message})'
+    return f'Safaricom rejected the request: {message}'
 
 
 def hook_url(account, name):
@@ -129,7 +165,7 @@ def _parse_timestamp(value):
 RECEIPT_MATCH_WINDOW = datetime.timedelta(minutes=30)
 
 
-def record_mpesa_payment(lease, receipt, amount, paid_at, notes=''):
+def record_mpesa_payment(lease, receipt, amount, paid_at, notes='', send_receipt=True):
     """Create the Payment for an M-Pesa receipt, or return the existing one.
 
     The same money can reach us up to three ways: the STK callback, the C2B confirmation, and our
@@ -159,11 +195,11 @@ def record_mpesa_payment(lease, receipt, amount, paid_at, notes=''):
         defaults={'lease': lease, 'amount': amount, 'paid_at': paid_at, 'notes': notes},
     )
     if created:
-        _payment_received(payment)
+        _payment_received(payment, send_receipt)
     return payment, created
 
 
-def _payment_received(payment):
+def _payment_received(payment, send_receipt=True):
     from audit import utils as audit
     from notifications.utils import send_payment_receipt
 
@@ -173,7 +209,8 @@ def _payment_received(payment):
         summary=f'M-Pesa payment {payment.reference or "(receipt pending)"} of KES {payment.amount:,.2f} '
                 f'received from {lease.tenant}.',
     )
-    transaction.on_commit(lambda: send_payment_receipt(payment))
+    if send_receipt:
+        transaction.on_commit(lambda: send_payment_receipt(payment))
 
 
 def verify_credentials(account):
@@ -394,13 +431,19 @@ def check_pending_stk(now=None):
 
 def register_c2b_urls(account):
     """Tell Safaricom where to send C2B validation/confirmation requests for this account."""
-    data = _post(account, '/mpesa/c2b/v1/registerurl', {
-        'ShortCode': account.pay_number,
-        # If our validation URL is unreachable, let the payment go through anyway.
-        'ResponseType': 'Completed',
-        'ConfirmationURL': hook_url(account, 'c2b_confirmation'),
-        'ValidationURL': hook_url(account, 'c2b_validation'),
-    })
+    try:
+        data = _post(account, '/mpesa/c2b/v1/registerurl', {
+            'ShortCode': account.pay_number,
+            # If our validation URL is unreachable, let the payment go through anyway.
+            'ResponseType': 'Completed',
+            'ConfirmationURL': hook_url(account, 'c2b_confirmation'),
+            'ValidationURL': hook_url(account, 'c2b_validation'),
+        })
+    except MpesaError as exc:
+        # Live Paybills can only register once; if it's done, that's what we wanted.
+        if not str(exc).startswith(ALREADY_REGISTERED):
+            raise
+        data = {}
     account.c2b_registered_at = timezone.now()
     account.save(update_fields=['c2b_registered_at', 'updated_at'])
     return data
@@ -497,7 +540,7 @@ def handle_c2b_confirmation(account, body, trusted=True, source_ip=None):
         return c2b
 
 
-def apply_c2b_payment(c2b):
+def apply_c2b_payment(c2b, send_receipt=True):
     """Record the Payment for a C2B payment that has a lease. Caller saves `c2b`."""
     c2b.payment, _ = record_mpesa_payment(
         c2b.lease,
@@ -505,4 +548,5 @@ def apply_c2b_payment(c2b):
         amount=c2b.amount,
         paid_at=c2b.trans_time,
         notes=f'Paybill, account {c2b.bill_ref!r}'[:255] if c2b.bill_ref else 'Till payment',
+        send_receipt=send_receipt,
     )

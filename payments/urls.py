@@ -12,6 +12,7 @@ urlpatterns = [
     path('hooks/<str:token>/c2b/confirmation/', views.c2b_confirmation, name='c2b_confirmation'),
     path('leases/<int:lease_id>/request-payment/', views.request_payment, name='request_payment'),
     path('settings/', views.mpesa_settings, name='mpesa_settings'),
+    path('statement/', views.statement_upload, name='statement_upload'),
     path('', views.PaymentList.as_view(), name='payment_list'),
     path('new/', views.PaymentCreate.as_view(), name='payment_create'),
     path('<int:pk>/void/', views.payment_void, name='payment_void'),

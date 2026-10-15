@@ -245,11 +245,12 @@ def setup_steps(user):
             'cta': 'Move a tenant in',
         },
         {
-            'title': 'Connect M-Pesa',
-            'text': 'Your own Paybill or Till, so rent goes straight to you and is recorded automatically.',
-            'done': bool(account and account.is_complete() and account.verified_at),
+            'title': 'Add your Paybill or Till',
+            'text': 'The number tenants pay to, so rent goes straight to you. Connect Daraja later for '
+                    'payments to appear instantly.',
+            'done': bool(account and account.has_pay_number),
             'url': 'payments:mpesa_settings',
-            'cta': 'Connect M-Pesa',
+            'cta': 'Add Paybill or Till',
         },
     ]
 
