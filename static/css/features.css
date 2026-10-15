@@ -220,3 +220,8 @@ a.staff-card-link:hover { text-decoration: none; border-color: var(--brand); }
   /* The card shows the big logo, so skip the small one in the top bar (one logo on screen). */
   body:has(.auth-logo) .topbar > .brand { display: none; }
 }
+
+/* --- Payment plans ------------------------------------------------------------------------------- */
+.plan-card .card-header { gap: 10px; }
+.plan-table td { padding-top: 6px; padding-bottom: 6px; }
+.plan-box { border: 1px solid var(--border); border-radius: 10px; padding: 12px 14px; display: grid; gap: 6px; }

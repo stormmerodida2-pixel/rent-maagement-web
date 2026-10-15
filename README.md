@@ -311,6 +311,16 @@ Use a Gmail account's **app password**: Google account → Security → 2-Step V
 - Carried-over amounts don't count as a month's billing in reports.
 - Rows with problems (bad phone, missing rent, duplicate unit, unit already occupied) are shown in the preview and skipped. Nothing is saved until you confirm, and the import goes into Activity.
 
+### Payment plans for arrears
+
+When a tenant has fallen behind, open their page and choose **Set up payment plan**, e.g. KES 45,000 as KES 10,000 every Friday. Preview the payments, then agree; the tenant can be sent the plan by SMS.
+
+- Instalments are paid **on top of normal rent**. A payment first covers rent and charges that fall due after the plan started; only the rest counts towards the plan.
+- Two days before each instalment, the tenant gets a reminder (daily at 9:30, once per instalment). If they've missed one, the reminder asks for both.
+- While a tenant keeps to their plan, the usual balance reminders are paused, and **Remind everyone who owes** leaves them unticked.
+- **Tenants → Payment plans** (and a dashboard card) shows who's on track, who's missed payments, and progress. Plans finish by themselves once cleared; cancel one to return to normal reminders.
+- Tenants see their plan's progress and next payment on their rent page.
+
 ### Search engines
 
 - **`/sitemap.xml`** lists only the public pages (home, sign-up, login, contact), always with the domain from `SITE_URL`.

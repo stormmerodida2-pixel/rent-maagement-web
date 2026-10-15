@@ -5,7 +5,7 @@ msgid ""
 msgstr ""
 "Project-Id-Version: Rentipay\n"
 "Report-Msgid-Bugs-To: \n"
-"POT-Creation-Date: 2026-10-15 12:56+0300\n"
+"POT-Creation-Date: 2026-10-15 13:12+0300\n"
 "PO-Revision-Date: YEAR-MO-DA HO:MI+ZONE\n"
 "Last-Translator: FULL NAME <EMAIL@ADDRESS>\n"
 "Language-Team: Kiswahili\n"
@@ -61,13 +61,6 @@ msgstr "Imetatuliwa"
 msgid "Cancelled"
 msgstr "Imeghairiwa"
 
-#, python-format
-msgid ", due %(date)s"
-msgstr ", ilipwe kufikia %(date)s"
-
-msgid ", now overdue"
-msgstr ", muda wa kulipa umepita"
-
 msgid "Pay online"
 msgstr "Lipa mtandaoni"
 
@@ -78,6 +71,13 @@ msgstr "Lipa kupitia M-Pesa Till %(till)s, au mtandaoni"
 #, python-format
 msgid "Pay via M-Pesa Paybill %(paybill)s, account %(account)s, or online"
 msgstr "Lipa kupitia M-Pesa Paybill %(paybill)s, akaunti %(account)s, au mtandaoni"
+
+#, python-format
+msgid ", due %(date)s"
+msgstr ", ilipwe kufikia %(date)s"
+
+msgid ", now overdue"
+msgstr ", muda wa kulipa umepita"
 
 #, python-format
 msgid "Hi %(name)s, your rent balance for %(unit)s is %(balance)s%(when)s. %(how)s: %(link)s"
@@ -105,6 +105,23 @@ msgstr "Tumepokea pesa taslimu %(amount)s kwa %(unit)s, zimerekodiwa na %(name)s
 #, python-format
 msgid "Hi %(name)s, your rent for %(unit)s will change from %(old)s to %(new)s a month, starting with the rent due on %(date)s. Details: %(link)s"
 msgstr "Habari %(name)s, kodi yako ya %(unit)s itabadilika kutoka %(old)s hadi %(new)s kwa mwezi, kuanzia kodi inayolipwa tarehe %(date)s. Maelezo: %(link)s"
+
+msgid "every week"
+msgstr "kila wiki"
+
+msgid "every 2 weeks"
+msgstr "kila wiki 2"
+
+msgid "every month"
+msgstr "kila mwezi"
+
+#, python-format
+msgid "Hi %(name)s, as agreed you will clear %(total)s in %(count)s payments of %(each)s %(every)s, starting %(date)s, on top of your normal rent. %(how)s: %(link)s"
+msgstr "Habari %(name)s, kama tulivyokubaliana utalipa %(total)s kwa malipo %(count)s ya %(each)s %(every)s, kuanzia %(date)s, pamoja na kodi yako ya kawaida. %(how)s: %(link)s"
+
+#, python-format
+msgid "Hi %(name)s, your payment plan instalment of %(amount)s is due on %(date)s. %(how)s: %(link)s"
+msgstr "Habari %(name)s, awamu ya mpango wako wa malipo ya %(amount)s inatakiwa tarehe %(date)s. %(how)s: %(link)s"
 
 msgid "M-Pesa"
 msgstr "M-Pesa"
@@ -318,6 +335,21 @@ msgstr "Kodi %(rent)s kwa mwezi, hulipwa tarehe %(day)s"
 #, python-format
 msgid "Your rent changes to %(new)s a month from %(date)s."
 msgstr "Kodi yako itabadilika kuwa %(new)s kwa mwezi kuanzia tarehe %(date)s."
+
+msgid "Your payment plan"
+msgstr "Mpango wako wa malipo"
+
+#, python-format
+msgid "%(paid)s of %(total)s paid"
+msgstr "%(paid)s kati ya %(total)s zimelipwa"
+
+#, python-format
+msgid "Next: %(amount)s by %(date)s, on top of your rent."
+msgstr "Inayofuata: %(amount)s kufikia %(date)s, pamoja na kodi yako."
+
+#, python-format
+msgid "Missed payments: %(n)s. Please catch up as soon as you can."
+msgstr "Malipo uliyokosa: %(n)s. Tafadhali lipa haraka iwezekanavyo."
 
 #, python-format
 msgid "You're moving out on %(date)s. Please arrange the handover with your landlord."

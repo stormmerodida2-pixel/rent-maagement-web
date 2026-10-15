@@ -52,6 +52,20 @@
   </div>
 
   <div class="stack">
+  {% if plans %}
+  <section class="card">
+    <div class="card-header"><h2>Payment plans</h2><span class="spacer"></span><a class="small" href="{% url 'rentals:plan_list' %}">View all</a></div>
+    <div class="table-wrap"><table class="table"><tbody>
+      {% for r in plans %}{% with plan=r.plan p=r.progress %}
+      <tr>
+        <td><a href="{% url 'rentals:lease_detail' plan.lease_id %}"><strong>{{ plan.lease.tenant }}</strong></a>
+          <div class="muted small">{{ p.paid|kes }} of {{ plan.total|kes }}</div></td>
+        <td class="num">{% if p.done %}<span class="badge badge-success">Cleared</span>{% elif p.on_track %}<span class="badge badge-success">On track</span>{% else %}<span class="badge badge-danger">{{ p.missed }} missed</span>{% endif %}</td>
+      </tr>
+      {% endwith %}{% endfor %}
+    </tbody></table></div>
+  </section>
+  {% endif %}
   {% if moving_out %}
   <section class="card">
     <div class="card-header"><h2>Moving out soon</h2></div>

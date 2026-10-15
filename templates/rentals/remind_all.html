@@ -33,11 +33,12 @@
         {% for r in rows %}
         <tr>
           <td><input type="checkbox" name="lease" value="{{ r.lease.pk }}" id="remind-{{ r.lease.pk }}" data-parts="{{ r.parts }}"
-                     {% if not r.reminded_at %}checked{% endif %} aria-label="Remind {{ r.lease.tenant }}"></td>
+                     {% if not r.reminded_at and not r.on_plan %}checked{% endif %} aria-label="Remind {{ r.lease.tenant }}"></td>
           <td><label for="remind-{{ r.lease.pk }}" class="who">
             <span class="avatar">{{ r.lease.tenant.full_name|initials }}</span>
             <span><span class="name">{{ r.lease.tenant }}</span><span class="meta" style="display:block">{{ r.lease.unit }} · {{ r.lease.tenant.phone }}</span>
-              {% if r.reminded_at %}<span class="badge badge-warn" title="Unticked so they don't get two in a day">Reminded {{ r.reminded_at|naturaltime }}</span>{% endif %}</span>
+              {% if r.reminded_at %}<span class="badge badge-warn" title="Unticked so they don't get two in a day">Reminded {{ r.reminded_at|naturaltime }}</span>{% endif %}
+              {% if r.on_plan %}<span class="badge badge-success" title="Unticked: they're keeping to their payment plan and get a reminder before each instalment">On a payment plan</span>{% endif %}</span>
           </label></td>
           <td class="num text-danger"><strong>{{ r.balance|kes }}</strong></td>
           <td><details><summary class="small">Preview</summary><div class="bubble-msg" style="max-width:100%;margin-top:6px"><div class="body">{{ r.text }}</div></div></details></td>
