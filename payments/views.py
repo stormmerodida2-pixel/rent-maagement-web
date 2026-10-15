@@ -296,6 +296,7 @@ def payment_void(request, pk):
         return redirect(back)
     return render(request, 'form_page.html', {
         'form': form, 'page_title': 'Void payment', 'submit_label': 'Void payment', 'cancel_url': back,
+        'confirm': f'KES {payment.amount:,.0f} will be taken off what {payment.lease.tenant} has paid, so their balance goes up.',
         'intro': f'{payment.get_method_display()} payment of KES {payment.amount:,.2f} from {payment.lease.tenant} '
                  f'on {timezone.localtime(payment.paid_at):%d %b %Y}. It will no longer count towards their balance.',
     })
@@ -322,6 +323,7 @@ def payment_move(request, pk):
         return redirect('rentals:lease_detail', pk=new_lease.pk)
     return render(request, 'form_page.html', {
         'form': form, 'page_title': 'Move payment', 'submit_label': 'Move payment', 'cancel_url': back,
+        'confirm': f'KES {payment.amount:,.0f} will move to the tenant you chose.',
         'intro': f'{payment.get_method_display()} payment {payment.reference} of KES {payment.amount:,.2f}, currently '
                  f'credited to {old_lease.tenant}. Choose who actually paid.',
     })

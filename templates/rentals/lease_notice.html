@@ -21,7 +21,7 @@
     <form method="post" style="margin-top:18px;border-top:1px solid var(--border);padding-top:16px">{% csrf_token %}
       <input type="hidden" name="action" value="cancel">
       <p class="muted small" style="margin:0 0 8px">Changed their mind? Cancel the notice and they stay on month to month.</p>
-      <button class="btn">They're staying: cancel notice</button>
+      <button class="btn" data-confirm="They stay on month to month and rent keeps being billed." data-confirm-ok="Cancel notice">They're staying: cancel notice</button>
     </form>
     {% endif %}
   </div>

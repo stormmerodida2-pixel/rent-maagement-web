@@ -1,7 +1,8 @@
 {% if messages %}
 <div class="messages" role="status">
   {% for message in messages %}
-  <div class="alert alert-{{ message.tags|default:'info' }}">{{ message }}</div>
+  {# Success and info become a small pop-up toast when JavaScript runs; errors and warnings stay here. #}
+  <div class="alert alert-{{ message.tags|default:'info' }}"{% if message.level_tag == 'success' or message.level_tag == 'info' %} data-toast="{{ message.level_tag }}"{% endif %}>{{ message }}</div>
   {% endfor %}
 </div>
 {% endif %}

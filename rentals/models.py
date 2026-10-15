@@ -42,7 +42,10 @@ class Property(models.Model):
 class Unit(models.Model):
     property = models.ForeignKey(Property, on_delete=models.CASCADE, related_name='units')
     label = models.CharField(max_length=50, help_text='e.g. A1, House 4')
+    unit_type = models.CharField('type', max_length=40, blank=True,
+                                 help_text='e.g. Bedsitter, 1-bedroom, 2-bedroom, Shop.')
     bedrooms = models.PositiveSmallIntegerField(default=1)
+    # The usual rent for this unit: what new tenants are offered. Each tenancy has its own rent.
     default_rent = models.DecimalField(max_digits=10, decimal_places=2)
 
     class Meta:

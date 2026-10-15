@@ -5,7 +5,7 @@
 <div class="page-header"><div><h1>{{ page_title }}</h1>{% if intro %}<p class="sub">{{ intro }}</p>{% endif %}</div></div>
 <section class="card form-card">
   <div class="card-body">
-    <form method="post" novalidate>
+    <form method="post" novalidate{% if confirm %} data-confirm="{{ confirm }}" data-confirm-ok="{{ submit_label }}" data-confirm-danger{% endif %}>
       {% csrf_token %}
       {% if next %}<input type="hidden" name="next" value="{{ next }}">{% endif %}
       {% include 'includes/form_fields.html' %}

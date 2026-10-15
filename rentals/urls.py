@@ -21,6 +21,7 @@ urlpatterns = [
     path('properties/new/', crud.PropertyCreate.as_view(), name='property_create'),
     path('properties/<int:pk>/', crud.PropertyDetail.as_view(), name='property_detail'),
     path('properties/<int:pk>/edit/', crud.PropertyUpdate.as_view(), name='property_update'),
+    path('properties/<int:pk>/rents/', crud.property_rents, name='property_rents'),
     path('properties/<int:pk>/delete/', crud.PropertyDelete.as_view(), name='property_delete'),
     path('properties/<int:property_pk>/units/new/', crud.UnitCreate.as_view(), name='unit_create'),
     path('units/<int:pk>/edit/', crud.UnitUpdate.as_view(), name='unit_update'),

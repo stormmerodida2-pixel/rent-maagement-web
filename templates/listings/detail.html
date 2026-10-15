@@ -10,7 +10,7 @@
   <div class="actions">
     <a class="btn" href="{% url 'listings:list' %}">All vacancies</a>
     <form method="post">{% csrf_token %}
-      {% if listing.is_open %}<button name="action" value="close" class="btn">Close listing</button>
+      {% if listing.is_open %}<button name="action" value="close" class="btn" data-confirm="The page will say the place has been let, and nobody can apply." data-confirm-ok="Close listing">Close listing</button>
       {% else %}<button name="action" value="reopen" class="btn">Reopen</button>{% endif %}
     </form>
   </div>
@@ -47,9 +47,9 @@
             {% if a.tenant %}<a class="btn btn-sm" href="{% url 'rentals:lease_create' %}?unit={{ listing.unit_id }}&tenant={{ a.tenant_id }}">Move in</a>{% endif %}
           {% else %}
           <form method="post" action="{% url 'listings:application_action' a.pk %}" class="row" style="gap:6px;justify-content:flex-end">{% csrf_token %}
-            <button name="action" value="approve" class="btn btn-sm btn-primary">Approve</button>
+            <button name="action" value="approve" class="btn btn-sm btn-primary" data-confirm="{{ a.name }} will be added as a tenant, ready to move into {{ listing.unit }}." data-confirm-title="Approve {{ a.name }}?" data-confirm-ok="Approve">Approve</button>
             {% if a.status == 'new' %}<button name="action" value="contacted" class="btn btn-sm">Contacted</button>{% endif %}
-            {% if a.status != 'declined' %}<button name="action" value="declined" class="btn btn-sm btn-ghost">Decline</button>{% endif %}
+            {% if a.status != 'declined' %}<button name="action" value="declined" class="btn btn-sm btn-ghost" data-confirm="{{ a.name }}'s application will be marked declined." data-confirm-ok="Decline">Decline</button>{% endif %}
           </form>
           {% endif %}
         </td>
@@ -70,7 +70,7 @@
         <figure>
           <img src="{{ p.image.url }}" alt="Photo {{ forloop.counter }}" loading="lazy">
           <form method="post">{% csrf_token %}<input type="hidden" name="photo" value="{{ p.pk }}">
-            <button name="action" value="delete_photo" class="btn btn-sm btn-ghost" title="Remove photo">{% icon 'x' %}<span class="visually-hidden">Remove</span></button></form>
+            <button name="action" value="delete_photo" class="btn btn-sm btn-ghost" title="Remove photo" data-confirm="This photo will be removed from the listing." data-confirm-ok="Remove" data-confirm-danger>{% icon 'x' %}<span class="visually-hidden">Remove</span></button></form>
         </figure>
         {% endfor %}
       </div>

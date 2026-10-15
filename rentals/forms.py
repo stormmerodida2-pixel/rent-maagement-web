@@ -59,8 +59,9 @@ class PropertyForm(OwnedForm):
 class UnitForm(forms.ModelForm):
     class Meta:
         model = Unit
-        fields = ['label', 'bedrooms', 'default_rent']
+        fields = ['label', 'unit_type', 'bedrooms', 'default_rent']
         labels = {'default_rent': 'Monthly rent (KES)'}
+        widgets = {'unit_type': forms.TextInput(attrs={'list': 'unit-types'})}
 
     def __init__(self, *args, property, **kwargs):
         self.property = property

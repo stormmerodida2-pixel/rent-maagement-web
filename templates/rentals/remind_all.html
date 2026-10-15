@@ -17,7 +17,7 @@
         <strong><span data-remind-count>{{ selected_count }}</span> of {{ rows|length }} tenant{{ rows|length|pluralize }}</strong> will get a reminder
         <div class="muted small">They owe {{ total_owed|kes }} in total · about KES <span data-remind-cost>{{ estimated_cost|floatformat:2 }}</span> in SMS</div>
       </div>
-      <button type="submit" class="btn btn-primary" data-remind-send {% if not selected_count %}disabled{% endif %}>{% icon 'bell' %}Send reminders</button>
+      <button type="submit" class="btn btn-primary" data-confirm="Each ticked tenant gets an SMS with their own balance. SMS can't be recalled once sent." data-confirm-title="Send reminders?" data-confirm-ok="Send reminders" data-remind-send {% if not selected_count %}disabled{% endif %}>{% icon 'bell' %}Send reminders</button>
     </div>
   </section>
 

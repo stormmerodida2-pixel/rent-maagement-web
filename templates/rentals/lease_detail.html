@@ -65,7 +65,7 @@
             <label for="{{ stk_form.phone.id_for_label }}">Phone</label>
             {{ stk_form.phone }}
           </div>
-          <button type="submit" class="btn btn-primary">{% icon 'phone' %}Send prompt</button>
+          <button type="submit" class="btn btn-primary" data-confirm="A prompt for KES {amount} will pop up on the tenant's phone, asking for their M-Pesa PIN." data-confirm-title="Send M-Pesa prompt?" data-confirm-ok="Send prompt">{% icon 'phone' %}Send prompt</button>
         </form>
         <p class="helptext">The tenant gets an M-Pesa PIN prompt on their phone. The payment is recorded automatically once they confirm.</p>
         <form method="post" action="{% url 'rentals:send_reminder' lease.pk %}" style="margin-top:14px">
