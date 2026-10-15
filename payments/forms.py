@@ -17,11 +17,23 @@ class StkPushForm(forms.Form):
 
 
 class MpesaAccountForm(forms.ModelForm):
-    """Secrets are never rendered back; leaving one blank keeps the saved value."""
+    """Step 1 (required): where tenants pay. Step 2 (optional): the Daraja app's keys.
+
+    Secrets are never rendered back; leaving one blank keeps the saved value.
+    """
+
+    PAY_FIELDS = ['payment_type', 'shortcode', 'till_number']
+    DARAJA_FIELDS = ['environment', 'store_number', 'consumer_key', 'consumer_secret', 'passkey']
+
+    store_number = forms.CharField(
+        max_length=20, required=False, label='Head Office / Store number',
+        help_text='Tills only: the store number linked to your Daraja app. Safaricom sends prompts from it.')
 
     class Meta:
         model = MpesaAccount
         fields = ['environment', 'payment_type', 'shortcode', 'till_number', 'consumer_key', 'consumer_secret', 'passkey']
+        labels = {'payment_type': 'Tenants pay to my', 'shortcode': 'Paybill number',
+                  'environment': 'Daraja app type'}
         widgets = {name: forms.PasswordInput(render_value=False) for name in SECRET_FIELDS}
 
     def __init__(self, *args, **kwargs):
@@ -34,11 +46,18 @@ class MpesaAccountForm(forms.ModelForm):
                 self.saved_secrets[name] = saved
                 self.fields[name].required = False
                 self.fields[name].widget.attrs['placeholder'] = '•••••••• saved. Leave blank to keep.'
-        if not self.instance.pk:
-            self.initial.setdefault('shortcode', SANDBOX_SHORTCODE)
+        self.fields['shortcode'].help_text = 'The number tenants enter under Lipa na M-Pesa → Pay Bill.'
+        if self.instance.pk and self.instance.is_till:
+            self.initial.setdefault('store_number', self.instance.shortcode)
         self.fields['passkey'].help_text = (
-            f'For sandbox testing with shortcode {SANDBOX_SHORTCODE}, use: {SANDBOX_PASSKEY}'
-        )
+            f'Live: from Safaricom\'s go-live email. Sandbox testing: short code {SANDBOX_SHORTCODE} '
+            f'with passkey {SANDBOX_PASSKEY}')
+
+    def pay_fields(self):
+        return [self[name] for name in self.PAY_FIELDS]
+
+    def daraja_fields(self):
+        return [self[name] for name in self.DARAJA_FIELDS]
 
     def clean(self):
         cleaned = super().clean()
@@ -48,6 +67,16 @@ class MpesaAccountForm(forms.ModelForm):
         for name in ['shortcode', 'till_number', *SECRET_FIELDS]:
             if cleaned.get(name):
                 cleaned[name] = cleaned[name].strip()
+        if cleaned.get('payment_type') == MpesaAccount.PaymentType.TILL:
+            cleaned['shortcode'] = (cleaned.get('store_number') or '').strip()
+        given = [name for name in SECRET_FIELDS if cleaned.get(name)]
+        if given and len(given) < len(SECRET_FIELDS):
+            for name in SECRET_FIELDS:
+                if not cleaned.get(name):
+                    self.add_error(name, 'Fill in all three Daraja keys, or leave all three empty to connect '
+                                         'Daraja later.')
+        if given and cleaned.get('payment_type') == MpesaAccount.PaymentType.TILL and not cleaned.get('shortcode'):
+            self.add_error('store_number', 'For a Till, enter the Head Office / Store number linked to Daraja.')
         return cleaned
 
     def save(self, commit=True):
@@ -113,3 +142,12 @@ class MovePaymentForm(forms.Form):
             Lease.objects.filter(unit__property__owner=owner).exclude(pk=exclude_lease.pk)
             .select_related('tenant', 'unit__property')
         )
+
+
+class StatementUploadForm(forms.Form):
+    file = forms.FileField(label='M-Pesa statement (Excel or CSV)')
+    send_receipts = forms.BooleanField(
+        required=False, initial=False, label='Text each tenant an SMS receipt',
+        help_text='Leave unticked for older payments, so tenants don\'t get receipts for things they paid weeks ago.',
+    )
+

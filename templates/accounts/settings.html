@@ -10,8 +10,8 @@
   <a class="card settings-item" href="{% url 'payments:mpesa_settings' %}">
     <span class="settings-icon">{% icon 'wallet' %}</span>
     <span class="settings-text"><strong>M-Pesa</strong>
-      <span class="muted small">{% if mpesa_ready %}Connected · {% if mpesa_account.is_till %}Till{% else %}Paybill{% endif %} {{ mpesa_account.pay_number }}{% if mpesa_account.environment == 'sandbox' %} (testing){% endif %}{% else %}Not connected yet. Connect your Paybill or Till to collect rent.{% endif %}</span></span>
-    {% if not mpesa_ready %}<span class="badge badge-danger">Set up</span>{% endif %}
+      <span class="muted small">{% if mpesa_ready %}Connected · {% if mpesa_account.is_till %}Till{% else %}Paybill{% endif %} {{ mpesa_account.pay_number }}{% if mpesa_account.environment == 'sandbox' %} (testing){% endif %}{% elif mpesa_account.has_pay_number %}{% if mpesa_account.is_till %}Till{% else %}Paybill{% endif %} {{ mpesa_account.pay_number }} · payments from statement uploads{% else %}Not set up yet. Add the Paybill or Till your tenants pay to.{% endif %}</span></span>
+    {% if not mpesa_account.has_pay_number %}<span class="badge badge-danger">Set up</span>{% endif %}
     {% icon 'arrow-right' %}
   </a>
 

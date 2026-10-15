@@ -225,3 +225,10 @@ a.staff-card-link:hover { text-decoration: none; border-color: var(--brand); }
 .plan-card .card-header { gap: 10px; }
 .plan-table td { padding-top: 6px; padding-bottom: 6px; }
 .plan-box { border: 1px solid var(--border); border-radius: 10px; padding: 12px 14px; display: grid; gap: 6px; }
+
+/* --- M-Pesa setup ------------------------------------------------------------------------------------ */
+details.daraja > summary { cursor: pointer; list-style: none; }
+details.daraja > summary::-webkit-details-marker { display: none; }
+details.daraja > summary h2::before { content: '▸'; display: inline-block; margin-right: 8px; color: var(--text-2); transition: transform .15s; }
+details.daraja[open] > summary h2::before { transform: rotate(90deg); }
+@media (prefers-reduced-motion: reduce) { details.daraja > summary h2::before { transition: none; } }

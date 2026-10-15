@@ -140,7 +140,7 @@ def _landlord_details(owner):
     return {
         'landlord_name': owner.get_full_name() or owner.username,
         'landlord_email': owner.email,
-        'mpesa_account': account if account and account.is_complete() else None,
+        'mpesa_account': account if account and account.has_pay_number else None,
     }
 
 

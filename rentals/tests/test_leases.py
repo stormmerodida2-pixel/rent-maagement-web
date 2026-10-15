@@ -190,7 +190,7 @@ class StatementTests(TestCase):
         self.client.force_login(user)
         dash = self.client.get(reverse('rentals:dashboard'))
         self.assertContains(dash, 'Finish setting up')
-        self.assertContains(dash, 'Next: Connect M-Pesa')
+        self.assertContains(dash, 'Next: Add your Paybill or Till')
         account = make_account(user)
         account.verified_at = account.created_at
         account.save()

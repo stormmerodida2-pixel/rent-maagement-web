@@ -24,12 +24,19 @@
     <a class="btn btn-primary" href="{% url 'accounts:welcome' %}">Continue setup {% icon 'arrow-right' %}</a>
   </div>
 </section>
-{% elif not mpesa_account or not mpesa_account.is_complete %}
+{% elif not mpesa_account or not mpesa_account.has_pay_number %}
 <div class="alert alert-info" style="margin-bottom:20px">
   {% icon 'wallet' 18 %}
-  <span><strong>Connect M-Pesa to start collecting rent.</strong> Payments go straight to your own Paybill or Till.</span>
+  <span><strong>Add your Paybill or Till to start collecting rent.</strong> Payments go straight to you.</span>
   <span class="spacer"></span>
-  <a class="btn btn-primary btn-sm" href="{% url 'payments:mpesa_settings' %}">Connect M-Pesa</a>
+  <a class="btn btn-primary btn-sm" href="{% url 'payments:mpesa_settings' %}">Add Paybill or Till</a>
+</div>
+{% elif statement_due %}
+<div class="alert alert-info" style="margin-bottom:20px">
+  {% icon 'file' 18 %}
+  <span><strong>Upload your M-Pesa statement</strong> to record recent rent payments.{% if mpesa_account.statement_imported_at %} Last upload {{ mpesa_account.statement_imported_at|timesince }} ago.{% endif %}</span>
+  <span class="spacer"></span>
+  <a class="btn btn-primary btn-sm" href="{% url 'payments:statement_upload' %}">Upload statement</a>
 </div>
 {% endif %}
 

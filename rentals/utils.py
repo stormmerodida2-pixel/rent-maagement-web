@@ -283,7 +283,7 @@ def branding(request):
             account__owner=user, payment__isnull=True,
         ).count()
         account = MpesaAccount.objects.filter(owner=user).first()
-        context['nav_mpesa_missing'] = account is None or not account.is_complete()
+        context['nav_mpesa_missing'] = account is None or not account.has_pay_number
         from rentals.views import latest_payment_id
 
         context['live_cursor'] = latest_payment_id(user)

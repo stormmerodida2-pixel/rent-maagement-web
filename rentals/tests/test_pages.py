@@ -228,7 +228,7 @@ class MobileTests(TestCase):
         owner = get_user_model().objects.create_user('landlord', email='l@example.com')
         self.client.force_login(owner)
         page = self.client.get(reverse('accounts:settings'))
-        for item in ('M-Pesa', 'Not connected yet', 'Notifications', 'Monthly report card: email', 'Appearance',
+        for item in ('M-Pesa', 'Not set up yet', 'Notifications', 'Monthly report card: email', 'Appearance',
                      'theme-switch', 'Install the app', 'Help &amp; support', 'Log out', 'l@example.com'):
             self.assertContains(page, item)
         self.assertNotContains(page, 'Site administration')  # admins only

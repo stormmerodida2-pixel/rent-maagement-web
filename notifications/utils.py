@@ -169,7 +169,7 @@ def _kes(amount):
 def _how_to_pay(lease):
     """"Pay via M-Pesa Paybill …" in the active language (call inside tenant_language)."""
     account = MpesaAccount.objects.filter(owner_id=lease.unit.property.owner_id).first()
-    if account is None or not account.is_complete():
+    if account is None or not account.has_pay_number:
         return _('Pay online')
     if account.is_till:
         return _('Pay via M-Pesa Till %(till)s, or online') % {'till': account.pay_number}
