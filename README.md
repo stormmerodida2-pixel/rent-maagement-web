@@ -336,6 +336,19 @@ The service always runs the newest `deploy/autodeploy.sh` from `main`, so change
 
 To roll back, revert the bad commit and merge: the revert deploys like any other change.
 
+### Alerts
+
+Three layers, so you hear about problems quickly:
+
+1. **Phone notifications (ntfy):** the server sends push notifications to a private [ntfy](https://ntfy.sh) channel. Install the free **ntfy** app (Android/iPhone) and subscribe to the topic in `~/.config/liskodi/alerts.env` on the server (`ALERT_NTFY_URL=https://ntfy.sh/<topic>`). Anyone who knows the topic name can read it, so keep it private. You'll be told when:
+   - a deploy fails (the site goes back to the previous version) or is skipped because tests failed. Successful deploys send a quiet note.
+   - the site isn't healthy (database, cache or scheduler down, or HTTPS not working). `deploy/healthcheck.sh` checks every 5 minutes (`liskodi-healthcheck.timer`).
+   - the HTTPS certificate has 14 days or less left, or the disk is over 85% full.
+
+   Each problem is reported once when it starts and once when it's fixed. To install on a new server, copy `deploy/liskodi-healthcheck.*` to `/etc/systemd/system/` and `systemctl enable --now liskodi-healthcheck.timer`, as for auto-deploy.
+2. **From outside:** `.github/workflows/uptime.yml` checks `/healthz/` every 15 minutes from GitHub. If the whole server is down, the run fails and **GitHub emails you**. Set `SITE_URL` in that file when you move to your own domain. GitHub pauses scheduled workflows after 60 days without commits; re-enable them under Actions if that happens.
+3. **Code errors (Sentry):** set `SENTRY_DSN` in `.env_prod` (free account at sentry.io, Django project) to get an email with the exact error for any page that crashes or scheduled job that fails.
+
 Run the same checks locally:
 ```bash
 pip install ruff==0.17.0   # the linter (only needed to run it yourself)
