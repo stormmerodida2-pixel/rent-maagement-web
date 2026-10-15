@@ -102,7 +102,7 @@ a.settings-link:hover { text-decoration: none; background: var(--surface-2); }
 .staff-bar { position: sticky; top: 0; z-index: 30; display: flex; align-items: center; gap: 10px; height: 64px;
   padding: 0 14px; background: var(--surface); border-bottom: 1px solid var(--border); }
 .staff-bar .brand { padding: 0; }
-.staff-bar .logo { height: 58px; }
+.staff-bar .logo { height: 44px; }
 .staff-who { display: inline-flex; align-items: center; gap: 8px; font-weight: 600; font-size: 14px; }
 .staff-tabs { display: flex; gap: 4px; padding: 8px 10px; background: var(--surface); border-bottom: 1px solid var(--border);
   overflow-x: auto; }
@@ -198,3 +198,15 @@ a.staff-card-link:hover { text-decoration: none; border-color: var(--brand); }
 .setup-steps { margin: 0; padding-left: 20px; display: grid; gap: 12px; }
 .recovery-codes { display: grid; grid-template-columns: repeat(2, minmax(0, 1fr)); gap: 6px 18px; margin: 0; padding-left: 22px; }
 .recovery-codes code { font-size: 15px; }
+
+/* Home page header on narrow phones: logo, Log in and Get started on one line (the theme switch is in the app). */
+@media (max-width: 430px) {
+  .site-nav .theme-switch { display: none; }
+}
+
+/* --- Logo with its tagline as real text (sharp and readable at any size; follows light/dark) ------------ */
+.logo-lockup { display: inline-flex; flex-direction: column; align-items: center; gap: 5px; }
+.logo-tagline { font-size: 11.5px; font-weight: 500; letter-spacing: .02em; line-height: 1.2; color: var(--muted);
+  white-space: nowrap; }
+.logo-lockup-lg .logo-tagline { font-size: 13.5px; }
+@media (max-width: 900px) { .sidebar .logo-tagline { display: none; } }  /* phone top bar: logo only */

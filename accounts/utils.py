@@ -127,7 +127,7 @@ def new_totp_secret():
 
 
 def totp_uri(user, secret):
-    """What the QR code holds: authenticator apps show it as "Liskodi (username)"."""
+    """What the QR code holds: authenticator apps show it as "Rentipay (username)"."""
     return pyotp.TOTP(secret).provisioning_uri(name=user.get_username(), issuer_name=settings.APP_NAME)
 
 

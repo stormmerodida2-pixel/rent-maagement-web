@@ -146,7 +146,7 @@ class PwaTests(TestCase):
         resp = self.client.get('/manifest.webmanifest')
         self.assertEqual(resp['Content-Type'], 'application/manifest+json')
         data = json.loads(resp.content)
-        self.assertEqual((data['name'], data['display'], data['scope']), ('Liskodi', 'standalone', '/'))
+        self.assertEqual((data['name'], data['display'], data['scope']), ('Rentipay', 'standalone', '/'))
         self.assertTrue(data['start_url'].startswith('/dashboard/'))
         self.assertIn('maskable', [icon.get('purpose') for icon in data['icons']])
         for icon in data['icons']:

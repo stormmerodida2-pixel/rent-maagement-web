@@ -250,14 +250,14 @@ else:
     MAILERS = {'default': {'BACKEND': 'django.core.mail.backends.console.EmailBackend'}}
 # Where Contact-page messages are emailed (the people running the site).
 SUPPORT_EMAIL = os.environ.get('SUPPORT_EMAIL', '')
-DEFAULT_FROM_EMAIL = os.environ.get('DEFAULT_FROM_EMAIL', 'Liskodi <no-reply@localhost>')
+DEFAULT_FROM_EMAIL = os.environ.get('DEFAULT_FROM_EMAIL', 'Rentipay <no-reply@localhost>')
 SERVER_EMAIL = DEFAULT_FROM_EMAIL
 
 
 # --- App settings ---------------------------------------------------------------------------
 
 # Product name shown across the site, home page and emails/SMS footers.
-APP_NAME = os.environ.get('APP_NAME', 'Liskodi')
+APP_NAME = os.environ.get('APP_NAME', 'Rentipay')
 
 # Shown on the privacy policy and terms. Set them to your registered business details.
 LEGAL = {

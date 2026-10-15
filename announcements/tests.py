@@ -75,7 +75,7 @@ class SendingTests(AnnouncementTestCase):
         self.assertEqual(Delivery.objects.filter(announcement=a).count(), 3)
         sms = SmsMessage.objects.filter(kind='announcement')
         self.assertEqual(sms.count(), 3)
-        self.assertTrue(all(m.body.startswith('Liskodi: Water off Saturday.') for m in sms))
+        self.assertTrue(all(m.body.startswith('Rentipay: Water off Saturday.') for m in sms))
         self.assertTrue(AuditEntry.objects.filter(action='announcement.sent').exists())
 
     def test_sending_twice_sends_once(self):
