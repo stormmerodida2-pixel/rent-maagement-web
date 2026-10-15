@@ -353,6 +353,9 @@ _FIXED_DESCRIPTIONS = {
     'Move-out deduction': _('Move-out deduction'),
     'Deposit applied at move-out': _('Deposit applied at move-out'),
     'Deposit refund paid to tenant': _('Deposit refund paid to tenant'),
+    'Balance brought forward': _('Balance brought forward'),
+    'Credit brought forward': _('Credit brought forward'),
+    'Deposit paid before Rentipay': _('Deposit paid before Rentipay'),
 }
 _WATER_DESCRIPTION = re.compile(r'^Water (?P<used>\S+) units \((?P<start>\S+) → (?P<end>\S+)\) @ KES (?P<rate>\S+)$')
 _DEDUCTION_DESCRIPTION = re.compile(r'^Move-out deduction: (?P<reason>.+)$', re.S)
@@ -405,6 +408,7 @@ class RentCharge(Voidable):
         DEPOSIT_APPLIED = 'deposit_applied', _('Deposit applied')
         DEDUCTION = 'deduction', _('Move-out deduction')
         REFUND = 'refund', _('Refund paid to tenant')
+        OPENING = 'opening', _('Balance brought forward')  # owed (or in credit) before using Rentipay
         OTHER = 'other', _('Other')
 
     # Kinds billed at most once per lease per month.

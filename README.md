@@ -301,6 +301,16 @@ docker compose exec web python manage.py check --deploy
 
 Use a Gmail account's **app password**: Google account → Security → 2-Step Verification (must be on) → **App passwords** → create one named "Rentipay". Then set in `.env_prod`: `EMAIL_HOST=smtp.gmail.com`, `EMAIL_PORT=587`, `EMAIL_USE_TLS=1`, `EMAIL_HOST_USER` and `DEFAULT_FROM_EMAIL` to the Gmail address, `EMAIL_HOST_PASSWORD` to the app password. Run `docker compose --env-file .env_prod up -d`, then test with `docker compose --env-file .env_prod exec web python manage.py sendtestemail you@example.com`. Gmail allows about 500 emails a day. With your own domain, Amazon SES is the better long-term choice.
 
+### Importing from Excel
+
+**Properties → Import from Excel** brings in a building's units and the tenants already living there. Download the template (the second sheet explains each column), fill in one row per unit, upload it (.xlsx or .csv, up to 1,000 rows), check the preview, and confirm.
+
+- **Unit** and **Rent** are required. A row with no tenant creates or updates a vacant unit. A tenant whose phone matches an existing contact reuses that contact.
+- **Balance owed now** becomes a "Balance brought forward" line, or "Credit brought forward" for a minus amount. If this month's rent was already due on import day, it counts as part of that balance and isn't billed again. Billing continues from each tenant's next rent day.
+- **Deposit** is a deposit already paid: it's recorded as held for move-out without adding to what the tenant owes.
+- Carried-over amounts don't count as a month's billing in reports.
+- Rows with problems (bad phone, missing rent, duplicate unit, unit already occupied) are shown in the preview and skipped. Nothing is saved until you confirm, and the import goes into Activity.
+
 ### Search engines
 
 - **`/sitemap.xml`** lists only the public pages (home, sign-up, login, contact), always with the domain from `SITE_URL`.

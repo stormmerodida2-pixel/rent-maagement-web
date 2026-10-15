@@ -15,6 +15,7 @@ from rentals.models import Lease, RentCharge, Unit
 # Money that isn't income: deposits held and returned, and credits.
 NON_INCOME_KINDS = [
     RentCharge.Kind.DEPOSIT, RentCharge.Kind.DEPOSIT_APPLIED, RentCharge.Kind.REFUND,
+    RentCharge.Kind.OPENING,  # balances carried over when a landlord starts using Rentipay
 ]
 
 
