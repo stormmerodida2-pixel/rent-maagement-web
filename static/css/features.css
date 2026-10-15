@@ -198,3 +198,13 @@ a.staff-card-link:hover { text-decoration: none; border-color: var(--brand); }
 .setup-steps { margin: 0; padding-left: 20px; display: grid; gap: 12px; }
 .recovery-codes { display: grid; grid-template-columns: repeat(2, minmax(0, 1fr)); gap: 6px 18px; margin: 0; padding-left: 22px; }
 .recovery-codes code { font-size: 15px; }
+
+/* --- Login, sign-up and other card pages ---------------------------------------------------------- */
+/* Heading and intro line centred under the centred logo. */
+.auth-card > h1, .auth-card > h1 + p { text-align: center; }
+@media (max-width: 520px) {
+  /* Room on both sides instead of touching the screen edges. */
+  .auth-card { margin: 3vh 16px 0; padding: 26px 20px; }
+  /* The card shows the big logo, so skip the small one in the top bar (one logo on screen). */
+  body:has(.auth-logo) .topbar > .brand { display: none; }
+}
