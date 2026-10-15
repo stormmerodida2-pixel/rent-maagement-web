@@ -44,7 +44,7 @@
         </td>
         <td class="num nowrap">
           {% if a.status == 'approved' %}
-            {% if a.tenant %}<a class="btn btn-sm" href="{% url 'rentals:lease_create' %}?unit={{ listing.unit_id }}&tenant={{ a.tenant_id }}">Start lease</a>{% endif %}
+            {% if a.tenant %}<a class="btn btn-sm" href="{% url 'rentals:lease_create' %}?unit={{ listing.unit_id }}&tenant={{ a.tenant_id }}">Move in</a>{% endif %}
           {% else %}
           <form method="post" action="{% url 'listings:application_action' a.pk %}" class="row" style="gap:6px;justify-content:flex-end">{% csrf_token %}
             <button name="action" value="approve" class="btn btn-sm btn-primary">Approve</button>

@@ -190,7 +190,7 @@ class UnitDelete(OwnedMixin, SafeDeleteMixin, DeleteView):
     owner_path = 'property__owner'
     template_name = 'confirm_delete.html'
     form_takes_owner = False
-    protected_message = 'This unit has lease history, so it can\'t be deleted.'
+    protected_message = 'This unit has rental history, so it can\'t be deleted.'
 
     def get_success_url(self):
         return reverse('rentals:property_detail', args=[self.object.property_id])
@@ -227,7 +227,7 @@ class TenantCreate(OwnedMixin, FormPageMixin, CreateView):
     page_title = 'Add a tenant'
     submit_label = 'Add tenant'
     cancel_url = reverse_lazy('rentals:tenant_list')
-    success_message = 'Added {obj}. Now start a lease for them.'
+    success_message = 'Added {obj}. Now move them into a unit.'
 
     def get_success_url(self):
         return reverse('rentals:lease_create') + f'?tenant={self.object.pk}'
@@ -253,7 +253,7 @@ class TenantDelete(OwnedMixin, SafeDeleteMixin, DeleteView):
     template_name = 'confirm_delete.html'
     form_takes_owner = False
     success_url = reverse_lazy('rentals:tenant_list')
-    protected_message = 'This tenant has lease history, so they can\'t be deleted.'
+    protected_message = 'This tenant has rental history, so they can\'t be deleted.'
 
 
 # --- Leases -----------------------------------------------------------------------------
@@ -292,10 +292,10 @@ class LeaseCreate(OwnedMixin, FormPageMixin, CreateView):
     audit_action = 'lease.started'
     form_class = LeaseForm
     owner_path = 'unit__property__owner'
-    page_title = 'Start a lease'
-    submit_label = 'Start lease'
+    page_title = 'Move a tenant in'
+    submit_label = 'Move in'
     cancel_url = reverse_lazy('rentals:lease_list')
-    success_message = 'Lease started for {obj.tenant} in {obj.unit}.'
+    success_message = '{obj.tenant} moved into {obj.unit}.'
 
     def get_initial(self):
         initial = super().get_initial()
@@ -311,10 +311,10 @@ class LeaseCreate(OwnedMixin, FormPageMixin, CreateView):
 class LeaseUpdate(OwnedMixin, FormPageMixin, UpdateView):
     model = Lease
     audit_action = 'lease.edited'
-    audit_summary = 'Edited lease {obj}.'
+    audit_summary = 'Edited rent and details for {obj}.'
     form_class = LeaseForm
     owner_path = 'unit__property__owner'
-    page_title = 'Edit lease'
+    page_title = 'Edit rent & details'
 
     def get_success_url(self):
         return reverse('rentals:lease_detail', args=[self.object.pk])
@@ -330,8 +330,8 @@ class LeaseEnd(OwnedMixin, FormPageMixin, FormView):
 
     form_class = EndLeaseForm
     form_takes_owner = False
-    page_title = 'End lease'
-    submit_label = 'End lease'
+    page_title = 'Move out'
+    submit_label = 'Move out'
 
     def dispatch(self, request, *args, **kwargs):
         if not request.user.is_authenticated:

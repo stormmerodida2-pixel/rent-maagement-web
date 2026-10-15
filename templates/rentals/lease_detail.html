@@ -9,7 +9,7 @@
       <h1>{{ lease.tenant }}</h1>
       <p class="sub">
         {{ lease.unit }}
-        {% if lease.moving_out %}<span class="badge badge-warn">Moving out {{ lease.end_date|date:"d M" }}</span>{% elif lease.is_active %}<span class="badge badge-success">Active lease</span>{% else %}<span class="badge">Ended</span>{% endif %}
+        {% if lease.moving_out %}<span class="badge badge-warn">Moving out {{ lease.end_date|date:"d M" }}</span>{% elif lease.is_active %}<span class="badge badge-success">Living here</span>{% else %}<span class="badge">Moved out</span>{% endif %}
       </p>
     </div>
   </div>
@@ -17,10 +17,10 @@
     <a class="btn" href="{% url 'payments:payment_create' %}?lease={{ lease.pk }}">{% icon 'wallet' %}Record cash/bank</a>
     <a class="btn" href="{% url 'rentals:charge_create' lease.pk %}">{% icon 'plus' %}Add charge</a>
     <a class="btn" href="{% url 'rentals:tenant_update' lease.tenant_id %}?next={{ request.path|urlencode }}">Edit tenant</a>
-    <a class="btn" href="{% url 'rentals:lease_update' lease.pk %}">Edit lease</a>
+    <a class="btn" href="{% url 'rentals:lease_update' lease.pk %}">Edit rent &amp; details</a>
     {% if lease.is_active %}<a class="btn" href="{% url 'rentals:rent_change' lease.pk %}">Change rent</a>{% endif %}
     {% if lease.is_active and not lease.moving_out %}<a class="btn" href="{% url 'rentals:lease_notice' lease.pk %}">{% icon 'calendar' %}Record move-out notice</a>{% endif %}
-    {% if lease.is_active %}<a class="btn text-danger" href="{% url 'rentals:lease_end' lease.pk %}">End lease</a>{% endif %}
+    {% if lease.is_active %}<a class="btn text-danger" href="{% url 'rentals:lease_end' lease.pk %}">Move out</a>{% endif %}
   </div>
 </div>
 
@@ -115,7 +115,7 @@
           <dt>Phone</dt><dd>{{ lease.tenant.phone }}</dd>
           <dt>Language</dt><dd>{{ lease.tenant.get_language_display }} <span class="muted small">(SMS, receipts, rent page)</span></dd>
           {% if lease.tenant.email %}<dt>Email</dt><dd>{{ lease.tenant.email }}</dd>{% endif %}
-          <dt>Lease</dt><dd>{{ lease.start_date|date:"d M Y" }} – {{ lease.end_date|date:"d M Y"|default:"ongoing" }}</dd>
+          <dt>Renting</dt><dd>{{ lease.start_date|date:"d M Y" }} – {{ lease.end_date|date:"d M Y"|default:"ongoing" }}</dd>
           <dt>Deposit</dt><dd>{{ lease.deposit|kes }}{% if deposit_held %} <span class="muted small">({{ deposit_held|kes }} held)</span>{% endif %}</dd>
           {% if lease.service_charge %}<dt>Service charge</dt><dd>{{ lease.service_charge|kes }} / month</dd>{% endif %}
           {% if lease.late_fee %}<dt>Late fee</dt><dd>{{ lease.late_fee|kes }} after {{ lease.late_fee_grace_days }} day{{ lease.late_fee_grace_days|pluralize }}</dd>{% endif %}

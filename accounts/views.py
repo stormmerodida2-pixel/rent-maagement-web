@@ -152,11 +152,11 @@ def setup_steps(user):
             'cta': 'Add tenant',
         },
         {
-            'title': 'Start a lease',
-            'text': 'Link a tenant to a unit with the rent and due date. Rent is billed every month.',
+            'title': 'Move your first tenant in',
+            'text': 'Put a tenant in a unit with their rent and rent day. Rent is then billed every month.',
             'done': Lease.objects.filter(unit__property__owner=user).exists(),
             'url': 'rentals:lease_create',
-            'cta': 'Start lease',
+            'cta': 'Move a tenant in',
         },
         {
             'title': 'Connect M-Pesa',
