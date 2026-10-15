@@ -1,5 +1,7 @@
 from django.urls import path
 
+from accounts import views as account_views
+
 from . import views
 
 app_name = 'staff'
@@ -15,6 +17,7 @@ urlpatterns = [
     path('staff/repairs/new/', views.repair_form, name='repair_create'),
     path('staff/repairs/<int:pk>/', views.repair_form, name='repair_update'),
     path('staff/password/', views.StaffPasswordView.as_view(), name='password'),
+    path('staff/two-step/', account_views.two_factor_settings, name='two_factor'),
     # Landlord: Settings → Staff
     path('settings/staff/', views.staff_list, name='manage'),
     path('settings/staff/new/', views.staff_edit, name='add'),

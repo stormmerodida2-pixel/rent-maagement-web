@@ -1,0 +1,26 @@
+name: Uptime
+
+# Checks the live site from outside every 15 minutes, so you hear about it even if the whole server is down
+# (the server's own health check can't alert you then). A failed run means GitHub emails you.
+on:
+  schedule:
+    - cron: "*/15 * * * *"
+  workflow_dispatch:
+
+jobs:
+  check:
+    runs-on: ubuntu-latest
+    timeout-minutes: 5
+    env:
+      SITE_URL: https://13-204-5-26.sslip.io  # change this when you move to your own domain
+    steps:
+      - name: Live site is healthy
+        run: |
+          for attempt in 1 2 3; do
+            body=$(curl -sS -m 20 "$SITE_URL/healthz/" || true)
+            if echo "$body" | grep -q '"status": "ok"' && echo "$body" | grep -q '"scheduler": "ok"'; then
+              echo "OK: $body"; exit 0
+            fi
+            echo "Attempt $attempt: ${body:-no response}"; sleep 30
+          done
+          echo "::error::$SITE_URL isn't healthy"; exit 1

@@ -289,6 +289,18 @@ docker compose exec web python manage.py check --deploy
 - **Approve** adds the person as a tenant and opens the lease form for that unit. The listing closes by itself once a lease starts, and its page then says the place has been let.
 - Photos are resized (max 1600 px) and saved as fresh JPEGs, so the GPS location and phone details in a photo's EXIF data are never published. On the server they're kept on the `media` Docker volume and served by Caddy. They are **not** in the nightly database backup.
 
+### Two-step login
+
+- **Settings → Two-step login** (caretakers: the **Two-step** tab). Scan the QR code with Google Authenticator, Microsoft Authenticator or Authy, then enter a code to turn it on. You get 10 **recovery codes** once; keep them away from your phone.
+- After the password, logging in asks for the 6-digit code. Each code works only once, codes are accepted 30 seconds either side for clock drift, and 5 wrong codes start the login over. **Trust this device for 30 days** skips the code on that browser; turning two-step login off and on again forgets all trusted devices.
+- A recovery code works in place of the app code once. Turning two-step login off needs your password and a code. You're emailed when it's turned on or off.
+- The Django admin's login page sends you to the app's login, so admins get the same checks.
+- Someone who lost their phone **and** their codes: `docker compose --env-file .env_prod exec web python manage.py disable_two_step <username>`.
+
+### Email with Gmail (until you have your own domain)
+
+Use a Gmail account's **app password**: Google account → Security → 2-Step Verification (must be on) → **App passwords** → create one named "Liskodi". Then set in `.env_prod`: `EMAIL_HOST=smtp.gmail.com`, `EMAIL_PORT=587`, `EMAIL_USE_TLS=1`, `EMAIL_HOST_USER` and `DEFAULT_FROM_EMAIL` to the Gmail address, `EMAIL_HOST_PASSWORD` to the app password. Run `docker compose --env-file .env_prod up -d`, then test with `docker compose --env-file .env_prod exec web python manage.py sendtestemail you@example.com`. Gmail allows about 500 emails a day. With your own domain, Amazon SES is the better long-term choice.
+
 ### Search engines
 
 - **`/sitemap.xml`** lists only the public pages (home, sign-up, login, contact), always with the domain from `SITE_URL`.
@@ -335,6 +347,19 @@ sudo systemctl daemon-reload && sudo systemctl enable --now liskodi-autodeploy.t
 The service always runs the newest `deploy/autodeploy.sh` from `main`, so changes to the script roll out too. If your repository is private, the server needs a read-only deploy key (repo Settings → Deploy keys) to `git fetch`.
 
 To roll back, revert the bad commit and merge: the revert deploys like any other change.
+
+### Alerts
+
+Three layers, so you hear about problems quickly:
+
+1. **Phone notifications (ntfy):** the server sends push notifications to a private [ntfy](https://ntfy.sh) channel. Install the free **ntfy** app (Android/iPhone) and subscribe to the topic in `~/.config/liskodi/alerts.env` on the server (`ALERT_NTFY_URL=https://ntfy.sh/<topic>`). Anyone who knows the topic name can read it, so keep it private. You'll be told when:
+   - a deploy fails (the site goes back to the previous version) or is skipped because tests failed. Successful deploys send a quiet note.
+   - the site isn't healthy (database, cache or scheduler down, or HTTPS not working). `deploy/healthcheck.sh` checks every 5 minutes (`liskodi-healthcheck.timer`).
+   - the HTTPS certificate has 14 days or less left, or the disk is over 85% full.
+
+   Each problem is reported once when it starts and once when it's fixed. To install on a new server, copy `deploy/liskodi-healthcheck.*` to `/etc/systemd/system/` and `systemctl enable --now liskodi-healthcheck.timer`, as for auto-deploy.
+2. **From outside:** `.github/workflows/uptime.yml` checks `/healthz/` every 15 minutes from GitHub. If the whole server is down, the run fails and **GitHub emails you**. Set `SITE_URL` in that file when you move to your own domain. GitHub pauses scheduled workflows after 60 days without commits; re-enable them under Actions if that happens.
+3. **Code errors (Sentry):** set `SENTRY_DSN` in `.env_prod` (free account at sentry.io, Django project) to get an email with the exact error for any page that crashes or scheduled job that fails.
 
 Run the same checks locally:
 ```bash

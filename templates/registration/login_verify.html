@@ -1,0 +1,22 @@
+{% extends 'registration/auth_card.html' %}
+{% block title %}Two-step login · {{ APP_NAME }}{% endblock %}
+{% block card %}
+<h1>Enter your code</h1>
+<p class="muted">Open your authenticator app (e.g. Google Authenticator) and type the 6-digit code for {{ APP_NAME }}.</p>
+<form method="post" novalidate>
+  {% csrf_token %}
+  {% if error %}<div class="alert alert-error">{{ error }}</div>{% endif %}
+  <div class="field">
+    <label for="code">Code</label>
+    <input id="code" name="code" type="text" inputmode="numeric" autocomplete="one-time-code" autofocus required
+           maxlength="20" placeholder="123 456" class="code-input">
+  </div>
+  <div class="field field-check">
+    <input type="checkbox" id="trust" name="trust" value="1"><label for="trust">Trust this device for 30 days</label>
+    <span class="helptext">Only on your own phone or computer.</span>
+  </div>
+  <button type="submit" class="btn btn-primary btn-block btn-lg">Verify</button>
+</form>
+<p class="muted small" style="margin-top:14px">Lost your phone? Type one of your recovery codes instead (like <code>a1b2-c3d4-e5f6</code>).</p>
+{% endblock %}
+{% block below %}<p class="muted small" style="text-align:center;margin-top:20px"><a href="{% url 'login' %}">Start again</a></p>{% endblock %}

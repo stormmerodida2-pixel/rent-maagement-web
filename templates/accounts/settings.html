@@ -84,6 +84,9 @@
       <span class="settings-text"><strong>Profile</strong><span class="muted small">Your name, email and phone number</span></span>{% icon 'arrow-right' %}</a>
     <a class="settings-row settings-link" href="{% url 'accounts:password_change' %}">
       <span class="settings-text"><strong>Password</strong><span class="muted small">Change the password you log in with</span></span>{% icon 'arrow-right' %}</a>
+    <a class="settings-row settings-link" href="{% url 'accounts:two_factor' %}">
+      <span class="settings-text"><strong>Two-step login</strong><span class="muted small">{% if two_factor_on %}On: a code from your phone is needed to log in{% else %}Off. Turn it on so a stolen password isn't enough to get in{% endif %}</span></span>
+      {% if two_factor_on %}<span class="badge badge-success">On</span>{% else %}<span class="badge badge-warn">Off</span>{% endif %}{% icon 'arrow-right' %}</a>
     <div class="settings-row">
       <span class="settings-text"><span class="muted small"><a href="{% url 'privacy' %}">Privacy</a> · <a href="{% url 'terms' %}">Terms</a></span></span>
       <form method="post" action="{% url 'logout' %}">{% csrf_token %}<button class="btn btn-sm">{% icon 'logout' %}Log out</button></form>

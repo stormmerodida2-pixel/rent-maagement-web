@@ -189,3 +189,12 @@ a.staff-card-link:hover { text-decoration: none; border-color: var(--brand); }
 .rents-table .input-narrow { max-width: 80px; }
 .rents-table .input-rent { max-width: 140px; text-align: right; margin-left: auto; display: block; }
 .rents-table tr.row-error td { background: color-mix(in srgb, var(--danger) 8%, transparent); }
+
+/* --- Two-step login ---------------------------------------------------------------------------- */
+.code-input { font-size: 20px; letter-spacing: .15em; font-variant-numeric: tabular-nums; }
+.qr { width: 200px; max-width: 100%; margin: 10px 0; padding: 8px; background: #fff; border-radius: 12px; }
+.qr svg { display: block; width: 100%; height: auto; }
+.manual-key { word-break: break-all; }
+.setup-steps { margin: 0; padding-left: 20px; display: grid; gap: 12px; }
+.recovery-codes { display: grid; grid-template-columns: repeat(2, minmax(0, 1fr)); gap: 6px 18px; margin: 0; padding-left: 22px; }
+.recovery-codes code { font-size: 15px; }

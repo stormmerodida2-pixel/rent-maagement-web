@@ -177,12 +177,14 @@ class AdminLoginThrottleTests(TestCase):
         cache.clear()
         get_user_model().objects.create_superuser('root', password='right-password-1')
 
-    def test_admin_login_is_limited_and_shares_the_counter(self):
+    def test_admin_login_uses_the_app_login_and_its_limits(self):
+        # The admin's own login page hands over to the app's login (throttled, with two-step login).
+        self.assertRedirects(self.client.post('/admin/login/?next=/admin/', {'username': 'root', 'password': 'x'}),
+                             '/login/?next=/admin/', fetch_redirect_response=False)
         for _ in range(5):
-            self.client.post('/admin/login/', {'username': 'root', 'password': 'wrong'})
-        self.assertEqual(self.client.post('/admin/login/', {'username': 'root', 'password': 'right-password-1'}).status_code, 429)
+            self.client.post(reverse('login'), {'username': 'root', 'password': 'wrong'})
         self.assertEqual(self.client.post(reverse('login'), {'username': 'root', 'password': 'right-password-1'}).status_code, 429)
 
     def test_admin_login_still_works(self):
-        resp = self.client.post('/admin/login/?next=/admin/', {'username': 'root', 'password': 'right-password-1'})
+        resp = self.client.post(reverse('login'), {'username': 'root', 'password': 'right-password-1', 'next': '/admin/'})
         self.assertRedirects(resp, '/admin/', fetch_redirect_response=False)
