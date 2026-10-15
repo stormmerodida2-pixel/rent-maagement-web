@@ -82,6 +82,7 @@ INSTALLED_APPS = [
     'support',
     'announcements',
     'staff',
+    'listings',
     'ops',
 ]
 
@@ -173,6 +174,10 @@ USE_TZ = True
 STATIC_URL = 'static/'
 STATICFILES_DIRS = [BASE_DIR / 'static']
 STATIC_ROOT = BASE_DIR / 'staticfiles'
+# Uploaded files (listing photos). On the server they live on a Docker volume that Caddy serves.
+MEDIA_URL = '/media/'
+MEDIA_ROOT = Path(os.environ.get('MEDIA_ROOT', BASE_DIR / 'media'))
+
 STORAGES = {
     'default': {'BACKEND': 'django.core.files.storage.FileSystemStorage'},
     'staticfiles': {

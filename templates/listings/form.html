@@ -1,0 +1,22 @@
+{% extends 'app_base.html' %}
+{% block page_title %}Advertise {{ unit }}{% endblock %}
+{% block content %}
+<div class="form-page">
+<div class="page-header"><div>
+  <h1>Advertise {{ unit }}</h1>
+  <p class="sub">You'll get a page to share on WhatsApp and Facebook. People apply there, and you choose who to approve.</p>
+</div></div>
+<section class="card form-card">
+  <div class="card-body">
+    <form method="post" enctype="multipart/form-data" novalidate>
+      {% csrf_token %}
+      {% include 'includes/form_fields.html' %}
+      <div class="form-actions">
+        <button type="submit" class="btn btn-primary">Publish listing</button>
+        <a class="btn btn-ghost" href="{% url 'listings:list' %}">Cancel</a>
+      </div>
+    </form>
+  </div>
+</section>
+</div>
+{% endblock %}

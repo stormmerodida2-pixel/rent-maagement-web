@@ -1,0 +1,79 @@
+{% extends 'base.html' %}
+{% load ui %}
+{% block title %}{{ listing.title }} · KES {{ listing.rent|floatformat:0 }} · {{ APP_NAME }}{% endblock %}
+{% block description %}{{ listing.title }} at {{ listing.unit.property.name }}{% if listing.unit.property.address %}, {{ listing.unit.property.address }}{% endif %}. KES {{ listing.rent|floatformat:"0g" }} a month, available {{ listing.available_from|date:"j M" }}.{% endblock %}
+{% block seo %}
+<meta name="robots" content="{% if listing.is_open %}index, follow{% else %}noindex{% endif %}">
+<link rel="canonical" href="{{ listing.public_url }}">
+<meta property="og:type" content="website">
+<meta property="og:site_name" content="{{ APP_NAME }}">
+<meta property="og:title" content="{{ listing.title }} · KES {{ listing.rent|floatformat:'0g' }}/month">
+<meta property="og:description" content="{{ listing.unit.property.name }}{% if listing.unit.property.address %}, {{ listing.unit.property.address }}{% endif %} · {{ listing.unit.bedrooms }} bedroom{{ listing.unit.bedrooms|pluralize }} · available {{ listing.available_from|date:'j M' }}">
+<meta property="og:url" content="{{ listing.public_url }}">
+{% if listing.cover %}<meta property="og:image" content="{{ SITE_URL }}{{ listing.cover.image.url }}">{% endif %}
+<meta name="twitter:card" content="summary_large_image">
+{% endblock %}
+
+{% block body %}
+<header class="topbar" style="border-bottom:1px solid var(--border);background:var(--surface)">
+  <span class="brand" style="padding:0">{% include 'includes/logo.html' %}</span>
+  <span class="spacer"></span>
+  {% include 'includes/theme_switch.html' %}
+</header>
+
+<main class="narrow stack listing-page">
+  {% if photos %}
+  <div class="listing-photos" tabindex="0" aria-label="Photos">
+    {% for p in photos %}<img src="{{ p.image.url }}" alt="{{ listing.title }}, photo {{ forloop.counter }}" {% if not forloop.first %}loading="lazy"{% endif %}>{% endfor %}
+  </div>
+  {% endif %}
+
+  <div>
+    {% if not listing.is_open %}<div class="alert alert-info" style="margin-bottom:12px">This place has been let. Thank you for your interest.</div>{% endif %}
+    <h1>{{ listing.title }}</h1>
+    <p class="muted">{{ listing.unit.property.name }}{% if listing.unit.property.address %} · {{ listing.unit.property.address }}{% endif %}</p>
+  </div>
+
+  <section class="card">
+    <div class="card-body listing-facts">
+      <div><span class="label">Rent</span><strong>{{ listing.rent|kes }}</strong><span class="muted small">a month</span></div>
+      {% if listing.deposit %}<div><span class="label">Deposit</span><strong>{{ listing.deposit|kes }}</strong></div>{% endif %}
+      <div><span class="label">Bedrooms</span><strong>{{ listing.unit.bedrooms }}</strong></div>
+      <div><span class="label">Available</span><strong>{{ listing.available_from|date:"j M Y" }}</strong></div>
+    </div>
+    {% if listing.description %}<div class="card-body" style="border-top:1px solid var(--border)"><p style="margin:0">{{ listing.description|linebreaksbr }}</p></div>{% endif %}
+  </section>
+
+  {% if listing.is_open %}
+  {% if listing.contact_phone %}
+  <a class="btn btn-lg btn-block" href="tel:+{{ listing.contact_phone }}">{% icon 'phone' %}Call +{{ listing.contact_phone }}</a>
+  {% endif %}
+
+  <section class="card" id="apply">
+    <div class="card-header"><h2>{% if sent %}Thank you{% else %}Apply for this place{% endif %}</h2></div>
+    <div class="card-body">
+      {% if sent %}
+      <p style="margin:0">Your application has been sent to the landlord. They will contact you on the phone number you gave.</p>
+      {% else %}
+      <form method="post" action="#apply" novalidate>
+        {% csrf_token %}
+        <div class="visually-hidden" aria-hidden="true">{{ form.website }}</div>
+        {% if form.non_field_errors %}<div class="alert alert-error" style="margin-bottom:14px">{{ form.non_field_errors|join:" " }}</div>{% endif %}
+        {% for field in form.visible_fields %}{% if field.name != 'website' %}
+        <div class="field{% if field.errors %} has-error{% endif %}">
+          <label for="{{ field.id_for_label }}">{{ field.label|capfirst }}</label>
+          {{ field }}
+          {{ field.errors }}
+        </div>
+        {% endif %}{% endfor %}
+        <button type="submit" class="btn btn-primary btn-lg btn-block" style="margin-top:16px">Send application</button>
+        <p class="helptext" style="text-align:center">Only the landlord sees your details. <a href="{% url 'privacy' %}">Privacy</a></p>
+      </form>
+      {% endif %}
+    </div>
+  </section>
+  {% endif %}
+
+  <p class="muted small" style="text-align:center">Listed with {{ APP_NAME }}</p>
+</main>
+{% endblock %}

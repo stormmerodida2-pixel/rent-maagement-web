@@ -281,6 +281,14 @@ docker compose exec web python manage.py check --deploy
 - **Rent changes:** **Change rent** on a lease, or on a property for several tenants at once (by a percentage, by an amount, or to a set rent, with a preview first). The new rent starts on each tenant's first rent day on or after the date you choose, and billing switches automatically. Tenants get an SMS in their language, and the change shows on their rent page. Percentage rises round to the nearest KES 50. You can cancel a change before it starts.
 - **Move-out notice:** "Record move-out notice" on a lease. The date defaults to the end of a rent month at least a month away. No new rent month is billed after it. A reminder email goes out 3 days before, and "Finish move-out" settles the deposit.
 
+### Vacancy listings
+
+- **Vacancies** in the menu lists units you can advertise (vacant, or the tenant has given notice). **Advertise** creates a public page at `/to-let/…` with rent, deposit, date available, description and up to 8 photos.
+- **Share on WhatsApp** and **Copy** put the link anywhere. The page has a link preview (title, rent, first photo) for WhatsApp and Facebook, and open listings appear in the sitemap.
+- People apply with their name, phone, move-in date and number of occupants. You get an email for each application, with duplicates from the same phone ignored. A hidden field and a per-connection limit stop bots and floods.
+- **Approve** adds the person as a tenant and opens the lease form for that unit. The listing closes by itself once a lease starts, and its page then says the place has been let.
+- Photos are resized (max 1600 px) and saved as fresh JPEGs, so the GPS location and phone details in a photo's EXIF data are never published. On the server they're kept on the `media` Docker volume and served by Caddy. They are **not** in the nightly database backup.
+
 ### Search engines
 
 - **`/sitemap.xml`** lists only the public pages (home, sign-up, login, contact), always with the domain from `SITE_URL`.

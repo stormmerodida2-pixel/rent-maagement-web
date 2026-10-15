@@ -58,13 +58,35 @@ class PublicPagesSitemap(Sitemap):
         return urlsplit(settings.SITE_URL).scheme or 'https'
 
 
-SITEMAPS = {'pages': PublicPagesSitemap}
+class ListingsSitemap(PublicPagesSitemap):
+    """Open vacancy listings, so people searching for a house can find them."""
+
+    def items(self):
+        from listings.models import Listing
+
+        return Listing.objects.filter(is_open=True).order_by('-created_at')
+
+    def location(self, listing):
+        return listing.get_absolute_url()
+
+    def priority(self, listing):
+        return 0.6
+
+    def changefreq(self, listing):
+        return 'daily'
+
+    def lastmod(self, listing):
+        return listing.created_at
+
+
+SITEMAPS = {'pages': PublicPagesSitemap, 'listings': ListingsSitemap}
 
 # Private areas. They need a login (or a secret tenant link) anyway; this keeps crawlers from trying.
 PRIVATE_PATHS = [
     '/admin/', '/t/', '/dashboard/', '/welcome/', '/properties/', '/units/', '/tenants/', '/leases/',
     '/charges/', '/readings/', '/payments/', '/maintenance/', '/complaints/', '/messages/', '/reports/',
     '/activity/', '/announcements/', '/verify-email/', '/password-reset/', '/logout/', '/healthz/',
+    '/vacancies/', '/staff/', '/settings/',
 ]
 
 
