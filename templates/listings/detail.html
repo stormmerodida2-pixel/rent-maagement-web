@@ -1,0 +1,86 @@
+{% extends 'app_base.html' %}
+{% load ui %}
+{% block page_title %}{{ listing.title }}{% endblock %}
+{% block content %}
+<div class="page-header">
+  <div><h1>{{ listing.title }}</h1>
+    <p class="sub">{{ listing.unit }} · {{ listing.rent|kes }} a month ·
+      {% if listing.is_open %}<span class="badge badge-success">Open</span>{% else %}<span class="badge">Closed {{ listing.closed_at|date:"d M" }}</span>{% endif %}
+      · {{ listing.views }} view{{ listing.views|pluralize }}</p></div>
+  <div class="actions">
+    <a class="btn" href="{% url 'listings:list' %}">All vacancies</a>
+    <form method="post">{% csrf_token %}
+      {% if listing.is_open %}<button name="action" value="close" class="btn">Close listing</button>
+      {% else %}<button name="action" value="reopen" class="btn">Reopen</button>{% endif %}
+    </form>
+  </div>
+</div>
+
+{% if listing.is_open %}
+<section class="card share-card" style="margin-bottom:20px">
+  <div class="card-body">
+    <div class="small muted" style="margin-bottom:6px">Share this link</div>
+    <div class="share-row">
+      <input type="text" value="{{ listing.public_url }}" readonly aria-label="Listing link" id="listing-link">
+      <button type="button" class="btn" data-copy="#listing-link">{% icon 'file' %}<span data-copy-label>Copy</span></button>
+      <a class="btn btn-whatsapp" href="{{ whatsapp_url }}" target="_blank" rel="noopener">{% icon 'message' %}Share on WhatsApp</a>
+      <a class="btn btn-ghost" href="{{ listing.get_absolute_url }}" target="_blank" rel="noopener">{% icon 'external' %}View page</a>
+    </div>
+  </div>
+</section>
+{% endif %}
+
+<div class="grid-2">
+  <section class="card">
+    <div class="card-header"><h2>Applications</h2><span class="muted">{{ applications|length }}</span></div>
+    {% if applications %}
+    <div class="table-wrap"><table class="table"><tbody>
+      {% for a in applications %}
+      <tr>
+        <td><strong>{{ a.name }}</strong> {% badge a.status a.get_status_display %}
+          <div class="muted small"><a href="tel:+{{ a.phone }}">{{ a.phone }}</a>{% if a.email %} · {{ a.email }}{% endif %} · {{ a.created_at|date:"d M, H:i" }}</div>
+          <div class="small">{% if a.move_in %}Move in {{ a.move_in|date:"d M" }}{% endif %}{% if a.move_in and a.occupants %} · {% endif %}{% if a.occupants %}{{ a.occupants }} {% if a.occupants == 1 %}person{% else %}people{% endif %}{% endif %}</div>
+          {% if a.message %}<div class="small muted" style="margin-top:4px">“{{ a.message }}”</div>{% endif %}
+        </td>
+        <td class="num nowrap">
+          {% if a.status == 'approved' %}
+            {% if a.tenant %}<a class="btn btn-sm" href="{% url 'rentals:lease_create' %}?unit={{ listing.unit_id }}&tenant={{ a.tenant_id }}">Start lease</a>{% endif %}
+          {% else %}
+          <form method="post" action="{% url 'listings:application_action' a.pk %}" class="row" style="gap:6px;justify-content:flex-end">{% csrf_token %}
+            <button name="action" value="approve" class="btn btn-sm btn-primary">Approve</button>
+            {% if a.status == 'new' %}<button name="action" value="contacted" class="btn btn-sm">Contacted</button>{% endif %}
+            {% if a.status != 'declined' %}<button name="action" value="declined" class="btn btn-sm btn-ghost">Decline</button>{% endif %}
+          </form>
+          {% endif %}
+        </td>
+      </tr>
+      {% endfor %}
+    </tbody></table></div>
+    {% else %}
+    <div class="empty"><strong>No applications yet</strong>Share the link: applications appear here, and you get an email for each one.</div>
+    {% endif %}
+  </section>
+
+  <section class="card">
+    <div class="card-header"><h2>Photos and details</h2><span class="muted small">{{ photos|length }} of {{ max_photos }} photos</span></div>
+    <div class="card-body stack">
+      {% if photos %}
+      <div class="photo-grid">
+        {% for p in photos %}
+        <figure>
+          <img src="{{ p.image.url }}" alt="Photo {{ forloop.counter }}" loading="lazy">
+          <form method="post">{% csrf_token %}<input type="hidden" name="photo" value="{{ p.pk }}">
+            <button name="action" value="delete_photo" class="btn btn-sm btn-ghost" title="Remove photo">{% icon 'x' %}<span class="visually-hidden">Remove</span></button></form>
+        </figure>
+        {% endfor %}
+      </div>
+      {% endif %}
+      <form method="post" enctype="multipart/form-data" novalidate>
+        {% csrf_token %}
+        {% include 'includes/form_fields.html' %}
+        <div class="form-actions"><button type="submit" class="btn btn-primary">Save</button></div>
+      </form>
+    </div>
+  </section>
+</div>
+{% endblock %}

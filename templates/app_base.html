@@ -28,6 +28,7 @@
       <a href="{% url 'rentals:property_list' %}" class="{% if 'property' in url_name or 'unit_' in url_name %}active{% endif %}">{% icon 'building' %}Properties</a>
       <a href="{% url 'rentals:tenant_list' %}" class="{% if 'tenant_' in url_name and url_name != 'tenant_portal' %}active{% endif %}">{% icon 'users' %}Tenants</a>
       <a href="{% url 'rentals:lease_list' %}" class="{% if 'lease' in url_name %}active{% endif %}">{% icon 'file' %}Leases</a>
+      <a href="{% url 'listings:list' %}" class="{% if request.resolver_match.app_name == 'listings' %}active{% endif %}">{% icon 'key' %}Vacancies</a>
       <a href="{% url 'announcements:list' %}" class="{% if app == 'announcements' %}active{% endif %}">{% icon 'megaphone' %}Announcements</a>
       <a href="{% url 'support:complaint_list' %}" class="{% if url_name == 'complaint_list' or url_name == 'complaint_detail' %}active{% endif %}">{% icon 'message' %}Complaints{% if nav_complaints %}<span class="count">{{ nav_complaints }}</span>{% endif %}</a>
       <a href="{% url 'maintenance:list' %}" class="{% if app == 'maintenance' %}active{% endif %}">{% icon 'wrench' %}Maintenance{% if nav_open_requests %}<span class="count">{{ nav_open_requests }}</span>{% endif %}</a>

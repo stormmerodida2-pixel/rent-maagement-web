@@ -1,0 +1,45 @@
+{% extends 'app_base.html' %}
+{% load ui %}
+{% block page_title %}Vacancies{% endblock %}
+{% block content %}
+<div class="page-header">
+  <div><h1>Vacancies</h1><p class="sub">Advertise empty units with a page you can share on WhatsApp or Facebook, and pick a tenant from the applications.</p></div>
+</div>
+
+{% if candidates %}
+<section class="card" style="margin-bottom:20px">
+  <div class="card-header"><h2>Ready to advertise</h2><span class="muted small">vacant, or the tenant has given notice</span></div>
+  <div class="table-wrap"><table class="table"><tbody>
+    {% for unit in candidates %}
+    <tr>
+      <td><strong>{{ unit }}</strong><div class="muted small">{{ unit.bedrooms }} bedroom{{ unit.bedrooms|pluralize }} · {{ unit.default_rent|kes }} a month</div></td>
+      <td class="num"><a class="btn btn-sm btn-primary" href="{% url 'listings:create' unit.pk %}">{% icon 'megaphone' %}Advertise</a></td>
+    </tr>
+    {% endfor %}
+  </tbody></table></div>
+</section>
+{% endif %}
+
+<section class="card">
+  <div class="card-header"><h2>Your listings</h2></div>
+  {% if listings %}
+  <div class="table-wrap"><table class="table">
+    <thead><tr><th>Listing</th><th class="num">Rent</th><th class="num">Views</th><th class="num">Applications</th><th></th></tr></thead>
+    <tbody>
+    {% for l in listings %}
+    <tr>
+      <td><a href="{% url 'listings:detail' l.pk %}"><strong>{{ l.title }}</strong></a>
+        <div class="muted small">{{ l.unit }} · available {{ l.available_from|date:"d M" }}</div></td>
+      <td class="num">{{ l.rent|kes }}</td>
+      <td class="num">{{ l.views }}</td>
+      <td class="num">{{ l.apps }}{% if l.new_apps %} <span class="badge badge-info">{{ l.new_apps }} new</span>{% endif %}</td>
+      <td class="num">{% if l.is_open %}<span class="badge badge-success">Open</span>{% else %}<span class="badge">Closed</span>{% endif %}</td>
+    </tr>
+    {% endfor %}
+    </tbody>
+  </table></div>
+  {% else %}
+  <div class="empty"><strong>No listings yet</strong>{% if candidates %}Pick a unit above to advertise it.{% else %}When a unit is vacant or a tenant gives notice, you can advertise it here.{% endif %}</div>
+  {% endif %}
+</section>
+{% endblock %}

@@ -2,5 +2,16 @@
 # (the domain's DNS must point at this server, with ports 80 and 443 open).
 {$DOMAIN} {
 	encode zstd gzip
-	reverse_proxy web:8000
+
+	# Uploaded photos (listing pictures), straight from the shared volume.
+	handle_path /media/* {
+		root * /srv/media
+		file_server
+		header Cache-Control "public, max-age=604800"
+		header X-Content-Type-Options nosniff
+	}
+
+	handle {
+		reverse_proxy web:8000
+	}
 }

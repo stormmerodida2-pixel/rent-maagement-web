@@ -21,6 +21,8 @@ services:
   web:
     <<: *app
     command: sh -c "python manage.py migrate --noinput && exec gunicorn config.wsgi -c gunicorn.conf.py"
+    volumes:
+      - media:/app/media  # uploaded listing photos; Caddy serves them
     healthcheck:
       test: ["CMD", "python", "-c", "import urllib.request; urllib.request.urlopen('http://localhost:8000/healthz/', timeout=5)"]
       interval: 30s
@@ -71,6 +73,7 @@ services:
       DOMAIN: ${DOMAIN:?set DOMAIN in your env file}
     volumes:
       - ./Caddyfile:/etc/caddy/Caddyfile:ro
+      - media:/srv/media:ro
       - caddy_data:/data
       - caddy_config:/config
     depends_on:
@@ -81,5 +84,6 @@ services:
 volumes:
   pgdata:
   backups:
+  media:
   caddy_data:
   caddy_config:

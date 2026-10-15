@@ -139,6 +139,23 @@
     form.querySelectorAll('input[name="lease"]').forEach(function (b) { b.checked = toggle.dataset.remindAll === '1'; });
     syncRemind(form);
   });
+  // Copy buttons (e.g. a listing's share link): data-copy="#id-of-input".
+  document.addEventListener('click', function (event) {
+    var button = event.target.closest('[data-copy]');
+    if (!button) return;
+    var field = document.querySelector(button.dataset.copy);
+    if (!field) return;
+    var done = function () {
+      var label = button.querySelector('[data-copy-label]');
+      if (label) { label.textContent = 'Copied'; setTimeout(function () { label.textContent = 'Copy'; }, 2000); }
+    };
+    if (navigator.clipboard) {
+      navigator.clipboard.writeText(field.value).then(done, function () { field.select(); });
+    } else {
+      field.select();
+      try { document.execCommand('copy'); done(); } catch (e) { /* the text stays selected to copy by hand */ }
+    }
+  });
   window.addEventListener('appinstalled', function () {
     document.querySelectorAll('[data-install], [data-install-ios]').forEach(function (b) { b.hidden = true; });
   });

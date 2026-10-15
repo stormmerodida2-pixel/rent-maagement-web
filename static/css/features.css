@@ -151,3 +151,23 @@ a.staff-card-link:hover { text-decoration: none; border-color: var(--brand); }
 @keyframes prompt-spin { to { transform: rotate(360deg); } }
 @media (prefers-reduced-motion: reduce) { .prompt-spinner { animation-duration: 3s; } }
 @media (max-width: 420px) { .staff-name { display: none; } }
+
+/* --- Vacancy listings ------------------------------------------------------------------------- */
+.share-row { display: flex; flex-wrap: wrap; gap: 8px; align-items: center; }
+.share-row input { flex: 1 1 260px; min-width: 0; font-size: 14px; }
+.btn-whatsapp { background: #25d366; border-color: #25d366; color: #073b1c; }
+.btn-whatsapp:hover { background: #1fbe5a; border-color: #1fbe5a; color: #052a14; }
+.photo-grid { display: grid; grid-template-columns: repeat(auto-fill, minmax(110px, 1fr)); gap: 8px; }
+.photo-grid figure { position: relative; margin: 0; }
+.photo-grid img { width: 100%; aspect-ratio: 4 / 3; object-fit: cover; border-radius: 10px; display: block; }
+.photo-grid form { position: absolute; top: 4px; right: 4px; }
+.photo-grid .btn { background: var(--surface); padding: 4px; min-height: 0; }
+.listing-page h1 { font-size: 26px; margin: 0 0 4px; }
+.listing-photos { display: flex; gap: 8px; overflow-x: auto; scroll-snap-type: x mandatory; border-radius: 14px;
+  -webkit-overflow-scrolling: touch; }
+.listing-photos img { flex: 0 0 100%; height: min(62vw, 380px); object-fit: cover; scroll-snap-align: start;
+  border-radius: 14px; }
+.listing-facts { display: grid; grid-template-columns: repeat(auto-fit, minmax(120px, 1fr)); gap: 14px; }
+.listing-facts > div { display: flex; flex-direction: column; gap: 2px; }
+.listing-facts .label { font-size: 12px; text-transform: uppercase; letter-spacing: .04em; color: var(--muted); }
+.listing-facts strong { font-size: 18px; }

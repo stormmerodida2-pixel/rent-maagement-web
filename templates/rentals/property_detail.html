@@ -29,6 +29,7 @@
           <td class="num">{{ unit.default_rent|kes }}</td>
           <td class="num nowrap">
             {% if not lease %}<a class="btn btn-sm" href="{% url 'rentals:lease_create' %}?unit={{ unit.pk }}">Let</a>{% endif %}
+            {% if not lease or lease.moving_out %}<a class="btn btn-sm" href="{% url 'listings:create' unit.pk %}">Advertise</a>{% endif %}
             <a class="btn btn-sm btn-ghost" href="{% url 'rentals:unit_update' unit.pk %}">Edit</a>
           </td>
         </tr>
