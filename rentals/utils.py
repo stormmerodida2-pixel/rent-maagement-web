@@ -291,10 +291,8 @@ def branding(request):
 
         context['platform_notices'] = list(PlatformNotice.current_for(user)[:3])
         from accounts.utils import is_verified
-        from accounts.views import setup_steps
 
         context['email_unverified'] = not is_verified(user)
-        context['nav_setup_incomplete'] = not all(step['done'] for step in setup_steps(user))
     return context
 
 
