@@ -13,6 +13,7 @@
   <a href="{% url 'staff:home' %}" class="{% if url_name == 'home' or url_name == 'prompt' or url_name == 'record_cash' %}active{% endif %}">{% icon 'wallet' %}Rent</a>
   <a href="{% url 'staff:repairs' %}" class="{% if 'repair' in url_name %}active{% endif %}">{% icon 'wrench' %}Repairs</a>
   <a href="{% url 'staff:password' %}" class="{% if url_name == 'password' %}active{% endif %}">{% icon 'settings' %}Password</a>
+  <a href="{% url 'staff:two_factor' %}" class="{% if url_name == 'two_factor' %}active{% endif %}">{% icon 'shield' %}Two-step</a>
   <form method="post" action="{% url 'logout' %}">{% csrf_token %}<button>{% icon 'logout' %}Log out</button></form>
 </nav>
 <main class="staff-main">

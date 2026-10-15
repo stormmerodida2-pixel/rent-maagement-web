@@ -1,7 +1,12 @@
-"""Helpers for accounts: rate limiting and email verification."""
+"""Helpers for accounts: rate limiting, email verification and two-step login."""
 
 import hashlib
+import secrets
+import time
 
+import pyotp
+import qrcode
+import qrcode.image.svg
 from django.conf import settings
 from django.core import signing
 from django.core.cache import cache
@@ -106,3 +111,84 @@ def mark_verified(user):
 
 def is_verified(user):
     return user.is_authenticated and profile_for(user).email_verified
+
+
+# --- Two-step login ---------------------------------------------------------------------------------
+
+TOTP_STEP = 30
+RECOVERY_CODE_COUNT = 10
+TRUST_COOKIE = 'trusted_device'
+TRUST_DAYS = 30
+TRUST_SALT = 'accounts.trusted-device'
+
+
+def new_totp_secret():
+    return pyotp.random_base32()
+
+
+def totp_uri(user, secret):
+    """What the QR code holds: authenticator apps show it as "Liskodi (username)"."""
+    return pyotp.TOTP(secret).provisioning_uri(name=user.get_username(), issuer_name=settings.APP_NAME)
+
+
+def qr_svg(text):
+    """An inline SVG QR code (no image file, no JavaScript)."""
+    image = qrcode.make(text, image_factory=qrcode.image.svg.SvgPathImage, box_size=8, border=2)
+    return image.to_string(encoding='unicode')
+
+
+def _clean_code(code):
+    return ''.join((code or '').split()).replace('-', '').lower()
+
+
+def check_totp(two_factor, code, now=None):
+    """True if `code` is the current 6-digit code (or the one just before/after, for clock drift),
+    and it hasn't been used already. Records it so the same code can't log in twice."""
+    code = _clean_code(code)
+    if not (len(code) == 6 and code.isdigit()):
+        return False
+    totp = pyotp.TOTP(two_factor.secret)
+    now = time.time() if now is None else now
+    step = int(now // TOTP_STEP)
+    for offset in (0, -1, 1):
+        candidate = step + offset
+        if candidate > two_factor.last_step and secrets.compare_digest(totp.at(candidate * TOTP_STEP), code):
+            two_factor.last_step = candidate
+            two_factor.save(update_fields=['last_step'])
+            return True
+    return False
+
+
+def _hash_code(code):
+    return hashlib.sha256(_clean_code(code).encode()).hexdigest()
+
+
+def new_recovery_codes(two_factor):
+    """Replace the recovery codes. Returns the new codes to show once; only their hashes are kept."""
+    codes = [f'{secrets.token_hex(2)}-{secrets.token_hex(2)}-{secrets.token_hex(2)}' for _ in range(RECOVERY_CODE_COUNT)]
+    two_factor.recovery_codes = [_hash_code(c) for c in codes]
+    two_factor.save(update_fields=['recovery_codes'])
+    return codes
+
+
+def use_recovery_code(two_factor, code):
+    """True (and the code is used up) if `code` is one of the unused recovery codes."""
+    digest = _hash_code(code)
+    if len(_clean_code(code)) == 12 and digest in two_factor.recovery_codes:
+        two_factor.recovery_codes = [h for h in two_factor.recovery_codes if h != digest]
+        two_factor.save(update_fields=['recovery_codes'])
+        return True
+    return False
+
+
+def trust_token(two_factor):
+    return signing.dumps({'u': two_factor.user_id, 'v': two_factor.trust_version}, salt=TRUST_SALT)
+
+
+def is_trusted_device(request, two_factor):
+    """True if this browser was trusted for this account within the last 30 days (and not revoked since)."""
+    try:
+        data = signing.loads(request.COOKIES.get(TRUST_COOKIE, ''), salt=TRUST_SALT, max_age=TRUST_DAYS * 86400)
+    except signing.BadSignature:
+        return False
+    return data.get('u') == two_factor.user_id and data.get('v') == two_factor.trust_version

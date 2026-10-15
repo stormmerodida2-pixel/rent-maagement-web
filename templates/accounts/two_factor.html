@@ -1,0 +1,71 @@
+{% extends base_template %}
+{% load ui %}
+{% block page_title %}Two-step login{% endblock %}
+{% block content %}
+<div class="form-page">
+<div class="page-header"><div>
+  <h1>Two-step login</h1>
+  <p class="sub">With it on, logging in needs your password <strong>and</strong> a code from an app on your phone, so a stolen password alone can't get in.</p>
+</div></div>
+
+{% if error %}<div class="alert alert-error" style="margin-bottom:16px">{{ error }}</div>{% endif %}
+
+{% if new_codes %}
+<section class="card form-card" style="margin-bottom:16px">
+  <div class="card-header"><h2>Your recovery codes</h2></div>
+  <div class="card-body stack">
+    <div class="alert alert-warning">Save these now: they won't be shown again. Each code works once, if you lose your phone.</div>
+    <ol class="recovery-codes">{% for c in new_codes %}<li><code>{{ c }}</code></li>{% endfor %}</ol>
+    <p class="muted small">Write them down or keep them in a password manager, away from your phone.</p>
+  </div>
+</section>
+{% endif %}
+
+{% if two_factor.enabled %}
+<section class="card form-card">
+  <div class="card-body stack">
+    <div class="row"><span class="badge badge-success">On</span><span class="muted small">since {{ two_factor.confirmed_at|date:"d M Y" }} · {{ two_factor.recovery_codes|length }} recovery code{{ two_factor.recovery_codes|length|pluralize }} left</span></div>
+    <form method="post" class="stack" novalidate>{% csrf_token %}
+      <h2 style="font-size:16px;margin:8px 0 0">New recovery codes</h2>
+      <p class="muted small" style="margin:0">Replaces the old ones. Enter a code from your app.</p>
+      <div class="row"><input name="code" inputmode="numeric" autocomplete="one-time-code" placeholder="123 456" class="code-input" style="max-width:160px" aria-label="Code">
+        <button name="action" value="codes" class="btn">Make new codes</button></div>
+    </form>
+    <form method="post" class="stack" novalidate style="border-top:1px solid var(--border);padding-top:14px">{% csrf_token %}
+      <h2 style="font-size:16px;margin:0">Turn off</h2>
+      <div class="field"><label for="pw">Your password</label><input id="pw" type="password" name="password" autocomplete="current-password"></div>
+      <div class="field"><label for="off-code">Code from your app (or a recovery code)</label><input id="off-code" name="code" autocomplete="one-time-code" class="code-input"></div>
+      <div><button name="action" value="disable" class="btn text-danger">Turn off two-step login</button></div>
+    </form>
+  </div>
+</section>
+
+{% elif two_factor %}
+<section class="card form-card">
+  <div class="card-header"><h2>Set it up</h2></div>
+  <div class="card-body stack">
+    <ol class="setup-steps">
+      <li>Install an authenticator app on your phone: <strong>Google Authenticator</strong>, <strong>Microsoft Authenticator</strong> or <strong>Authy</strong> (all free).</li>
+      <li>In the app, tap <strong>+</strong> and scan this code:
+        <div class="qr" role="img" aria-label="QR code for your authenticator app">{{ qr|safe }}</div>
+        <span class="muted small">Can't scan? Choose "Enter a setup key" and type: <code class="manual-key">{{ manual_key }}</code></span></li>
+      <li>Type the 6-digit code the app shows:</li>
+    </ol>
+    <form method="post" class="row" novalidate>{% csrf_token %}
+      <input name="code" inputmode="numeric" autocomplete="one-time-code" placeholder="123 456" class="code-input" style="max-width:180px" aria-label="Code" autofocus>
+      <button name="action" value="confirm" class="btn btn-primary">Turn on</button>
+    </form>
+  </div>
+</section>
+
+{% else %}
+<section class="card form-card">
+  <div class="card-body stack">
+    <div class="row"><span class="badge">Off</span></div>
+    <p style="margin:0">You'll need your phone with an authenticator app. It takes about a minute.</p>
+    <form method="post">{% csrf_token %}<button name="action" value="start" class="btn btn-primary">{% icon 'shield' %}Set up two-step login</button></form>
+  </div>
+</section>
+{% endif %}
+</div>
+{% endblock %}
