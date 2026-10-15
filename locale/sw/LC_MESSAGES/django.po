@@ -3,7 +3,7 @@
 # then fill in new msgstr lines and run:  python manage.py compilemessages  (needs GNU gettext)
 msgid ""
 msgstr ""
-"Project-Id-Version: Liskodi\n"
+"Project-Id-Version: Rentipay\n"
 "Report-Msgid-Bugs-To: \n"
 "POT-Creation-Date: 2026-10-14 20:03+0300\n"
 "PO-Revision-Date: YEAR-MO-DA HO:MI+ZONE\n"

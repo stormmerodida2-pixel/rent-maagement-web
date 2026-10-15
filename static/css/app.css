@@ -221,19 +221,21 @@ label, .label { display: block; font-size: 13px; font-weight: 500; color: var(--
 }
 .brand { display: flex; align-items: center; gap: 10px; font-weight: 650; font-size: 16px; color: var(--text); padding: 4px 8px 18px; }
 .brand:hover { text-decoration: none; }
-/* The logo is logo-transparent.png: logo.jpeg (same size and framing, nothing cropped or stretched)
+/* The logo is logo-transparent.png: logo.jpeg (the Rentipay emblem, wordmark and tagline) with its white
+   background made transparent and trimmed to the artwork, so it can be shown large enough to read. The two
+   decorative bars under the artwork in logo.jpeg are left out. Nothing is stretched.
    with its grey background made transparent, so it blends into any light page. The box takes the
    image's own proportions. Dark mode uses a recoloured copy (see the dark-mode rules above). */
 .logo {
-  display: inline-block; flex: none; height: 56px; aspect-ratio: 1408 / 768;
+  display: inline-block; flex: none; height: 40px; aspect-ratio: 977 / 294;
   background: url("../img/logo-transparent.png") center / contain no-repeat;
 }
-.logo-lg { height: 150px; }
+.logo-lg { height: 76px; max-width: 100%; }
 .auth-logo { text-align: center; margin: -8px 0 18px; }
-.footer-logo .logo { height: 72px; }
-.topbar .logo, .site-nav .logo { height: 64px; }
-.sidebar .logo { height: 96px; }
-@media (max-width: 900px) { .sidebar .logo { height: 56px; } }
+.footer-logo .logo { height: 52px; }
+.topbar .logo, .site-nav .logo { height: 46px; }
+.sidebar .logo { height: 60px; }
+@media (max-width: 900px) { .sidebar .logo { height: 44px; } }
 .nav-section { font-size: 11px; text-transform: uppercase; letter-spacing: .06em; color: var(--muted); padding: 14px 10px 6px; }
 .nav a {
   display: flex; align-items: center; gap: 10px; padding: 8px 10px; border-radius: var(--radius-sm);
@@ -443,7 +445,7 @@ label, .label { display: block; font-size: 13px; font-weight: 500; color: var(--
 .doc .table th { background: #f2f4f7; color: #667085; }
 .doc .table td, .doc .table th { border-color: #e4e7ec; padding: 9px 10px; }
 /* Printed documents are white paper: always the light logo, and print it (backgrounds often aren't). */
-html:root .doc .logo { background-image: url("../img/logo-transparent.png"); aspect-ratio: 1408 / 768; height: 64px;
+html:root .doc .logo { background-image: url("../img/logo-transparent.png"); aspect-ratio: 977 / 294; height: 48px;
   -webkit-print-color-adjust: exact; print-color-adjust: exact; }
 .doc-head { display: flex; justify-content: space-between; gap: 24px; flex-wrap: wrap; padding-bottom: 20px; border-bottom: 2px solid #101828; margin-bottom: 24px; }
 .doc-title { text-align: right; }
@@ -526,7 +528,7 @@ html:root .doc .logo { background-image: url("../img/logo-transparent.png"); asp
     background: var(--surface); box-shadow: 0 1px 3px rgb(16 24 40 / .04);
   }
   .sidebar > .brand { padding: 0; margin-right: auto; }
-  .sidebar > .brand .logo { height: 60px; }
+  .sidebar > .brand .logo { height: 44px; }
 
   .nav-toggle {
     display: inline-flex; align-items: center; justify-content: center; position: relative;
@@ -605,7 +607,7 @@ html:root .doc .logo { background-image: url("../img/logo-transparent.png"); asp
   .site-nav .inner { gap: 8px; padding: 8px 12px; }
   .site-nav .row { flex-wrap: nowrap; gap: 4px !important; }
   .site-nav .btn { padding: 7px 10px; font-size: 13px; }
-  .site-nav .logo { height: 48px; }
+  .site-nav .logo { height: 34px; }
 }
 
 /* ---- Legal pages --------------------------------------------------------------------------- */

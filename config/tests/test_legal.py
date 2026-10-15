@@ -3,21 +3,21 @@ from django.urls import reverse
 
 
 @override_settings(SITE_URL='https://rent.example.com',
-                   LEGAL={'ENTITY': 'Liskodi Ltd', 'ADDRESS': 'P.O. Box 1, Nairobi', 'EMAIL': 'privacy@rent.example.com',
+                   LEGAL={'ENTITY': 'Rentipay Ltd', 'ADDRESS': 'P.O. Box 1, Nairobi', 'EMAIL': 'privacy@rent.example.com',
                           'UPDATED': 'October 14, 2026', 'TERMS_VERSION': '2026-10-14'})
 class LegalPageTests(TestCase):
     def test_privacy_policy(self):
         resp = self.client.get(reverse('privacy'))
         self.assertContains(resp, '<h1>Privacy policy</h1>', html=True)
         for text in ['Data Protection Act, 2019', 'data controller', 'data processor', 'Safaricom',
-                     "Africa's Talking", 'www.odpc.go.ke', '72 hours', 'Liskodi Ltd', 'P.O. Box 1, Nairobi',
+                     "Africa's Talking", 'www.odpc.go.ke', '72 hours', 'Rentipay Ltd', 'P.O. Box 1, Nairobi',
                      'privacy@rent.example.com']:
             self.assertContains(resp, text)
 
     def test_terms(self):
         resp = self.client.get(reverse('terms'))
         self.assertContains(resp, '<h1>Terms of service</h1>', html=True)
-        for text in ['directly into your own Paybill or Till', 'governed by the laws of Kenya', 'Liskodi Ltd']:
+        for text in ['directly into your own Paybill or Till', 'governed by the laws of Kenya', 'Rentipay Ltd']:
             self.assertContains(resp, text)
 
     def test_public_indexable_and_in_sitemap(self):

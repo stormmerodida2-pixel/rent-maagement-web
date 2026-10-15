@@ -10,7 +10,7 @@ import os
 
 from .production import *  # noqa: F403
 
-APP_NAME = os.environ.get('APP_NAME', 'Liskodi (test)')
+APP_NAME = os.environ.get('APP_NAME', 'Rentipay (test)')
 
 # A test domain may be torn down or moved; don't make browsers insist on HTTPS for it for long.
 SECURE_HSTS_SECONDS = int(os.environ.get('DJANGO_HSTS_SECONDS', '0'))

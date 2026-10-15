@@ -45,7 +45,7 @@ class RobotsMetaTests(TestCase):
             self.assertNotContains(resp, 'noindex', msg_prefix=url)
             self.assertContains(resp, f'<link rel="canonical" href="https://rent.example.com{url}">', msg_prefix=url)
         home = self.client.get(reverse('rentals:home'))
-        self.assertContains(home, '<meta property="og:title" content="Collect rent on M-Pesa · Liskodi">')
+        self.assertContains(home, '<meta property="og:title" content="Collect rent on M-Pesa · Rentipay">')
         self.assertContains(home, 'content="https://rent.example.com/static/img/logo.jpeg"')
 
     def test_private_pages_are_noindex(self):

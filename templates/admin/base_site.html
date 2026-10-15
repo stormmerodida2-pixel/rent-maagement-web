@@ -27,7 +27,7 @@
   html[data-theme="dark"] { --link-fg: #4fd69c; --link-hover-color: #7fe3b8; }
   @media (prefers-color-scheme: dark) { html[data-theme="auto"] { --link-fg: #4fd69c; --link-hover-color: #7fe3b8; } }
   #site-name a { display: inline-flex; align-items: center; gap: 10px; font-weight: 600; }
-  #site-name .mark { height: 44px; width: auto; display: block; }
+  #site-name .mark { height: 36px; width: 36px; display: block; border-radius: 8px; }
 </style>
 <link rel="preconnect" href="https://fonts.googleapis.com">
 <link href="https://fonts.googleapis.com/css2?family=Inter:wght@400;500;600&display=swap" rel="stylesheet">
@@ -36,7 +36,7 @@
 {% block branding %}
 <div id="site-name">
   <a href="{% url 'rentals:dashboard' %}">
-    <img class="mark" src="{% static 'img/logo.jpeg' %}" alt="{{ site_header }}" height="44">
+    <img class="mark" src="{% static 'img/icons/icon-192.png' %}" alt="" width="36" height="36">{{ site_header }}
   </a>
 </div>
 {% if user.is_anonymous %}

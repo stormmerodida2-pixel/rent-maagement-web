@@ -299,7 +299,7 @@ docker compose exec web python manage.py check --deploy
 
 ### Email with Gmail (until you have your own domain)
 
-Use a Gmail account's **app password**: Google account → Security → 2-Step Verification (must be on) → **App passwords** → create one named "Liskodi". Then set in `.env_prod`: `EMAIL_HOST=smtp.gmail.com`, `EMAIL_PORT=587`, `EMAIL_USE_TLS=1`, `EMAIL_HOST_USER` and `DEFAULT_FROM_EMAIL` to the Gmail address, `EMAIL_HOST_PASSWORD` to the app password. Run `docker compose --env-file .env_prod up -d`, then test with `docker compose --env-file .env_prod exec web python manage.py sendtestemail you@example.com`. Gmail allows about 500 emails a day. With your own domain, Amazon SES is the better long-term choice.
+Use a Gmail account's **app password**: Google account → Security → 2-Step Verification (must be on) → **App passwords** → create one named "Rentipay". Then set in `.env_prod`: `EMAIL_HOST=smtp.gmail.com`, `EMAIL_PORT=587`, `EMAIL_USE_TLS=1`, `EMAIL_HOST_USER` and `DEFAULT_FROM_EMAIL` to the Gmail address, `EMAIL_HOST_PASSWORD` to the app password. Run `docker compose --env-file .env_prod up -d`, then test with `docker compose --env-file .env_prod exec web python manage.py sendtestemail you@example.com`. Gmail allows about 500 emails a day. With your own domain, Amazon SES is the better long-term choice.
 
 ### Search engines
 
