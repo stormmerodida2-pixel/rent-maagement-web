@@ -75,7 +75,7 @@ class PropertyAdmin(OwnerScopedAdmin):
 @admin.register(Unit)
 class UnitAdmin(OwnerScopedAdmin):
     owner_path = 'property__owner'
-    list_display = ['label', 'property', 'bedrooms', 'default_rent', 'current_tenant']
+    list_display = ['label', 'property', 'unit_type', 'default_rent', 'current_tenant']
     list_filter = ['property']
     search_fields = ['label', 'property__name']
 

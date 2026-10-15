@@ -12,7 +12,7 @@
   <div class="table-wrap"><table class="table"><tbody>
     {% for unit in candidates %}
     <tr>
-      <td><strong>{{ unit }}</strong><div class="muted small">{{ unit.bedrooms }} bedroom{{ unit.bedrooms|pluralize }} · {{ unit.default_rent|kes }} a month</div></td>
+      <td><strong>{{ unit }}</strong><div class="muted small">{{ unit.get_unit_type_display }} · {{ unit.default_rent|kes }} a month</div></td>
       <td class="num"><a class="btn btn-sm btn-primary" href="{% url 'listings:create' unit.pk %}">{% icon 'megaphone' %}Advertise</a></td>
     </tr>
     {% endfor %}

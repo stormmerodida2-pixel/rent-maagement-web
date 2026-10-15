@@ -66,18 +66,18 @@ class SetRentsTests(TestCase):
     def test_units_can_have_different_rents_and_types(self):
         lease = make_lease(self.owner, label='X')  # someone elsewhere: unaffected
         resp = self.client.post(self.url, {
-            f'rent-{self.b1.pk}': '15000', f'bedrooms-{self.b1.pk}': '0', f'type-{self.b1.pk}': 'Bedsitter',
-            f'rent-{self.b2.pk}': '25,000', f'bedrooms-{self.b2.pk}': '2', f'type-{self.b2.pk}': '2-bedroom',
+            f'rent-{self.b1.pk}': '15000', f'type-{self.b1.pk}': 'single',
+            f'rent-{self.b2.pk}': '25,000', f'type-{self.b2.pk}': 'two_bedroom',
         })
         self.assertRedirects(resp, reverse('rentals:property_detail', args=[self.prop.pk]))
         self.b1.refresh_from_db()
         self.b2.refresh_from_db()
-        self.assertEqual((self.b1.default_rent, self.b1.unit_type, self.b1.bedrooms), (Decimal('15000'), 'Bedsitter', 0))
-        self.assertEqual((self.b2.default_rent, self.b2.unit_type), (Decimal('25000'), '2-bedroom'))
+        self.assertEqual((self.b1.default_rent, self.b1.unit_type, self.b1.bedrooms), (Decimal('15000'), 'single', 0))
+        self.assertEqual((self.b2.default_rent, self.b2.unit_type, self.b2.bedrooms), (Decimal('25000'), 'two_bedroom', 2))
         lease.refresh_from_db()
         self.assertEqual(lease.monthly_rent, Decimal('15000'))  # make_lease default, untouched
         detail = self.client.get(reverse('rentals:property_detail', args=[self.prop.pk]))
-        self.assertContains(detail, 'Bedsitter')
+        self.assertContains(detail, 'Two bedroom')
 
     def test_a_bad_row_saves_nothing(self):
         resp = self.client.post(self.url, {

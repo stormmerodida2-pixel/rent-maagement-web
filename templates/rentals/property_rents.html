@@ -11,17 +11,16 @@
   {% csrf_token %}
   <section class="card">
     <div class="table-wrap"><table class="table rents-table">
-      <thead><tr><th>Unit</th><th>Type</th><th>Bedrooms</th><th class="num">Usual rent (KES)</th><th>Tenant now</th></tr></thead>
+      <thead><tr><th>Unit</th><th>Type</th><th class="num">Usual rent (KES)</th><th>Tenant now</th></tr></thead>
       <tbody>
       {% for r in rows %}
       <tr{% if r.error %} class="row-error"{% endif %}>
         <td><strong>{{ r.unit.label }}</strong>{% if r.error %}<div class="text-danger small">{{ r.error }}</div>{% endif %}</td>
-        <td><input name="type-{{ r.unit.pk }}" value="{{ r.unit.unit_type }}" list="unit-types" placeholder="e.g. Bedsitter" aria-label="Type of {{ r.unit.label }}"></td>
-        <td><input name="bedrooms-{{ r.unit.pk }}" type="number" min="0" max="20" value="{{ r.unit.bedrooms }}" class="input-narrow" aria-label="Bedrooms in {{ r.unit.label }}"></td>
+        <td><select name="type-{{ r.unit.pk }}" aria-label="Type of {{ r.unit.label }}">{% for value, label in types %}<option value="{{ value }}"{% if value == r.unit.unit_type %} selected{% endif %}>{{ label }}</option>{% endfor %}</select></td>
         <td class="num"><input name="rent-{{ r.unit.pk }}" type="number" min="0" step="50" inputmode="numeric" value="{{ r.unit.default_rent|floatformat:0 }}" class="input-rent" aria-label="Rent for {{ r.unit.label }}"></td>
         <td>{% if r.lease %}{{ r.lease.tenant }} <span class="muted small">pays {{ r.lease.monthly_rent|kes }}</span>{% else %}<span class="badge badge-warn">Vacant</span>{% endif %}</td>
       </tr>
-      {% empty %}<tr><td colspan="5" class="muted">No units yet.</td></tr>
+      {% empty %}<tr><td colspan="4" class="muted">No units yet.</td></tr>
       {% endfor %}
       </tbody>
     </table></div>

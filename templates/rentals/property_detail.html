@@ -23,7 +23,7 @@
         <tbody>
         {% for unit, lease in unit_rows %}
         <tr>
-          <td><strong>{{ unit.label }}</strong><div class="muted small">{% if unit.unit_type %}{{ unit.unit_type }} · {% endif %}{{ unit.bedrooms }} bedroom{{ unit.bedrooms|pluralize }}</div></td>
+          <td><strong>{{ unit.label }}</strong><div class="muted small">{{ unit.get_unit_type_display }}</div></td>
           <td>
             {% if lease %}<a href="{% url 'rentals:lease_detail' lease.pk %}">{{ lease.tenant }}</a>{% if lease.moving_out %} <span class="badge badge-warn">Moving out {{ lease.end_date|date:"d M" }}</span>{% endif %}
             {% else %}<span class="badge badge-warn">Vacant</span>{% endif %}

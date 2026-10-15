@@ -380,7 +380,7 @@ def _sms_parts(text):
 def remind_all(request):
     """Preview, then send, a rent reminder to every tenant who owes (one tap from the dashboard)."""
     leases = (Lease.objects.filter(unit__property__owner=request.user, is_active=True)
-              .select_related('tenant', 'unit__property').order_by('unit__property__name', 'unit__label'))
+              .select_related('tenant', 'unit__property').order_by('unit__property__name', 'unit__sort_key'))
     owing = [(lease, balance) for lease in leases if (balance := lease.balance) > 0]
     last_reminded = dict(
         SmsMessage.objects.filter(kind=SmsMessage.Kind.REMINDER, lease__in=[lease for lease, _ in owing],

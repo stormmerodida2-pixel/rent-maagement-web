@@ -39,23 +39,51 @@ class Property(models.Model):
         return self.name
 
 
+def unit_sort_key(label):
+    """Sort labels the way people count: A1, A2 … A10, not A1, A10, A2. Numbers are zero-padded."""
+    return re.sub(r'\d+', lambda m: m.group().lstrip('0').zfill(8), (label or '').strip().upper())[:200]
+
+
 class Unit(models.Model):
+    class Type(models.TextChoices):
+        SINGLE = 'single', 'Single room'
+        ONE_BEDROOM = 'one_bedroom', 'One bedroom'
+        TWO_BEDROOM = 'two_bedroom', 'Two bedroom'
+        SHOP = 'shop', 'Shop'
+
+    BEDROOMS = {Type.SINGLE: 0, Type.ONE_BEDROOM: 1, Type.TWO_BEDROOM: 2, Type.SHOP: 0}
+
     property = models.ForeignKey(Property, on_delete=models.CASCADE, related_name='units')
     label = models.CharField(max_length=50, help_text='e.g. A1, House 4')
-    unit_type = models.CharField('type', max_length=40, blank=True,
-                                 help_text='e.g. Bedsitter, 1-bedroom, 2-bedroom, Shop.')
-    bedrooms = models.PositiveSmallIntegerField(default=1)
+    unit_type = models.CharField('type', max_length=20, choices=Type.choices, default=Type.SINGLE)
+    bedrooms = models.PositiveSmallIntegerField(default=0, editable=False)  # follows the type
     # The usual rent for this unit: what new tenants are offered. Each tenancy has its own rent.
     default_rent = models.DecimalField(max_digits=10, decimal_places=2)
+    sort_key = models.CharField(max_length=200, default='', editable=False)  # see unit_sort_key
 
     class Meta:
-        ordering = ['property__name', 'label']
+        ordering = ['property__name', 'sort_key']
         constraints = [
             models.UniqueConstraint(fields=['property', 'label'], name='unique_unit_label_per_property'),
         ]
 
     def __str__(self):
         return f'{self.property.name} – {self.label}'
+
+    def save(self, *args, **kwargs):
+        self.sort_key = unit_sort_key(self.label)
+        self.bedrooms = self.BEDROOMS.get(self.unit_type, 0)
+        if kwargs.get('update_fields') is not None:
+            kwargs['update_fields'] = {*kwargs['update_fields'], 'sort_key', 'bedrooms'}
+        super().save(*args, **kwargs)
+
+    @classmethod
+    def build(cls, **fields):
+        """An unsaved Unit with its derived fields set, for bulk_create (which skips save())."""
+        unit = cls(**fields)
+        unit.sort_key = unit_sort_key(unit.label)
+        unit.bedrooms = cls.BEDROOMS.get(unit.unit_type, 0)
+        return unit
 
     def active_lease(self):
         return self.leases.filter(is_active=True).select_related('tenant').first()
@@ -184,7 +212,7 @@ class Lease(models.Model):
     move_out_reminded_on = models.DateField(null=True, blank=True, editable=False)
 
     class Meta:
-        ordering = ['-is_active', 'unit__property__name', 'unit__label']
+        ordering = ['-is_active', 'unit__property__name', 'unit__sort_key']
         constraints = [
             models.UniqueConstraint(
                 fields=['unit'], condition=Q(is_active=True), name='one_active_lease_per_unit'

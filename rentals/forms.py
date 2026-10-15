@@ -23,6 +23,8 @@ class PropertyForm(OwnedForm):
         required=False, max_length=10, label='Unit label prefix', help_text='e.g. "A" gives A1, A2, A3…',
     )
     unit_count = forms.IntegerField(required=False, min_value=1, max_value=200, label='Number of units')
+    unit_type = forms.ChoiceField(choices=Unit.Type.choices, initial=Unit.Type.SINGLE, required=False,
+                                  label='Type of units', help_text='You can change single units afterwards.')
     unit_rent = forms.DecimalField(required=False, min_value=0, max_digits=10, decimal_places=2,
                                    label='Monthly rent per unit (KES)')
 
@@ -33,7 +35,7 @@ class PropertyForm(OwnedForm):
     def __init__(self, *args, **kwargs):
         super().__init__(*args, **kwargs)
         if self.instance.pk:
-            for name in ['unit_prefix', 'unit_count', 'unit_rent']:
+            for name in ['unit_prefix', 'unit_count', 'unit_type', 'unit_rent']:
                 del self.fields[name]
 
     def clean(self):
@@ -50,8 +52,10 @@ class PropertyForm(OwnedForm):
             count = self.cleaned_data.get('unit_count')
             if count:
                 prefix = self.cleaned_data.get('unit_prefix') or ''
+                unit_type = self.cleaned_data.get('unit_type') or Unit.Type.SINGLE
                 Unit.objects.bulk_create(
-                    Unit(property=prop, label=f'{prefix}{i}', default_rent=self.cleaned_data['unit_rent'])
+                    Unit.build(property=prop, label=f'{prefix}{i}', unit_type=unit_type,
+                               default_rent=self.cleaned_data['unit_rent'])
                     for i in range(1, count + 1)
                 )
         return prop
@@ -60,9 +64,8 @@ class PropertyForm(OwnedForm):
 class UnitForm(forms.ModelForm):
     class Meta:
         model = Unit
-        fields = ['label', 'unit_type', 'bedrooms', 'default_rent']
+        fields = ['label', 'unit_type', 'default_rent']
         labels = {'default_rent': 'Monthly rent (KES)'}
-        widgets = {'unit_type': forms.TextInput(attrs={'list': 'unit-types'})}
 
     def __init__(self, *args, property, **kwargs):
         self.property = property
@@ -331,7 +334,7 @@ class BulkRentChangeForm(forms.Form):
     def __init__(self, *args, property, **kwargs):
         super().__init__(*args, **kwargs)
         leases = (Lease.objects.filter(unit__property=property, is_active=True, end_date__isnull=True)
-                  .select_related('tenant', 'unit').order_by('unit__label'))
+                  .select_related('tenant', 'unit').order_by('unit__sort_key'))
         self.fields['leases'].queryset = leases
         self.fields['leases'].label_from_instance = lambda l: f'{l.unit.label} · {l.tenant} · KES {l.monthly_rent:,.0f}'
         self.initial.setdefault('leases', list(leases))

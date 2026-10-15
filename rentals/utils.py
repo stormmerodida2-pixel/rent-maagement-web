@@ -11,6 +11,7 @@ from functools import wraps
 from django.conf import settings
 from openpyxl import Workbook, load_workbook
 from openpyxl.styles import Font, PatternFill
+from openpyxl.worksheet.datavalidation import DataValidation
 from django.contrib import messages
 from django.contrib.auth.mixins import LoginRequiredMixin
 from django.db import transaction
@@ -314,8 +315,26 @@ IMPORT_COLUMNS = {
     'balance': ['balance owed now', 'balance owed', 'balance', 'arrears'],
     'language': ['language'],
 }
-IMPORT_TEMPLATE_HEADINGS = ['Unit', 'Type', 'Bedrooms', 'Rent', 'Tenant name', 'Phone', 'Email', 'Rent day',
+IMPORT_TEMPLATE_HEADINGS = ['Unit', 'Type', 'Rent', 'Tenant name', 'Phone', 'Email', 'Rent day',
                             'Moved in', 'Deposit', 'Balance owed now', 'Language']
+
+
+def unit_type_from_text(text):
+    """One of the four unit types from how people write them ("Bedsitter", "2-bedroom", "1BR", "Shop"),
+    or None if it isn't clear."""
+    t = re.sub(r'[^a-z0-9]+', ' ', (text or '').lower()).strip()
+    for value, label in Unit.Type.choices:
+        if t == label.lower() or t == value.replace('_', ' '):
+            return value
+    if re.search(r'\b(shop|kiosk|stall|office|store)\b', t):
+        return Unit.Type.SHOP
+    if re.search(r'\b(single|bedsitter|bedsit|studio)\b', t):
+        return Unit.Type.SINGLE
+    if re.search(r'\b(2|two)\s*(br|bed|bedroom|bedrooms)\b', t) or re.search(r'\b2br\b', t):
+        return Unit.Type.TWO_BEDROOM
+    if re.search(r'\b(1|one)\s*(br|bed|bedroom)\b', t) or re.search(r'\b1br\b', t):
+        return Unit.Type.ONE_BEDROOM
+    return None
 
 
 class ImportError_(ValueError):
@@ -409,13 +428,13 @@ def check_import(rows, owner, prop):
             errors.append(f'Unit {label} appears twice in the file')
         seen.add(label.lower())
         clean['unit'] = label[:50]
-        clean['type'] = row.get('type', '')[:40]
-        try:
-            clean['bedrooms'] = int(Decimal(row.get('bedrooms') or '1'))
-            if not 0 <= clean['bedrooms'] <= 20:
-                raise ValueError
-        except (ArithmeticError, ValueError):
-            errors.append('Bedrooms should be a number like 1 or 2')
+        type_text, beds_text = row.get('type', '').strip(), row.get('bedrooms', '').strip()
+        clean['type'] = unit_type_from_text(type_text) if type_text else \
+            {'0': Unit.Type.SINGLE, '1': Unit.Type.ONE_BEDROOM, '2': Unit.Type.TWO_BEDROOM}.get(
+                beds_text.split('.')[0], Unit.Type.SINGLE if not beds_text else None)
+        if clean['type'] is None:
+            errors.append(f'Type "{type_text or beds_text + " bedrooms"}" should be Single room, One bedroom, '
+                          'Two bedroom or Shop')
         for field, label_text, allow_negative in (('rent', 'Rent', False), ('deposit', 'Deposit', False),
                                                    ('balance', 'Balance owed now', True)):
             try:
@@ -483,9 +502,7 @@ def apply_import(checked, owner, prop, actor):
             continue
         unit, _ = Unit.objects.get_or_create(property=prop, label=row['unit'],
                                              defaults={'default_rent': row['rent']})
-        unit.default_rent, unit.bedrooms = row['rent'], row['bedrooms']
-        if row['type']:
-            unit.unit_type = row['type']
+        unit.default_rent, unit.unit_type = row['rent'], row['type']
         unit.save()
         units += 1
         if not row['tenant']:
@@ -525,17 +542,22 @@ def import_template():
     sheet = book.active
     sheet.title = 'Units and tenants'
     sheet.append(IMPORT_TEMPLATE_HEADINGS)
-    sheet.append(['A1', '1-bedroom', 1, 18000, 'Wanjiku Kamau', '0712 345 678', '', 5, '01/06/2024', 18000, 3000, 'Kiswahili'])
-    sheet.append(['A2', 'Bedsitter', 0, 12000, '', '', '', '', '', '', '', ''])
+    sheet.append(['A1', 'One bedroom', 18000, 'Wanjiku Kamau', '0712 345 678', '', 5, '01/06/2024', 18000, 3000, 'Kiswahili'])
+    sheet.append(['A2', 'Single room', 12000, '', '', '', '', '', '', '', ''])
     for cell in sheet[1]:
         cell.font = Font(bold=True, color='FFFFFF')
         cell.fill = PatternFill('solid', fgColor='0E7A4B')
-    for column, width in zip('ABCDEFGHIJKL', (8, 12, 10, 10, 22, 16, 24, 10, 12, 10, 16, 11), strict=True):
+    for column, width in zip('ABCDEFGHIJK', (8, 14, 10, 22, 16, 24, 10, 12, 10, 16, 11), strict=True):
         sheet.column_dimensions[column].width = width
+    types = DataValidation(type='list', formula1='"' + ','.join(label for _, label in Unit.Type.choices) + '"',
+                           allow_blank=True, error='Choose Single room, One bedroom, Two bedroom or Shop.')
+    sheet.add_data_validation(types)
+    types.add(f'B2:B{IMPORT_MAX_ROWS + 1}')
     notes = book.create_sheet('How to fill it in')
     for line in [
         'One row per unit. Delete the two example rows, then add yours.',
         'Unit and Rent are required. Leave the tenant columns empty for a vacant unit.',
+        'Type: Single room, One bedroom, Two bedroom or Shop (pick from the list). Empty = Single room.',
         'Phone: the tenant\'s M-Pesa number, e.g. 0712 345 678.',
         'Rent day: the day of the month rent is due (1-31). Empty = the day they moved in.',
         'Moved in: e.g. 01/06/2024. Empty = today.',
