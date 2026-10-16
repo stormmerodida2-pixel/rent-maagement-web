@@ -41,7 +41,7 @@
     </nav>
     {# Pinned above the account row, so it's visible however long the menu gets. #}
     <nav class="nav nav-bottom" aria-label="Settings">
-      <a href="{% url 'accounts:settings' %}" class="{% if url_name == 'settings' or url_name == 'mpesa_settings' or url_name == 'preferences' or url_name == 'contact' or url_name == 'profile' or url_name == 'password_change' or request.resolver_match.app_name == 'staff' %}active{% endif %}">{% icon 'settings' %}Settings{% if nav_mpesa_missing %}<span class="count" title="M-Pesa isn't connected">!</span>{% endif %}</a>
+      <a href="{% url 'accounts:settings' %}" class="{% if url_name == 'settings' or url_name == 'mpesa_settings' or url_name == 'preferences' or url_name == 'contact' or url_name == 'profile' or url_name == 'password_change' or request.resolver_match.app_name == 'staff' or request.resolver_match.app_name == 'billing' %}active{% endif %}">{% icon 'settings' %}Settings{% if nav_mpesa_missing %}<span class="count" title="M-Pesa isn't connected">!</span>{% endif %}</a>
     </nav>
 
     <div class="sidebar-footer">
@@ -65,6 +65,12 @@
         <span class="spacer"></span>
         <form method="post" action="{% url 'accounts:resend_verification' %}">{% csrf_token %}
           <input type="hidden" name="next" value="{{ request.get_full_path }}"><button class="btn btn-sm">Resend</button></form>
+      </div>
+      {% endif %}
+      {% if billing_banner %}
+      <div class="alert {% if billing_banner.state == 'locked' or billing_banner.state == 'overdue' %}alert-warning{% else %}alert-info{% endif %}" style="margin-bottom:16px">
+        {% icon 'wallet' 18 %}<span>{{ billing_banner.text }}</span>
+        {% if url_name != 'billing' %}<span class="spacer"></span><a class="btn btn-sm{% if billing_banner.state != 'checking' %} btn-primary{% endif %}" href="{% url 'billing:billing' %}">{% if billing_banner.state == 'checking' or billing_banner.state == 'trial' %}Billing{% else %}Pay now{% endif %}</a>{% endif %}
       </div>
       {% endif %}
       {% for notice in platform_notices %}

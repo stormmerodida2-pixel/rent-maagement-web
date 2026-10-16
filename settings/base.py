@@ -81,6 +81,7 @@ INSTALLED_APPS = [
     'reports',
     'audit',
     'support',
+    'billing',
     'announcements',
     'listings',
     'ops',
@@ -96,6 +97,7 @@ MIDDLEWARE = [
     'django.contrib.auth.middleware.AuthenticationMiddleware',
     'accounts.utils.StaffAreaMiddleware',  # staff accounts only reach /staff/
     'django.contrib.messages.middleware.MessageMiddleware',
+    'billing.utils.ReadOnlyWhenUnpaidMiddleware',  # landlords with an unpaid bill can look but not change
     'django.middleware.clickjacking.XFrameOptionsMiddleware',
 ]
 
@@ -339,7 +341,7 @@ LOGGING = {
     'loggers': {
         'django': {'handlers': ['console'], 'level': 'WARNING', 'propagate': False},
         **{app: {'handlers': ['console'], 'level': LOG_LEVEL, 'propagate': False}
-           for app in ('payments', 'notifications', 'accounts', 'support', 'ops')},
+           for app in ('payments', 'notifications', 'accounts', 'support', 'ops', 'billing')},
     },
 }
 

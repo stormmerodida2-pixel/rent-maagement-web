@@ -77,9 +77,11 @@ def listing_create(request, unit_pk):
             listing = form.save(commit=False)
             listing.owner, listing.unit = request.user, unit
             listing.save()
-            if not _save_photos(request, listing, form):
+            photos_ok = _save_photos(request, listing, form)
+            if not photos_ok:
                 transaction.set_rollback(True)
-                return render(request, 'listings/form.html', {'form': form, 'unit': unit})
+        if not photos_ok:  # rendered after the rollback, so the page can still query the database
+            return render(request, 'listings/form.html', {'form': form, 'unit': unit})
         audit.record(owner=request.user, actor=request.user, action='listing.created',
                      summary=f'Advertised {unit}: {listing.title}.')
         messages.success(request, 'Your listing is live. Share the link on WhatsApp or Facebook.')

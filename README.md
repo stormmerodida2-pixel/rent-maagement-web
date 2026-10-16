@@ -263,6 +263,16 @@ docker compose exec web python manage.py check --deploy
 - **Monitoring:** point an uptime monitor at `/healthz/`. It returns 503 if the database or cache is down.
 - After a few days of confirmed HTTPS, raise `DJANGO_HSTS_SECONDS` to `31536000`.
 
+### Billing landlords
+
+Landlords pay Rentipay monthly. Everything is set in the app by an administrator, in **Settings → Billing overview**: an on/off switch, the price per occupied unit (default KES 75), free units (5), trial length (30 days), days before an unpaid account becomes read-only (7), the Till landlords pay to (Rentipay's Till 9505957 is filled in) and where payment emails go. **Billing is off until you switch it on**; then every landlord gets a free trial from that day. Empty units are never charged.
+
+- **Bills.** The daily `run_billing` job (06:30) bills each month 3 days before it starts, counting the units occupied then, and emails the bill. Accounts with nothing to pay are marked paid automatically.
+- **Paying.** On **Settings → Billing**, landlords pay to the Till from the M-Pesa menu and enter the M-Pesa code. You get an email, check it on your M-Pesa statement and click **Confirm paid** (or **Not received**) in Billing overview; they get a receipt by email. Optionally, add the Till's own Daraja keys under **M-Pesa prompts** in Billing overview (stored encrypted): landlords can then pay with a PIN prompt, which marks the bill paid by itself.
+- **Unpaid.** After the due date, a notice and a banner; after the grace days the account is **read-only**: landlords and their staff can see everything and download their data, but can't make changes, and reminder SMS to their tenants pause. Tenants are otherwise unaffected: their rent pages work and payments are recorded. Entering an M-Pesa code keeps everything on for 3 days while you check it. Nothing is deleted.
+- **Switching off** opens read-only accounts again at once. Switching back on later starts afresh: old unpaid bills are cancelled and billing resumes from that day, with the usual grace period.
+- **+30 days free** in Billing overview gives a landlord goodwill time or a longer trial.
+
 ### Off-site backups
 
 Each night's encrypted backup is also copied to an S3 bucket in a different AWS region from the server, so losing the server (or its region) doesn't lose the data.

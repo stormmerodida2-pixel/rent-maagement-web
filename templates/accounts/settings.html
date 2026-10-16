@@ -66,7 +66,19 @@
     {% icon 'arrow-right' %}
   </a>
 
+  {% if BILLING_ENABLED and not user.is_superuser %}
+  <a class="card settings-item" href="{% url 'billing:billing' %}">
+    <span class="settings-icon">{% icon 'wallet' %}</span>
+    <span class="settings-text"><strong>Billing</strong><span class="muted small">Your {{ APP_NAME }} plan, bills and receipts.</span></span>
+    {% icon 'arrow-right' %}
+  </a>
+  {% endif %}
   {% if user.is_superuser %}
+  <a class="card settings-item" href="{% url 'billing:overview' %}">
+    <span class="settings-icon">{% icon 'chart' %}</span>
+    <span class="settings-text"><strong>Billing overview</strong><span class="muted small">Landlords' plans, payments to confirm, trials.</span></span>
+    {% icon 'arrow-right' %}
+  </a>
   <a class="card settings-item" href="{% url 'admin:index' %}">
     <span class="settings-icon">{% icon 'shield' %}</span>
     <span class="settings-text"><strong>Admin</strong><span class="muted small">Site administration.</span></span>

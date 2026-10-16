@@ -409,8 +409,12 @@ def send_plan_reminders(today=None):
 
     today = today or datetime.date.today()
     sent = 0
-    for plan in PaymentPlan.objects.filter(status=PaymentPlan.Status.ACTIVE).select_related('lease__tenant',
-                                                                                             'lease__unit__property'):
+    from billing.utils import locked_owner_ids
+
+    plans = PaymentPlan.objects.filter(status=PaymentPlan.Status.ACTIVE) \
+        .exclude(lease__unit__property__owner_id__in=locked_owner_ids()) \
+        .select_related('lease__tenant', 'lease__unit__property')
+    for plan in plans:
         progress = refresh_plan(plan, today)
         if progress['done']:
             continue
