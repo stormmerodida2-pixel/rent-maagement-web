@@ -7,6 +7,7 @@ import struct
 from dataclasses import dataclass
 
 from cryptography.fernet import Fernet, InvalidToken
+from django.conf import settings
 from django.contrib.sessions.middleware import SessionMiddleware as DjangoSessionMiddleware
 from django.core.cache import cache
 from django.core.management import call_command
@@ -48,6 +49,54 @@ def decrypt_file(src, dst, key):
                 fout.write(fernet.decrypt(fin.read(length)))
             except InvalidToken:
                 raise BackupKeyError('Wrong BACKUP_ENCRYPTION_KEY, or the file is damaged.') from None
+
+
+# --- Off-site copies ----------------------------------------------------------------------------------
+
+class OffsiteError(Exception):
+    pass
+
+
+def upload_offsite(path):
+    """Copy an encrypted backup to the S3 bucket. Returns the object key.
+
+    Only s3:PutObject is used, so the server's role can't read or delete earlier copies. S3 checks the
+    upload against its MD5, so a damaged transfer is refused rather than stored.
+    """
+    import base64
+    import hashlib
+
+    import boto3
+    from botocore.exceptions import BotoCoreError, ClientError
+
+    if not str(path).endswith('.enc'):
+        raise OffsiteError(f'Refusing to upload {path.name}: only encrypted backups leave the server.')
+    key = settings.BACKUP_S3_PREFIX + path.name
+    digest = hashlib.md5(usedforsecurity=False)  # S3's integrity check, not a security measure
+    with open(path, 'rb') as f:
+        while chunk := f.read(CHUNK):
+            digest.update(chunk)
+    try:
+        client = boto3.client('s3', region_name=settings.BACKUP_S3_REGION or None)
+        with open(path, 'rb') as body:
+            client.put_object(Bucket=settings.BACKUP_S3_BUCKET, Key=key, Body=body,
+                              ContentMD5=base64.b64encode(digest.digest()).decode(),
+                              ServerSideEncryption='AES256')
+    except (BotoCoreError, ClientError) as exc:
+        raise OffsiteError(f'Off-site copy to s3://{settings.BACKUP_S3_BUCKET}/{key} failed: {exc}') from exc
+    return key
+
+
+def backup_status(now=None):
+    """'ok', 'pending' (no backup yet), 'failed', 'stale' (none for over a day) or 'off' (no bucket)."""
+    if not settings.BACKUP_S3_BUCKET:
+        return 'off'
+    run = JobRun.objects.filter(name='backup_db').first()
+    if run is None or run.last_finished_at is None:
+        return 'pending'
+    if not run.last_ok:
+        return 'failed'
+    return 'ok' if (now or timezone.now()) - run.last_finished_at < datetime.timedelta(hours=26) else 'stale'
 
 
 # --- Scheduled jobs ----------------------------------------------------------------------------------

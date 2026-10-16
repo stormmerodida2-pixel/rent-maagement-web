@@ -7,13 +7,14 @@ from django.conf import settings
 from django.core.management.base import BaseCommand, CommandError
 from django.db import connection
 
-from ops.utils import encrypt_file
+from ops.utils import OffsiteError, encrypt_file, upload_offsite
 
 
 class Command(BaseCommand):
     help = (
-        'Back up the database to BACKUP_DIR, encrypted with BACKUP_ENCRYPTION_KEY when set, and delete '
-        'backups older than BACKUP_KEEP_DAYS. Restore with decrypt_backup, then pg_restore.'
+        'Back up the database to BACKUP_DIR, encrypted with BACKUP_ENCRYPTION_KEY when set, copy it to the '
+        'BACKUP_S3_BUCKET when set, and delete local backups older than BACKUP_KEEP_DAYS. Restore with '
+        'decrypt_backup, then pg_restore.'
     )
 
     def handle(self, *args, **options):
@@ -51,6 +52,15 @@ class Command(BaseCommand):
             f"Backed up to {final} ({size_kb:,.0f} KB, {'encrypted' if key else 'NOT encrypted'}); "
             f'removed {removed} old backup(s).'
         ))
+        if settings.BACKUP_S3_BUCKET:
+            if not key:
+                raise CommandError('BACKUP_S3_BUCKET is set but BACKUP_ENCRYPTION_KEY is not: backups are only '
+                                   'copied off the server encrypted.')
+            try:
+                object_key = upload_offsite(final)
+            except OffsiteError as exc:
+                raise CommandError(f'{exc} The local backup is kept.') from exc
+            self.stdout.write(self.style.SUCCESS(f'Copied off-site to s3://{settings.BACKUP_S3_BUCKET}/{object_key}.'))
 
     def _dump(self, path):
         db = settings.DATABASES['default']

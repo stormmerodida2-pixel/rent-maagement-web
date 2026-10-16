@@ -319,6 +319,12 @@ BACKUP_KEEP_DAYS = int(os.environ.get('BACKUP_KEEP_DAYS', '14'))
 # manager): it's what lets you read a backup after losing the server. Separate from
 # FIELD_ENCRYPTION_KEY so backups can be stored by someone who can't read M-Pesa credentials.
 BACKUP_ENCRYPTION_KEY = os.environ.get('BACKUP_ENCRYPTION_KEY', '')  # required in production.py
+# Off-site copies: each encrypted backup is also uploaded to this S3 bucket (ideally in another region),
+# so losing the server doesn't lose the data. On EC2 the server's IAM role supplies credentials; it only
+# needs s3:PutObject, and the bucket's lifecycle rule removes old copies. Empty = no off-site copies.
+BACKUP_S3_BUCKET = os.environ.get('BACKUP_S3_BUCKET', '')
+BACKUP_S3_REGION = os.environ.get('BACKUP_S3_REGION', '')
+BACKUP_S3_PREFIX = os.environ.get('BACKUP_S3_PREFIX', 'backups/')
 
 
 # --- Logging & error alerts ---------------------------------------------------------------------
