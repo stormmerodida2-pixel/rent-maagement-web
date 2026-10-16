@@ -266,6 +266,12 @@ docker compose exec web python manage.py check --deploy
 - **Monitoring:** point an uptime monitor at `/healthz/`. It returns 503 if the database or cache is down.
 - After a few days of confirmed HTTPS, raise `DJANGO_HSTS_SECONDS` to `31536000`.
 
+### WhatsApp payment summaries
+
+At 8pm, each landlord who received payments that day gets one WhatsApp message, e.g. *"Rentipay update for Thu 16 Oct: KES 45,000 received (3 M-Pesa, 1 cash by Peter). 4 tenants still owe KES 62,000."* Nothing is sent on days without payments, and it's sent once even if the job runs twice. Cash and bank payments now record who entered them, so the summary can name the caretaker. Landlords can turn it off under **Settings → Notifications**; it goes to their phone number there (or the one they log in with). Landlords whose account is read-only for an unpaid bill don't get it.
+
+It's sent from Rentipay's own WhatsApp Business number through Meta's WhatsApp Cloud API, set up by an administrator in **Settings → WhatsApp** (phone number ID, a permanent access token stored encrypted, and the approved `payments_summary` template; the page has the steps and the exact template text, and a "send yourself a test" button). Until it's set up, or if WhatsApp refuses a message, the same text goes by SMS.
+
 ### Billing landlords
 
 Landlords pay Rentipay monthly. Everything is set in the app by an administrator, in **Settings → Billing overview**: an on/off switch, the price per occupied unit (default KES 75), free units (5), trial length (30 days), days before an unpaid account becomes read-only (7), the Till landlords pay to (Rentipay's Till 9505957 is filled in) and where payment emails go. **Billing is off until you switch it on**; then every landlord gets a free trial from that day. Empty units are never charged.

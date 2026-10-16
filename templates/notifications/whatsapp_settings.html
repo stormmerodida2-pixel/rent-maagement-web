@@ -1,0 +1,58 @@
+{% extends 'app_base.html' %}
+{% load ui %}
+{% block page_title %}WhatsApp{% endblock %}
+{% block content %}
+<div class="page-header"><div><h1>WhatsApp</h1>
+  <p class="sub">Landlords get a WhatsApp message at 8pm on days they receive payments. It's sent from {{ APP_NAME }}'s own WhatsApp Business number, set up here.{% if not ready %} Until then, the summary goes by SMS.{% endif %}</p></div></div>
+
+<div class="grid-2">
+  <div class="stack">
+    <section class="card">
+      <div class="card-header"><h2>Connection</h2><span class="spacer"></span>{% if ready %}<span class="badge badge-success">Set up</span>{% else %}<span class="badge badge-warn">Sending by SMS</span>{% endif %}</div>
+      <div class="card-body">
+        <form method="post" autocomplete="off" novalidate>
+          {% csrf_token %}
+          {% include 'includes/form_fields.html' %}
+          <div class="form-actions"><button class="btn btn-primary">Save</button></div>
+        </form>
+      </div>
+    </section>
+    {% if ready %}
+    <section class="card">
+      <div class="card-header"><h2>Send yourself a test</h2></div>
+      <div class="card-body">
+        <form method="post" class="row" style="gap:8px;align-items:flex-end">
+          {% csrf_token %}<input type="hidden" name="action" value="test">
+          <div class="field" style="flex:1;min-width:180px;margin:0"><label for="id_test_phone">Your WhatsApp number</label>
+            <input id="id_test_phone" name="test_phone" inputmode="tel" value="{{ my_phone }}" placeholder="0712 345 678"></div>
+          <button class="btn">Send test</button>
+        </form>
+      </div>
+    </section>
+    {% endif %}
+  </div>
+
+  <div class="stack">
+    <section class="card">
+      <div class="card-header"><h2>What landlords get</h2></div>
+      <div class="card-body"><div class="bubble-msg" style="max-width:100%"><div class="body">{{ sample_text }}</div></div></div>
+    </section>
+    <section class="card">
+      <div class="card-header"><h2>Setting up (once)</h2></div>
+      <div class="card-body small" style="color:var(--text-2)">
+        <ol class="setup-steps">
+          <li><strong>A number for {{ APP_NAME }}.</strong> Use a phone number that isn't already on WhatsApp (a new SIM is easiest). It becomes {{ APP_NAME }}'s WhatsApp Business number.</li>
+          <li><strong>Meta Business account.</strong> At <a href="https://business.facebook.com" target="_blank" rel="noopener">business.facebook.com</a>, create one for your business and verify it (Meta asks for business documents).</li>
+          <li><strong>WhatsApp app.</strong> At <a href="https://developers.facebook.com" target="_blank" rel="noopener">developers.facebook.com</a>, create an app, add <em>WhatsApp</em>, and add your number under <em>API Setup</em>. Copy the <strong>Phone number ID</strong> shown there.</li>
+          <li><strong>Permanent token.</strong> In Business settings → System users, add a system user, give it the WhatsApp app with <em>whatsapp_business_messaging</em> permission, and generate a token that doesn't expire. Paste it above.</li>
+          <li><strong>Message template.</strong> In WhatsApp Manager → Message templates, create a <em>Utility</em> template named <code>payments_summary</code> (language English), with this body exactly:
+            <div class="copy" style="margin-top:6px"><input type="text" readonly value="{{ APP_NAME }} update for {{ '{{' }}1}}: {{ '{{' }}2}} received ({{ '{{' }}3}}). {{ '{{' }}4}} You can turn these messages off in Settings → Notifications." data-select-on-click></div>
+            Meta usually approves it within minutes to a day.</li>
+          <li><strong>Test.</strong> Save the details above and send yourself a test.</li>
+        </ol>
+        <p style="margin:10px 0 0">Meta charges for messages a business starts (see <a href="https://developers.facebook.com/docs/whatsapp/pricing" target="_blank" rel="noopener">WhatsApp pricing</a> for current rates in Kenya). At most one per landlord per day, and only on days with payments, keeps it low.</p>
+      </div>
+    </section>
+  </div>
+</div>
+{% endblock %}

@@ -1,9 +1,11 @@
 from django.contrib import messages
 from django.contrib.auth.decorators import login_required
+from django.http import Http404
 from django.shortcuts import redirect, render
+from django.utils import timezone
 from django.views.generic import ListView
 
-from rentals.utils import OwnedMixin
+from rentals.utils import OwnedMixin, normalize_phone
 
 from .forms import PreferencesForm
 from .models import LandlordPreferences, SmsMessage
@@ -40,3 +42,42 @@ def preferences(request):
             messages.success(request, 'Saved.')
             return redirect('notifications:preferences')
     return render(request, 'notifications/preferences.html', {'form': form})
+
+
+@login_required
+def whatsapp_settings(request):
+    """Settings → WhatsApp (administrators): Rentipay's WhatsApp Business number for payment summaries."""
+    from audit import utils as audit
+
+    from .forms import WhatsAppSettingsForm
+    from .models import WhatsAppSettings
+    from .utils import WhatsAppError, send_whatsapp_template, summary_text
+
+    if not request.user.is_superuser:
+        raise Http404
+    conf = WhatsAppSettings.load()
+    form = WhatsAppSettingsForm(request.POST or None, instance=conf)
+    sample = [f'{timezone.localdate():%a %d %b}', 'KES 45,000', '3 M-Pesa, 1 cash by Peter',
+              '4 tenants still owe KES 62,000.']
+    if request.method == 'POST' and request.POST.get('action') == 'test':
+        try:
+            to = normalize_phone(request.POST.get('test_phone', ''))
+            send_whatsapp_template(to, sample, conf)
+        except ValueError as exc:
+            messages.error(request, str(exc))
+        except WhatsAppError as exc:
+            messages.error(request, f'WhatsApp said: {exc}')
+        else:
+            messages.success(request, f'Sent a sample summary to {to}. Check WhatsApp on that phone.')
+        return redirect('notifications:whatsapp')
+    if request.method == 'POST' and form.is_valid():
+        form.save()
+        audit.record(owner=request.user, actor=request.user, action='whatsapp.settings_changed',
+                     summary='Changed WhatsApp settings: ' + ', '.join(form.changed_data or ['nothing']) + '.')
+        messages.success(request, 'WhatsApp settings saved. Send yourself a test to check them.')
+        return redirect('notifications:whatsapp')
+    return render(request, 'notifications/whatsapp_settings.html', {
+        'form': form, 'ready': conf.ready(), 'sample_text': summary_text(sample),
+        'my_phone': LandlordPreferences.for_user(request.user).phone,
+    })
+

@@ -9,8 +9,8 @@ from django.test import TestCase, override_settings
 from payments.tests import make_account
 from rentals.tests import make_lease
 
-from .models import SmsMessage
-from .utils import send_rent_reminder, send_sms
+from ..models import SmsMessage
+from ..utils import send_rent_reminder, send_sms
 
 AT_SETTINGS = {
     'BACKEND': 'africastalking', 'AT_USERNAME': 'sandbox', 'AT_API_KEY': 'k',

@@ -230,6 +230,10 @@ class PaymentCreate(OwnedMixin, FormPageMixin, CreateView):
             initial['lease'] = self.request.GET['lease']
         return initial
 
+    def form_valid(self, form):
+        form.instance.recorded_by = self.request.user
+        return super().form_valid(form)
+
     def get_context_data(self, **kwargs):
         return super().get_context_data(intro=self.intro, **kwargs)
 

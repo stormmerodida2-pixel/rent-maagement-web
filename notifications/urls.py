@@ -7,4 +7,5 @@ app_name = 'notifications'
 urlpatterns = [
     path('', views.SmsList.as_view(), name='sms_list'),
     path('settings/', views.preferences, name='preferences'),
+    path('whatsapp/', views.whatsapp_settings, name='whatsapp'),
 ]
