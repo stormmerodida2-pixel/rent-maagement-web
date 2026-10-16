@@ -25,7 +25,7 @@ PROFILE=rentipay-backup-writer
 echo "Bucket s3://$BUCKET in $BUCKET_REGION; server $INSTANCE_ID in $SERVER_REGION"
 
 # --- Bucket --------------------------------------------------------------------------------------------
-if ! aws s3api head-bucket --bucket "$BUCKET" 2>/dev/null; then
+if ! aws s3api head-bucket --bucket "$BUCKET" > /dev/null 2>&1; then
   aws s3api create-bucket --bucket "$BUCKET" --region "$BUCKET_REGION" \
     --create-bucket-configuration LocationConstraint="$BUCKET_REGION" > /dev/null
   echo "Created bucket."
