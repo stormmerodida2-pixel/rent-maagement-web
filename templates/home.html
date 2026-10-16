@@ -179,15 +179,19 @@
 </main>
 
 <footer class="site-footer">
-  <div class="wrap">
-    <span class="footer-logo">{% include 'includes/logo_full.html' %}</span>
-    <span>Rent collection for Kenyan landlords.</span>
-    <span class="spacer"></span>
-    <a href="{% url 'support:contact' %}">Contact us</a>
-    <a href="{% url 'privacy' %}">Privacy</a>
-    <a href="{% url 'terms' %}">Terms</a>
-    <a href="{% url 'login' %}">Log in</a>
-    <a href="{% url 'accounts:signup' %}">Sign up</a>
+  <div class="wrap footer-inner">
+    <div class="footer-brand">
+      <span class="footer-logo">{% include 'includes/logo_full.html' %}</span>
+      <span>Rent collection for Kenyan landlords.</span>
+    </div>
+    <nav class="footer-links" aria-label="Footer">
+      <a href="{% url 'support:contact' %}">Contact us</a>
+      <a href="{% url 'privacy' %}">Privacy</a>
+      <a href="{% url 'terms' %}">Terms</a>
+      <a href="{% url 'login' %}">Log in</a>
+      <a href="{% url 'accounts:signup' %}">Sign up</a>
+    </nav>
   </div>
+  <div class="wrap footer-base">© {% now "Y" %} {{ APP_NAME }}</div>
 </footer>
 {% endblock %}
