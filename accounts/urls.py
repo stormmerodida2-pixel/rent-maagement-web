@@ -26,6 +26,7 @@ staff_patterns = ([
     path('staff/leases/<int:pk>/cash/', views.record_cash, name='record_cash'),
     path('staff/prompts/<int:pk>/', views.prompt_status, name='prompt'),
     path('staff/prompts/<int:pk>/check/', views.prompt_check, name='prompt_check'),
+    path('staff/cash/', views.handover, name='handover'),
     path('staff/repairs/', views.repairs, name='repairs'),
     path('staff/repairs/new/', views.repair_form, name='repair_create'),
     path('staff/repairs/<int:pk>/', views.repair_form, name='repair_update'),

@@ -151,3 +151,32 @@ class StatementUploadForm(forms.Form):
         help_text='Leave unticked for older payments, so tenants don\'t get receipts for things they paid weeks ago.',
     )
 
+
+
+class HandoverForm(forms.Form):
+    """Cash passed on by a caretaker. The landlord's version also picks which caretaker."""
+
+    staff = forms.ModelChoiceField(queryset=None, label='From', empty_label='Choose a caretaker')
+    amount = forms.DecimalField(label='Amount (KES)', min_value=1, max_digits=10, decimal_places=2,
+                                widget=forms.NumberInput(attrs={'inputmode': 'numeric', 'step': '1'}))
+    method = forms.ChoiceField(label='How', choices=[])
+    reference = forms.CharField(label='Bank slip or M-Pesa code', max_length=50, required=False)
+    note = forms.CharField(max_length=200, required=False)
+
+    def __init__(self, *args, owner=None, **kwargs):
+        from accounts.models import StaffMember
+
+        from .models import CashHandover
+
+        super().__init__(*args, **kwargs)
+        self.fields['method'].choices = CashHandover.Method.choices
+        if owner is None:  # a caretaker handing over their own cash
+            del self.fields['staff']
+        else:
+            self.fields['staff'].queryset = StaffMember.objects.filter(owner=owner).select_related('user')
+
+    def clean(self):
+        cleaned = super().clean()
+        if cleaned.get('method') in ('banked', 'mpesa') and not cleaned.get('reference'):
+            self.add_error('reference', 'Add the bank slip number or M-Pesa code, so it can be checked.')
+        return cleaned

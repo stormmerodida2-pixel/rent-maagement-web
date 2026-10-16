@@ -198,3 +198,40 @@ class C2BPayment(models.Model):
 
     def __str__(self):
         return f'{self.trans_id} – KES {self.amount}'
+
+
+class CashHandover(models.Model):
+    """Cash a caretaker passed on to the landlord (in person, banked or sent by M-Pesa).
+
+    What a caretaker is holding = cash payments they recorded − handovers the landlord confirmed.
+    """
+
+    class Method(models.TextChoices):
+        IN_PERSON = 'in_person', 'Handed over in person'
+        BANKED = 'banked', 'Banked'
+        MPESA = 'mpesa', 'Sent by M-Pesa'
+
+    class Status(models.TextChoices):
+        PENDING = 'pending', 'Waiting for confirmation'
+        CONFIRMED = 'confirmed', 'Confirmed'
+        DISPUTED = 'disputed', 'Not received'
+
+    owner = models.ForeignKey(settings.AUTH_USER_MODEL, on_delete=models.CASCADE, related_name='cash_handovers')
+    staff = models.ForeignKey('accounts.StaffMember', on_delete=models.PROTECT, related_name='handovers')
+    amount = models.DecimalField(max_digits=10, decimal_places=2)
+    method = models.CharField(max_length=10, choices=Method.choices, default=Method.IN_PERSON)
+    reference = models.CharField(max_length=50, blank=True, help_text='Bank slip or M-Pesa code.')
+    note = models.CharField(max_length=200, blank=True)
+    handed_at = models.DateTimeField(default=timezone.now)
+    status = models.CharField(max_length=10, choices=Status.choices, default=Status.PENDING)
+    recorded_by = models.ForeignKey(settings.AUTH_USER_MODEL, on_delete=models.SET_NULL, null=True, related_name='+')
+    decided_at = models.DateTimeField(null=True, blank=True)
+    decided_by = models.ForeignKey(settings.AUTH_USER_MODEL, on_delete=models.SET_NULL, null=True, blank=True,
+                                   related_name='+')
+    created_at = models.DateTimeField(auto_now_add=True)
+
+    class Meta:
+        ordering = ['-handed_at']
+
+    def __str__(self):
+        return f'KES {self.amount:,.0f} from {self.staff} ({self.get_status_display()})'

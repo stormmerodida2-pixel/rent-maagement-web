@@ -40,6 +40,15 @@
 </div>
 {% endif %}
 
+{% for h in handovers_to_confirm %}
+<div class="alert alert-info" style="margin-bottom:20px">
+  {% icon 'users' 18 %}
+  <span><strong>{{ h.staff.name }}</strong> says they handed over <strong>{{ h.amount|kes }}</strong> cash ({{ h.get_method_display|lower }}{% if h.reference %}, {{ h.reference }}{% endif %}).</span>
+  <span class="spacer"></span>
+  <a class="btn btn-primary btn-sm" href="{% url 'payments:cash_with_staff' %}">Confirm</a>
+</div>
+{% endfor %}
+
 {% if unmatched_c2b %}
 <div class="alert alert-warning" style="margin-bottom:20px">
   {% icon 'inbox' 18 %}

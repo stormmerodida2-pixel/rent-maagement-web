@@ -23,7 +23,7 @@ from notifications.models import SmsMessage
 from notifications.utils import plan_agreed_text, reminder_text, send_personal_sms, send_rent_reminder, send_sms
 from payments import mpesa
 from payments.forms import StkPushForm
-from payments.models import C2BPayment, MpesaAccount, Payment
+from payments.models import C2BPayment, CashHandover, MpesaAccount, Payment
 
 from . import utils as rent_changes
 from .forms import BulkRentChangeForm, NoticeForm, PaymentPlanForm, RentChangeForm
@@ -112,6 +112,8 @@ def dashboard(request):
         'greeting': greeting,
         'open_requests': numbers['open_requests'][:8],
         'unmatched_c2b': C2BPayment.objects.filter(account__owner=user, payment__isnull=True).count(),
+        'handovers_to_confirm': CashHandover.objects.filter(owner=user, status=CashHandover.Status.PENDING)
+        .select_related('staff__user'),
         'mpesa_account': account,
         'statement_due': statement_due(account),
         'setup_incomplete': not all(step['done'] for step in steps),

@@ -1,0 +1,91 @@
+{% extends 'app_base.html' %}
+{% load ui %}
+{% block page_title %}Cash with staff{% endblock %}
+{% block content %}
+<div class="page-header">
+  <div><h1>Cash with staff</h1>
+    <p class="sub">Cash your caretakers collected, what they've passed on to you, and what they're still holding. Every cash payment they record also sends the tenant an SMS receipt with their name.</p></div>
+</div>
+
+{% if pending %}
+<section class="card" style="margin-bottom:16px">
+  <div class="card-header"><h2>Waiting for you to confirm</h2></div>
+  <div class="table-wrap"><table class="table"><tbody>
+    {% for h in pending %}
+    <tr>
+      <td><strong>{{ h.staff.name }}</strong> says they handed over <strong>{{ h.amount|kes }}</strong>
+        <div class="muted small">{{ h.get_method_display }}{% if h.reference %} · {{ h.reference }}{% endif %} · {{ h.handed_at|date:"D d M, H:i" }}{% if h.note %} · {{ h.note }}{% endif %}</div></td>
+      <td class="num nowrap">
+        <form method="post" action="{% url 'payments:handover_decide' h.pk %}" class="row" style="gap:6px;justify-content:flex-end">{% csrf_token %}
+          <button name="action" value="confirm" class="btn btn-sm btn-primary" data-confirm="You received {{ h.amount|kes }} from {{ h.staff.name }}{% if h.reference %} ({{ h.reference }}){% endif %}." data-confirm-title="Confirm cash received?" data-confirm-ok="Confirm">Confirm</button>
+          <button name="action" value="dispute" class="btn btn-sm" data-confirm="It will still count as cash {{ h.staff.name }} is holding." data-confirm-title="Not received?" data-confirm-ok="Not received" data-confirm-danger>Not received</button>
+        </form>
+      </td>
+    </tr>
+    {% endfor %}
+  </tbody></table></div>
+</section>
+{% endif %}
+
+{% if rows %}
+<div class="kpis" style="margin-bottom:16px">
+  {% for r in rows %}
+  <div class="card kpi">
+    <div class="label">{{ r.member.name }} is holding</div>
+    <div class="value {% if r.holding > 0 %}text-warn{% endif %}">{{ r.holding|kes }}</div>
+    <div class="sub">Collected {{ r.collected|kes }} · passed on {{ r.confirmed|kes }}{% if r.pending %} · {{ r.pending|kes }} to confirm{% endif %}</div>
+  </div>
+  {% endfor %}
+</div>
+{% else %}
+<section class="card" style="margin-bottom:16px"><div class="empty"><strong>No staff yet</strong>Add your caretaker under <a href="{% url 'staff:manage' %}">Settings → Staff</a>; cash they collect is tracked here.</div></section>
+{% endif %}
+
+<div class="grid-2">
+  <div class="stack">
+    <section class="card">
+      <div class="card-header"><h2>Cash collected by staff</h2></div>
+      {% if recent_cash %}
+      <div class="table-wrap"><table class="table"><tbody>
+        {% for p in recent_cash %}
+        <tr>
+          <td>{{ p.lease.tenant }}<div class="muted small">{{ p.lease.unit }} · {{ p.paid_at|date:"D d M, H:i" }}</div></td>
+          <td class="small">{{ p.recorded_by.first_name|default:"Staff" }}</td>
+          <td class="num">{{ p.amount|kes }}</td>
+        </tr>
+        {% endfor %}
+      </tbody></table></div>
+      {% else %}<div class="empty">No cash recorded by staff yet.</div>{% endif %}
+    </section>
+
+    <section class="card">
+      <div class="card-header"><h2>Handovers</h2></div>
+      {% if history %}
+      <div class="table-wrap"><table class="table"><tbody>
+        {% for h in history %}
+        <tr>
+          <td>{{ h.staff.name }}<div class="muted small">{{ h.get_method_display }}{% if h.reference %} · {{ h.reference }}{% endif %} · {{ h.handed_at|date:"d M Y" }}</div></td>
+          <td class="num">{{ h.amount|kes }}</td>
+          <td class="num">{% if h.status == 'confirmed' %}<span class="badge badge-success">Confirmed</span>{% elif h.status == 'pending' %}<span class="badge badge-warn">To confirm</span>{% else %}<span class="badge badge-danger">Not received</span>{% endif %}</td>
+        </tr>
+        {% endfor %}
+      </tbody></table></div>
+      {% else %}<div class="empty">No handovers yet.</div>{% endif %}
+    </section>
+  </div>
+
+  {% if rows %}
+  <section class="card">
+    <div class="card-header"><h2>Record cash you received</h2></div>
+    <div class="card-body">
+      <p class="muted small" style="margin:0 0 12px">When a caretaker gives you cash directly, record it here. It counts as confirmed straight away.</p>
+      <form method="post" novalidate>
+        {% csrf_token %}
+        {% include 'includes/form_fields.html' %}
+        <div class="form-actions"><button class="btn btn-primary">Record</button></div>
+      </form>
+    </div>
+  </section>
+  {% endif %}
+</div>
+{% endblock %}

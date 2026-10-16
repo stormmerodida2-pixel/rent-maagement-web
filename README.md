@@ -266,6 +266,15 @@ docker compose exec web python manage.py check --deploy
 - **Monitoring:** point an uptime monitor at `/healthz/`. It returns 503 if the database or cache is down.
 - After a few days of confirmed HTTPS, raise `DJANGO_HSTS_SECONDS` to `31536000`.
 
+### Cash with staff
+
+Cash and bank payments record who entered them. A caretaker is **holding** the cash they recorded until the landlord confirms receiving it.
+
+- **Caretakers** see *"Cash you're holding: KES 12,000"* on their screen and use **Hand over cash** to record passing it on: in person, banked (slip number) or by M-Pesa (code). They can't hand over more than they hold. The landlord is emailed.
+- **Landlords** see **Payments → Cash with staff**: what each caretaker collected, passed on and still holds; the cash payments they recorded; and handovers to **Confirm** or mark **Not received** (which still counts as held). The dashboard shows a notice for each handover waiting. Landlords can also record cash a caretaker gave them directly (confirmed at once).
+- The evening WhatsApp summary adds *"Peter is holding KES 12,000 cash."*
+- Balances count cash recorded from when payments started recording who took them; voided payments don't count.
+
 ### WhatsApp payment summaries
 
 At 8pm, each landlord who received payments that day gets one WhatsApp message, e.g. *"Rentipay update for Thu 16 Oct: KES 45,000 received (3 M-Pesa, 1 cash by Peter). 4 tenants still owe KES 62,000."* Nothing is sent on days without payments, and it's sent once even if the job runs twice. Cash and bank payments now record who entered them, so the summary can name the caretaker. Landlords can turn it off under **Settings → Notifications**; it goes to their phone number there (or the one they log in with). Landlords whose account is read-only for an unpaid bill don't get it.

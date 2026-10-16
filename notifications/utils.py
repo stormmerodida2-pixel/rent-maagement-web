@@ -499,6 +499,11 @@ def payment_summary(owner, day):
              if b > 0]
     still = (f'{len(owing)} tenant{"s" if len(owing) != 1 else ""} still owe{"s" if len(owing) == 1 else ""} '
              f'{_kes(sum(owing))}.') if owing else 'Everyone is paid up.'
+    from payments.utils import staff_cash_for
+
+    holding = [f'{r["member"].user.first_name or r["member"].name} is holding {_kes(r["holding"])} cash.'
+               for r in staff_cash_for(owner) if r['holding'] > 0]
+    still = ' '.join([still, *holding])
     return [f'{day:%a %d %b}', _kes(sum(p.amount for p in payments)), ', '.join(parts), still]
 
 

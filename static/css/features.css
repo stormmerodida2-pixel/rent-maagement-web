@@ -246,3 +246,8 @@ details.daraja[open] > summary h2::before { transform: rotate(90deg); }
 .help details > p { margin: 0 0 14px; }
 .help h2 { margin-top: 28px; }
 .help-contact { display: flex; flex-wrap: wrap; gap: 10px; margin: 8px 0 10px; }
+
+/* --- Cash with staff ---------------------------------------------------------------------------------- */
+.text-warn { color: var(--warn); }
+.cash-card { display: flex; align-items: center; gap: 12px; flex-wrap: wrap; margin-bottom: 14px; }
+.cash-card .amount { font-size: 22px; font-weight: 700; }

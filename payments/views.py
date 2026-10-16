@@ -24,10 +24,14 @@ from rentals.models import Lease
 
 from . import mpesa
 from .forms import (
-    AssignC2BForm, ManualPaymentForm, MovePaymentForm, MpesaAccountForm, StatementUploadForm, StkPushForm, VoidForm,
+    AssignC2BForm, HandoverForm, ManualPaymentForm, MovePaymentForm, MpesaAccountForm, StatementUploadForm,
+    StkPushForm, VoidForm,
 )
-from .models import C2BPayment, MpesaAccount, MpesaTransaction, Payment
-from .utils import STATEMENT_MAX_BYTES, StatementError, apply_statement, check_statement, read_statement
+from .models import C2BPayment, CashHandover, MpesaAccount, MpesaTransaction, Payment
+from .utils import (
+    STATEMENT_MAX_BYTES, StatementError, apply_statement, check_statement, decide_handover, read_statement,
+    record_handover, staff_cash_for,
+)
 
 logger = logging.getLogger(__name__)
 
@@ -408,4 +412,41 @@ def statement_upload(request):
                 ctx.update(checked=checked, counts=counts,
                            new_total=sum(Decimal(r['amount']) for r in checked if r['state'] in ('match', 'unmatched')))
     return render(request, 'payments/statement_upload.html', ctx)
+
+
+# --- Cash with staff -----------------------------------------------------------------------------------
+
+@login_required
+def cash_with_staff(request):
+    """What each caretaker has collected in cash, handed over and is still holding; confirm handovers."""
+    from accounts.models import StaffMember
+
+    form = HandoverForm(request.POST or None, owner=request.user)
+    if request.method == 'POST' and form.is_valid():
+        data = form.cleaned_data
+        record_handover(data['staff'], data['amount'], data['method'], data['reference'], data['note'], request.user)
+        messages.success(request, f"Recorded KES {data['amount']:,.0f} from {data['staff'].name}.")
+        return redirect('payments:cash_with_staff')
+    members = StaffMember.objects.filter(owner=request.user)
+    return render(request, 'payments/cash_with_staff.html', {
+        'form': form, 'rows': staff_cash_for(request.user),
+        'pending': CashHandover.objects.filter(owner=request.user, status=CashHandover.Status.PENDING)
+        .select_related('staff__user'),
+        'history': CashHandover.objects.filter(owner=request.user).select_related('staff__user')[:30],
+        'recent_cash': Payment.objects.filter(lease__unit__property__owner=request.user, method=Payment.Method.CASH,
+                                              recorded_by__in=members.values('user'))
+        .select_related('lease__tenant', 'lease__unit', 'recorded_by')[:30],
+    })
+
+
+@login_required
+@require_POST
+def handover_decide(request, pk):
+    handover = get_object_or_404(CashHandover, pk=pk, owner=request.user, status=CashHandover.Status.PENDING)
+    confirm = request.POST.get('action') == 'confirm'
+    decide_handover(handover, confirm, request.user)
+    messages.success(request, f'Confirmed KES {handover.amount:,.0f} from {handover.staff.name}.' if confirm else
+                     f'Marked KES {handover.amount:,.0f} from {handover.staff.name} as not received. '
+                     'It still counts as cash they are holding.')
+    return redirect('payments:cash_with_staff')
 
