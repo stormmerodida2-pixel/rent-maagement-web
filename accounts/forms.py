@@ -233,8 +233,17 @@ class StaffForm(forms.Form):
         queryset=Property.objects.none(), required=False, widget=forms.CheckboxSelectMultiple,
         label='Properties they look after', help_text='Leave all unticked for every property.',
     )
+    can_read_meters = forms.BooleanField(required=False, initial=True, label='Can enter water meter readings',
+                                         help_text='Water is billed from them, as when you enter readings.')
+    can_record_spending = forms.BooleanField(required=False, initial=True,
+                                             label='Can record spending from the cash they hold',
+                                             help_text='With a receipt photo. You approve each one before it counts.')
+    can_add_notes = forms.BooleanField(required=False, initial=True, label='Can add notes on tenants',
+                                       help_text='e.g. "Promised to pay KES 10,000 by Friday". You see them on the tenant\'s page.')
     active = forms.BooleanField(required=False, initial=True, label='Can log in',
                                 help_text='Untick when someone leaves. Their past work stays in the records.')
+
+    PERMISSIONS = ['can_read_meters', 'can_record_spending', 'can_add_notes']
 
     def __init__(self, *args, owner, member=None, **kwargs):
         self.owner, self.member = owner, member
@@ -247,7 +256,8 @@ class StaffForm(forms.Form):
             self.fields['password'].label = 'New password (optional)'
             self.fields['password'].help_text = 'Leave blank to keep their current password.'
             self.initial.update(name=member.name, phone=member.phone, properties=member.property_ids(),
-                                active=member.user.is_active)
+                                active=member.user.is_active,
+                                **{name: getattr(member, name) for name in self.PERMISSIONS})
 
     def clean_phone(self):
         phone = _clean_phone(self.cleaned_data['phone'])
@@ -281,6 +291,9 @@ class StaffForm(forms.Form):
             user.save()
             member.phone = data['phone']
             member.save(update_fields=['phone'])
+        for name in self.PERMISSIONS:
+            setattr(member, name, data[name])
+        member.save(update_fields=self.PERMISSIONS)
         member.properties.set(data['properties'])
         # The landlord vouches for the number, so it counts as confirmed.
         Profile.objects.update_or_create(user=user, defaults={'phone': data['phone'], 'phone_verified_at': timezone.now()})
@@ -323,3 +336,55 @@ class RepairForm(forms.ModelForm):
         self.fields['unit'].queryset = member.units().select_related('property')
         if not self.instance.pk:
             del self.fields['status']
+
+
+class StaffMeterForm(forms.Form):
+    reading_date = forms.DateField(label='Date', widget=forms.DateInput(attrs={'type': 'date'}))
+    value = forms.DecimalField(label='Meter reading', min_value=0, max_digits=12, decimal_places=2,
+                               widget=forms.NumberInput(attrs={'inputmode': 'decimal', 'step': 'any'}))
+    photo = forms.ImageField(label='Photo of the meter (optional)', required=False,
+                             widget=forms.ClearableFileInput(attrs={'accept': 'image/*', 'capture': 'environment'}))
+
+    def __init__(self, *args, **kwargs):
+        super().__init__(*args, **kwargs)
+        self.initial.setdefault('reading_date', timezone.localdate())
+
+
+class StaffExpenseForm(forms.Form):
+    amount = forms.DecimalField(label='Amount spent (KES)', min_value=1, max_digits=10, decimal_places=2,
+                                widget=forms.NumberInput(attrs={'inputmode': 'numeric', 'step': '1'}))
+    description = forms.CharField(label='What for', max_length=200,
+                                  widget=forms.TextInput(attrs={'placeholder': 'e.g. New kitchen tap and plumber'}))
+    unit = forms.ModelChoiceField(queryset=None, required=False, label='Which unit (optional)',
+                                  empty_label='Not for one unit')
+    spent_on = forms.DateField(label='Date', widget=forms.DateInput(attrs={'type': 'date'}))
+    receipt = forms.ImageField(label='Photo of the receipt', required=False,
+                               widget=forms.ClearableFileInput(attrs={'accept': 'image/*', 'capture': 'environment'}),
+                               help_text='Strongly recommended: it helps the landlord approve it quickly.')
+
+    def __init__(self, *args, member, **kwargs):
+        super().__init__(*args, **kwargs)
+        self.fields['unit'].queryset = member.units().select_related('property')
+        self.initial.setdefault('spent_on', timezone.localdate())
+
+    def clean_spent_on(self):
+        day = self.cleaned_data['spent_on']
+        if day > timezone.localdate():
+            raise forms.ValidationError("That's in the future.")
+        return day
+
+
+class TenantNoteForm(forms.Form):
+    text = forms.CharField(label='Note', max_length=300, widget=forms.Textarea(attrs={'rows': 2,
+                           'placeholder': 'e.g. Says salary comes on the 25th; will pay then.'}))
+    promised_amount = forms.DecimalField(label='Promised to pay (KES, optional)', required=False, min_value=1,
+                                         max_digits=10, decimal_places=2,
+                                         widget=forms.NumberInput(attrs={'inputmode': 'numeric', 'step': '1'}))
+    promised_by = forms.DateField(label='By (optional)', required=False, widget=forms.DateInput(attrs={'type': 'date'}))
+
+    def clean(self):
+        cleaned = super().clean()
+        if cleaned.get('promised_amount') and not cleaned.get('promised_by'):
+            self.add_error('promised_by', 'When did they promise to pay by?')
+        return cleaned
+

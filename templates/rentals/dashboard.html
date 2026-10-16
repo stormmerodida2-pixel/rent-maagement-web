@@ -40,6 +40,14 @@
 </div>
 {% endif %}
 
+{% if spending_to_approve %}
+<div class="alert alert-info" style="margin-bottom:20px">
+  {% icon 'file' 18 %}
+  <span><strong>{{ spending_to_approve }} spending record{{ spending_to_approve|pluralize }}</strong> from your caretakers to approve.</span>
+  <span class="spacer"></span>
+  <a class="btn btn-primary btn-sm" href="{% url 'payments:cash_with_staff' %}">Review</a>
+</div>
+{% endif %}
 {% for h in handovers_to_confirm %}
 <div class="alert alert-info" style="margin-bottom:20px">
   {% icon 'users' 18 %}

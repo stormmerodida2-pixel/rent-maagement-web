@@ -31,6 +31,7 @@ urlpatterns = [
     path('privacy/', views.privacy, name='privacy'),
     path('terms/', views.terms, name='terms'),
     path('help/', views.help_page, name='help'),
+    path('private/<str:kind>/<int:pk>/', views.private_file, name='private_file'),
     path('admin/', admin.site.urls),
     path('login/', account_views.LoginView.as_view(), name='login'),
     path('logout/', auth_views.LogoutView.as_view(), name='logout'),

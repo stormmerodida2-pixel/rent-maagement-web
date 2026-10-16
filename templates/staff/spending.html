@@ -1,0 +1,29 @@
+{% extends 'staff/base.html' %}
+{% load ui %}
+{% block page_title %}Record spending{% endblock %}
+{% block content %}
+<div class="staff-head"><a class="small" href="{% url 'staff:home' %}">← Back</a><h1>Record spending</h1>
+  <p class="muted">Money you paid out of the rent cash you hold, e.g. a plumber or a new tap. It counts once the landlord approves it. You can spend up to {{ cash.to_hand_over|kes }}.</p></div>
+<section class="card"><div class="card-body">
+  <form method="post" enctype="multipart/form-data" novalidate data-confirm="Record spending KES {amount}? The landlord will be asked to approve it." data-confirm-ok="Record">
+    {% csrf_token %}
+    {% include 'includes/form_fields.html' %}
+    <button type="submit" class="btn btn-primary btn-block" style="margin-top:16px">Record spending</button>
+  </form>
+</div></section>
+{% if recent %}
+<h2 style="font-size:16px;margin:20px 0 8px">Recent</h2>
+<div class="staff-list">
+{% for e in recent %}
+  <article class="card staff-card">
+    <div class="staff-card-head">
+      <div class="staff-card-who"><strong>{{ e.description }}</strong><span class="muted small">{{ e.spent_on|date:"d M" }}{% if e.unit %} · {{ e.unit.label }}{% endif %}</span></div>
+      <span style="text-align:right"><strong>{{ e.amount|kes }}</strong><br>
+        {% if e.status == 'approved' %}<span class="badge badge-success">Approved</span>{% elif e.status == 'pending' %}<span class="badge badge-warn">Waiting</span>{% else %}<span class="badge badge-danger">Not approved</span>{% endif %}</span>
+    </div>
+    {% if e.reject_reason %}<div class="muted small">{{ e.reject_reason }}</div>{% endif %}
+  </article>
+{% endfor %}
+</div>
+{% endif %}
+{% endblock %}

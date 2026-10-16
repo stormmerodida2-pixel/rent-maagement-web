@@ -8,7 +8,7 @@ from django.utils.translation import gettext_lazy as _
 
 from rentals.models import Lease, Voidable
 
-from .utils import EncryptedTextField
+from .utils import EncryptedTextField, private_storage
 
 
 def new_callback_token():
@@ -235,3 +235,35 @@ class CashHandover(models.Model):
 
     def __str__(self):
         return f'KES {self.amount:,.0f} from {self.staff} ({self.get_status_display()})'
+
+
+class StaffExpense(models.Model):
+    """Money a caretaker spent from the rent cash they hold (a plumber, a tap…). Only once the landlord
+    approves it does it reduce what they're holding."""
+
+    class Status(models.TextChoices):
+        PENDING = 'pending', 'Waiting for approval'
+        APPROVED = 'approved', 'Approved'
+        REJECTED = 'rejected', 'Not approved'
+
+    owner = models.ForeignKey(settings.AUTH_USER_MODEL, on_delete=models.CASCADE, related_name='staff_expenses')
+    staff = models.ForeignKey('accounts.StaffMember', on_delete=models.PROTECT, related_name='expenses')
+    amount = models.DecimalField(max_digits=10, decimal_places=2)
+    description = models.CharField('what for', max_length=200)
+    unit = models.ForeignKey('rentals.Unit', on_delete=models.SET_NULL, null=True, blank=True, related_name='+')
+    receipt = models.ImageField(upload_to='receipts/%Y/%m/', storage=private_storage, blank=True)
+    spent_on = models.DateField(default=timezone.localdate)
+    status = models.CharField(max_length=10, choices=Status.choices, default=Status.PENDING)
+    reject_reason = models.CharField(max_length=200, blank=True)
+    recorded_by = models.ForeignKey(settings.AUTH_USER_MODEL, on_delete=models.SET_NULL, null=True, related_name='+')
+    decided_at = models.DateTimeField(null=True, blank=True)
+    decided_by = models.ForeignKey(settings.AUTH_USER_MODEL, on_delete=models.SET_NULL, null=True, blank=True,
+                                   related_name='+')
+    created_at = models.DateTimeField(auto_now_add=True)
+
+    class Meta:
+        ordering = ['-spent_on', '-created_at']
+
+    def __str__(self):
+        return f'KES {self.amount:,.0f}: {self.description}'
+

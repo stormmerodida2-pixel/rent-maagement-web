@@ -33,7 +33,7 @@
         <tr>
           <td><strong>{{ unit.label }}</strong></td>
           <td>{% if lease %}{{ lease.tenant }}{% else %}<span class="badge badge-warn">Vacant</span>{% endif %}</td>
-          <td class="num">{% if last %}{{ last.value|floatformat:"-2" }}<div class="muted small">{{ last.reading_date|date:"d M Y" }} · <a href="{% url 'rentals:reading_void' last.pk %}">Void</a></div>{% else %}<span class="muted small">First reading sets the baseline</span>{% endif %}</td>
+          <td class="num">{% if last %}{{ last.value|floatformat:"-2" }}<div class="muted small">{{ last.reading_date|date:"d M Y" }}{% if last.recorded_by_id and last.recorded_by_id != user.pk %} · by {{ last.recorded_by.first_name|default:"staff" }}{% endif %}{% if last.photo %} · <a href="{% url 'private_file' 'meter' last.pk %}" target="_blank" rel="noopener">photo</a>{% endif %} · <a href="{% url 'rentals:reading_void' last.pk %}">Void</a></div>{% else %}<span class="muted small">First reading sets the baseline</span>{% endif %}</td>
           <td style="max-width:180px">{{ field }}{{ field.errors }}</td>
         </tr>
         {% endfor %}

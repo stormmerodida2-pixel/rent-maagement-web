@@ -15,7 +15,7 @@ from django.utils.formats import date_format
 from django.utils.translation import gettext
 from django.utils.translation import gettext_lazy as _
 
-from payments.utils import EncryptedTextField
+from payments.utils import EncryptedTextField, private_storage
 
 
 
@@ -540,6 +540,9 @@ class MeterReading(Voidable):
     unit = models.ForeignKey(Unit, on_delete=models.CASCADE, related_name='meter_readings')
     reading_date = models.DateField()
     value = models.DecimalField(max_digits=12, decimal_places=2)
+    recorded_by = models.ForeignKey(settings.AUTH_USER_MODEL, on_delete=models.SET_NULL, null=True, blank=True,
+                                    related_name='+')
+    photo = models.ImageField(upload_to='meters/%Y/%m/', storage=private_storage, blank=True)
     charge = models.OneToOneField(
         RentCharge, on_delete=models.SET_NULL, null=True, blank=True, related_name='meter_reading',
     )
@@ -550,3 +553,26 @@ class MeterReading(Voidable):
 
     def __str__(self):
         return f'{self.unit} – {self.value} on {self.reading_date}'
+
+
+class TenantNote(models.Model):
+    """A note on a tenancy from the landlord or a caretaker, e.g. "Promised to pay KES 10,000 by Friday"."""
+
+    lease = models.ForeignKey(Lease, on_delete=models.CASCADE, related_name='notes')
+    text = models.CharField(max_length=300)
+    promised_amount = models.DecimalField(max_digits=10, decimal_places=2, null=True, blank=True)
+    promised_by = models.DateField('promised to pay by', null=True, blank=True)
+    author = models.ForeignKey(settings.AUTH_USER_MODEL, on_delete=models.SET_NULL, null=True, related_name='+')
+    created_at = models.DateTimeField(auto_now_add=True)
+
+    class Meta:
+        ordering = ['-created_at']
+
+    def __str__(self):
+        return self.text[:50]
+
+    def promise_missed(self, today=None):
+        """The promise date has passed and the tenant still owes."""
+        today = today or timezone.localdate()
+        return bool(self.promised_by and self.promised_by < today and self.lease.balance > 0)
+

@@ -14,6 +14,7 @@ urlpatterns = [
     path('leases/<int:pk>/notice/', views.lease_notice, name='lease_notice'),
     path('leases/<int:pk>/rent/', views.lease_rent_change, name='rent_change'),
     path('leases/<int:pk>/plan/', views.plan_create, name='plan_create'),
+    path('leases/<int:pk>/note/', views.lease_note, name='lease_note'),
     path('plans/', views.plan_list, name='plan_list'),
     path('plans/<int:pk>/cancel/', views.plan_cancel, name='plan_cancel'),
     path('properties/<int:pk>/rent/', views.property_rent_change, name='property_rent_change'),

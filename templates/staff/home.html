@@ -18,6 +18,13 @@
 </section>
 {% endif %}
 
+{% if request.staff.can_read_meters or request.staff.can_record_spending %}
+<div class="staff-quick">
+  {% if request.staff.can_read_meters %}<a class="btn" href="{% url 'staff:meters' %}">{% icon 'refresh' %}Meter readings</a>{% endif %}
+  {% if request.staff.can_record_spending %}<a class="btn" href="{% url 'staff:spending' %}">{% icon 'file' %}Record spending</a>{% endif %}
+</div>
+{% endif %}
+
 {% if not mpesa_ready %}
 <div class="alert alert-warning">{% icon 'wallet' 18 %}<span>M-Pesa prompts aren't available: the landlord hasn't connected Daraja yet. You can still record cash.</span></div>
 {% endif %}
@@ -46,6 +53,7 @@
       {% else %}<span class="badge badge-success">Paid up</span>{% endif %}
     </div>
     {% if lease.moving_out %}<div><span class="badge badge-warn">Moving out {{ lease.end_date|date:"D d M" }}</span></div>{% endif %}
+    {% if r.note %}<div class="staff-note small">{% if r.note.promised_by %}<span class="badge {% if r.note.promise_missed %}badge-danger{% else %}badge-info{% endif %}">{% if r.note.promise_missed %}Missed promise{% else %}Promised{% endif %}{% if r.note.promised_amount %} {{ r.note.promised_amount|kes }}{% endif %} by {{ r.note.promised_by|date:"D d M" }}</span> {% endif %}{{ r.note.text }}</div>{% endif %}
     <div class="muted small">{% if r.last_paid %}Last paid {{ r.last_paid|date:"d M Y" }}{% else %}No payments yet{% endif %}
       {% if r.prompt %} · <a href="{% url 'staff:prompt' r.prompt.pk %}">Prompt {% if r.prompt.status == 'success' %}<span class="text-success">paid ✓</span>{% elif r.prompt.status == 'failed' %}not paid{% else %}waiting…{% endif %}</a>{% endif %}</div>
     <div class="staff-actions">
@@ -58,6 +66,7 @@
       </form>
       {% endif %}
       <a class="btn" href="{% url 'staff:record_cash' lease.pk %}">{% icon 'wallet' %}Record cash</a>
+      {% if request.staff.can_add_notes %}<a class="btn btn-ghost" href="{% url 'staff:note' lease.pk %}">{% icon 'file' %}Note</a>{% endif %}
     </div>
   </article>
   {% endwith %}

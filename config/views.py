@@ -5,6 +5,7 @@ import json
 from urllib.parse import urlsplit
 
 from django.conf import settings
+from django.contrib.auth.decorators import login_required
 from django.contrib.sitemaps import Sitemap
 from django.contrib.staticfiles import finders
 from django.contrib.staticfiles.storage import ManifestFilesMixin, staticfiles_storage
@@ -87,7 +88,7 @@ PRIVATE_PATHS = [
     '/admin/', '/t/', '/dashboard/', '/welcome/', '/properties/', '/units/', '/tenants/', '/leases/',
     '/charges/', '/readings/', '/payments/', '/maintenance/', '/complaints/', '/messages/', '/reports/',
     '/activity/', '/announcements/', '/verify-email/', '/password-reset/', '/logout/', '/healthz/',
-    '/vacancies/', '/staff/', '/settings/',
+    '/vacancies/', '/staff/', '/settings/', '/private/', '/billing/',
 ]
 
 
@@ -215,3 +216,34 @@ def service_worker(request):
 
 def offline(request):
     return render(request, 'pwa/offline.html')
+
+
+# --- Private files (receipts, meter photos) --------------------------------------------------------------
+
+@login_required
+def private_file(request, kind, pk):
+    """A receipt or meter photo, for the landlord it belongs to or the caretaker who took it. Never cached publicly."""
+    from django.http import FileResponse, Http404
+
+    from accounts.models import staff_for
+    from payments.models import StaffExpense
+    from rentals.models import MeterReading
+
+    staff = staff_for(request.user)
+    if kind == 'receipt':
+        item = StaffExpense.objects.filter(pk=pk).first()
+        field = item.receipt if item else None
+        allowed = item and (item.owner_id == request.user.pk or (staff and item.staff_id == staff.pk))
+    elif kind == 'meter':
+        item = MeterReading.all_objects.select_related('unit__property').filter(pk=pk).first()
+        field = item.photo if item else None
+        allowed = item and (item.unit.property.owner_id == request.user.pk or
+                            (staff and item.recorded_by_id == request.user.pk))
+    else:
+        raise Http404
+    if not allowed or not field:
+        raise Http404
+    response = FileResponse(field.open('rb'), content_type='image/jpeg')
+    response['Cache-Control'] = 'private, max-age=3600'
+    response['X-Content-Type-Options'] = 'nosniff'
+    return response

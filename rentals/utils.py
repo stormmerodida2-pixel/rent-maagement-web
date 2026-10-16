@@ -85,10 +85,11 @@ def last_reading(unit):
 
 
 @transaction.atomic
-def record_water_reading(unit, reading_date, value):
+def record_water_reading(unit, reading_date, value, recorded_by=None, photo=None):
     """Save a meter reading and bill the consumption since the previous one to the unit's tenant.
 
-    The first reading for a unit is just a baseline. Returns the MeterReading.
+    The first reading for a unit is just a baseline. `photo` is an already-prepared image file. Returns the
+    MeterReading.
     """
     value = Decimal(value)
     previous = last_reading(unit)
@@ -98,7 +99,9 @@ def record_water_reading(unit, reading_date, value):
         if value < previous.value:
             raise BillingError(f'{unit.label}: {value} is lower than the last reading ({previous.value}).')
 
-    reading = MeterReading(unit=unit, reading_date=reading_date, value=value)
+    reading = MeterReading(unit=unit, reading_date=reading_date, value=value, recorded_by=recorded_by)
+    if photo is not None:
+        reading.photo.save(photo.name, photo, save=False)
     rate = unit.property.water_rate
     lease = unit.leases.filter(is_active=True).first()
     if previous is not None and rate and lease is not None:
@@ -113,6 +116,20 @@ def record_water_reading(unit, reading_date, value):
             )
     reading.save()
     return reading
+
+
+def add_tenant_note(lease, author, text, promised_amount=None, promised_by=None):
+    """A note on a tenancy (from the landlord or a caretaker), optionally a promise to pay by a date."""
+    from .models import TenantNote
+
+    note = TenantNote.objects.create(lease=lease, author=author, text=text, promised_amount=promised_amount,
+                                     promised_by=promised_by)
+    promise = (f' Promised {"KES " + format(promised_amount, ",.0f") + " " if promised_amount else ""}'
+               f'by {promised_by:%d %b}.') if promised_by else ''
+    who = 'You' if author.pk == lease.unit.property.owner_id else f'{author.get_full_name() or "Staff"} (staff)'
+    audit.record(owner=lease.unit.property.owner, actor=author, lease=lease, action='lease.note_added',
+                 summary=f'{who} added a note on {lease.tenant}: "{text[:80]}".{promise}')
+    return note
 
 
 @transaction.atomic

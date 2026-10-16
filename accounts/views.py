@@ -10,6 +10,7 @@ from django.contrib.auth import get_user_model, login
 from django.contrib.auth import views as auth_views
 from django.contrib.auth.forms import SetPasswordForm
 from django.contrib.auth.decorators import login_required
+from django.core.exceptions import ValidationError
 from django.core.mail import send_mail
 from django.db import IntegrityError, transaction
 from django.db.models import Max, Q
@@ -28,12 +29,14 @@ from notifications.utils import send_cash_receipt
 from payments import mpesa
 from payments.forms import HandoverForm, StkPushForm
 from payments.models import MpesaAccount, MpesaTransaction, Payment
-from payments.utils import HandoverError, record_handover, staff_cash
-from rentals.models import Lease, Property, Tenant, Unit
+from payments.utils import HandoverError, record_expense, record_handover, staff_cash
+from rentals.models import Lease, Property, Tenant, TenantNote, Unit
+from rentals.utils import BillingError, add_tenant_note, last_reading, record_water_reading
 
 from . import utils as ratelimit
 from .forms import (
-    CashForm, ChangePasswordForm, PhoneCodeForm, ProfileForm, RepairForm, ResetRequestForm, SignupForm, StaffForm,
+    CashForm, ChangePasswordForm, PhoneCodeForm, ProfileForm, RepairForm, ResetRequestForm, SignupForm, StaffExpenseForm,
+    StaffForm, StaffMeterForm, TenantNoteForm,
 )
 from .models import Profile, StaffMember, TwoFactor, profile_for
 from .utils import (
@@ -487,12 +490,15 @@ def staff_home(request):
     prompts = {}
     for txn in MpesaTransaction.objects.filter(lease__in=leases, created_at__gte=timezone.now() - RECENT_PROMPT):
         prompts.setdefault(txn.lease_id, txn)  # newest first
+    notes = {}
+    for note in TenantNote.objects.filter(lease__in=leases).order_by('-created_at'):
+        notes.setdefault(note.lease_id, note)  # the latest one
     rows = []
     for lease in leases:
         balance = lease.balance
         if balance > 0 or show_all or q:
             rows.append({'lease': lease, 'balance': balance, 'last_paid': last_paid.get(lease.pk),
-                         'prompt': prompts.get(lease.pk)})
+                         'prompt': prompts.get(lease.pk), 'note': notes.get(lease.pk)})
     rows.sort(key=lambda r: -r['balance'])
     account = MpesaAccount.objects.filter(owner=staff.owner).first()
     return render(request, 'staff/home.html', {
@@ -627,6 +633,102 @@ def _tell_landlord_about_handover(member, amount):
                   f'{settings.APP_NAME}', None, [owner.email])
     except Exception:
         logger.exception('Could not email %s about a cash handover', owner.pk)
+
+
+def staff_can(permission):
+    """Only caretakers whose landlord ticked `permission` for them (Settings → Staff)."""
+
+    def decorator(view):
+        @wraps(view)
+        @staff_required
+        def wrapper(request, *args, **kwargs):
+            if not getattr(request.staff, permission):
+                messages.error(request, "Your landlord hasn't turned this on for you.")
+                return redirect('staff:home')
+            return view(request, *args, **kwargs)
+
+        return wrapper
+
+    return decorator
+
+
+@staff_can('can_read_meters')
+def staff_meters(request):
+    """Units the caretaker looks after, with the last water meter reading of each."""
+    units = request.staff.units().select_related('property').order_by('property__name', 'sort_key')
+    rows = [{'unit': u, 'last': last_reading(u)} for u in units]
+    return render(request, 'staff/meters.html', {'rows': rows,
+                                                'no_rate': not any(u.property.water_rate for u in units)})
+
+
+@staff_can('can_read_meters')
+def staff_meter_reading(request, pk):
+    from listings.utils import prepare_photo
+
+    unit = get_object_or_404(request.staff.units().select_related('property'), pk=pk)
+    last = last_reading(unit)
+    form = StaffMeterForm(request.POST or None, request.FILES or None)
+    if request.method == 'POST' and form.is_valid():
+        data = form.cleaned_data
+        if data['reading_date'] > timezone.localdate():
+            form.add_error('reading_date', "That's in the future.")
+        else:
+            try:
+                photo = prepare_photo(data['photo']) if data['photo'] else None
+                reading = record_water_reading(unit, data['reading_date'], data['value'], request.user, photo)
+            except ValidationError as exc:
+                form.add_error('photo', exc)
+            except BillingError as exc:
+                form.add_error('value', str(exc).split(': ', 1)[-1])
+            else:
+                billed = f' Billed KES {reading.charge.amount:,.0f} for water.' if reading.charge else ''
+                _record(request, 'water.billed', f'{request.staff.name} (staff) entered meter reading '
+                                                 f'{reading.value} for {unit}.{billed}')
+                messages.success(request, f'Saved the reading for {unit.label}.{billed}')
+                return redirect('staff:meters')
+    intro = (f'Last reading: {last.value} on {last.reading_date:%d %b %Y}.' if last else
+             'No reading yet: this first one is the starting point, nothing is billed.')
+    return render(request, 'staff/form.html', {
+        'form': form, 'title': f'Meter reading · {unit.label}', 'intro': intro, 'submit': 'Save reading',
+        'cancel': reverse('staff:meters'), 'multipart': True,
+    })
+
+
+@staff_can('can_record_spending')
+def staff_spending(request):
+    """Record money spent from the cash the caretaker holds; the landlord approves it."""
+    from payments.models import StaffExpense
+
+    cash = staff_cash(request.staff)
+    form = StaffExpenseForm(request.POST or None, request.FILES or None, member=request.staff)
+    if request.method == 'POST' and form.is_valid():
+        data = form.cleaned_data
+        try:
+            record_expense(request.staff, data['amount'], data['description'], data['unit'], data['receipt'],
+                           data['spent_on'], request.user)
+        except HandoverError as exc:
+            form.add_error('amount', str(exc))
+        except ValidationError as exc:
+            form.add_error('receipt', exc)
+        else:
+            messages.success(request, f"Recorded. {request.staff.owner.first_name or 'The landlord'} will approve it.")
+            return redirect('staff:spending')
+    return render(request, 'staff/spending.html', {
+        'form': form, 'cash': cash,
+        'recent': StaffExpense.objects.filter(staff=request.staff).select_related('unit')[:15],
+    })
+
+
+@staff_can('can_add_notes')
+def staff_note(request, pk):
+    """A note on a tenant: what they said, or a promise to pay by a date."""
+    lease = _lease(request, pk)
+    form = TenantNoteForm(request.POST or None)
+    if request.method == 'POST' and form.is_valid():
+        add_tenant_note(lease, request.user, **form.cleaned_data)
+        messages.success(request, f'Note saved for {lease.tenant}.')
+        return redirect('staff:home')
+    return render(request, 'staff/note.html', {'form': form, 'lease': lease, 'notes': lease.notes.all()[:10]})
 
 
 @staff_required

@@ -65,6 +65,11 @@ class StaffMember(models.Model):
         'rentals.Property', blank=True, related_name='staff_members',
         help_text='Leave all unticked to cover every property, including ones added later.',
     )
+    can_read_meters = models.BooleanField('can enter water meter readings', default=True)
+    can_record_spending = models.BooleanField('can record spending from cash they hold', default=True,
+                                              help_text='You approve each one before it counts.')
+    can_add_notes = models.BooleanField('can add notes on tenants', default=True,
+                                        help_text='e.g. "Promised to pay KES 10,000 by Friday".')
     created_at = models.DateTimeField(auto_now_add=True)
 
     class Meta:

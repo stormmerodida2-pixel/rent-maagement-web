@@ -275,6 +275,16 @@ Cash and bank payments record who entered them. A caretaker is **holding** the c
 - The evening WhatsApp summary adds *"Peter is holding KES 12,000 cash."*
 - Balances count cash recorded from when payments started recording who took them; voided payments don't count.
 
+### Caretaker tools
+
+Three extra tools for caretakers, each a tickbox per caretaker in **Settings → Staff** (all on by default):
+
+- **Meter readings.** *Meter readings* on their screen lists the units they look after with each one's last reading. They enter a reading (optionally with a photo of the meter) and water is billed exactly as when the landlord enters it. The landlord's water readings page shows who took a reading and links the photo; wrong readings are voided as before.
+- **Spending from cash held.** *Record spending*: amount, what for, which unit, and a photo of the receipt. It can't exceed the cash they hold. It reduces what they're holding only once the landlord **approves** it on **Payments → Cash with staff** (a dashboard notice says when there's some to review). Not approving needs a reason, which the caretaker sees.
+- **Notes on tenants.** *Note* on each tenant: what they said, optionally "promised to pay KES X by <date>". The latest note shows on the caretaker's list; all notes show on the tenant's page, where the landlord can add their own. A promise whose date has passed while the tenant still owes is flagged **Missed promise**.
+
+Receipts and meter photos are **private**: they're stored in `PRIVATE_MEDIA_ROOT` (the `private_media` Docker volume), which the web server never serves. They're only shown through `/private/…`, which checks that the viewer is the landlord or the caretaker who uploaded them. Photos are resized and their location data removed, like listing photos.
+
 ### WhatsApp payment summaries
 
 At 8pm, each landlord who received payments that day gets one WhatsApp message, e.g. *"Rentipay update for Thu 16 Oct: KES 45,000 received (3 M-Pesa, 1 cash by Peter). 4 tenants still owe KES 62,000."* Nothing is sent on days without payments, and it's sent once even if the job runs twice. Cash and bank payments now record who entered them, so the summary can name the caretaker. Landlords can turn it off under **Settings → Notifications**; it goes to their phone number there (or the one they log in with). Landlords whose account is read-only for an unpaid bill don't get it.

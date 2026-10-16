@@ -21,7 +21,7 @@ COPY . .
 RUN DJANGO_SECRET_KEY=build-only FIELD_ENCRYPTION_KEY=build-only BACKUP_ENCRYPTION_KEY=build-only \
     python manage.py collectstatic --noinput
 
-RUN useradd --create-home --uid 1000 app && mkdir -p /backups /app/media && chown app /backups /app/media
+RUN useradd --create-home --uid 1000 app && mkdir -p /backups /app/media /app/private_media && chown app /backups /app/media /app/private_media
 USER app
 
 EXPOSE 8000

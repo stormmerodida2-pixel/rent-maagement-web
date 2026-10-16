@@ -23,6 +23,7 @@ services:
     command: sh -c "python manage.py migrate --noinput && exec gunicorn config.wsgi -c gunicorn.conf.py"
     volumes:
       - media:/app/media  # uploaded listing photos; Caddy serves them
+      - private_media:/app/private_media  # receipts and meter photos; only the app serves them, after checking
     healthcheck:
       test: ["CMD", "python", "-c", "import urllib.request; urllib.request.urlopen('http://localhost:8000/healthz/', timeout=5)"]
       interval: 30s
@@ -84,6 +85,7 @@ services:
 volumes:
   pgdata:
   backups:
+  private_media:
   media:
   caddy_data:
   caddy_config:

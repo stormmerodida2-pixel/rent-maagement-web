@@ -27,10 +27,10 @@ from .forms import (
     AssignC2BForm, HandoverForm, ManualPaymentForm, MovePaymentForm, MpesaAccountForm, StatementUploadForm,
     StkPushForm, VoidForm,
 )
-from .models import C2BPayment, CashHandover, MpesaAccount, MpesaTransaction, Payment
+from .models import C2BPayment, CashHandover, MpesaAccount, MpesaTransaction, Payment, StaffExpense
 from .utils import (
-    STATEMENT_MAX_BYTES, StatementError, apply_statement, check_statement, decide_handover, read_statement,
-    record_handover, staff_cash_for,
+    STATEMENT_MAX_BYTES, StatementError, apply_statement, check_statement, decide_expense, decide_handover,
+    read_statement, record_handover, staff_cash_for,
 )
 
 logger = logging.getLogger(__name__)
@@ -430,6 +430,9 @@ def cash_with_staff(request):
     members = StaffMember.objects.filter(owner=request.user)
     return render(request, 'payments/cash_with_staff.html', {
         'form': form, 'rows': staff_cash_for(request.user),
+        'spending': StaffExpense.objects.filter(owner=request.user, status=StaffExpense.Status.PENDING)
+        .select_related('staff__user', 'unit'),
+        'spending_history': StaffExpense.objects.filter(owner=request.user).select_related('staff__user', 'unit')[:30],
         'pending': CashHandover.objects.filter(owner=request.user, status=CashHandover.Status.PENDING)
         .select_related('staff__user'),
         'history': CashHandover.objects.filter(owner=request.user).select_related('staff__user')[:30],
@@ -448,5 +451,20 @@ def handover_decide(request, pk):
     messages.success(request, f'Confirmed KES {handover.amount:,.0f} from {handover.staff.name}.' if confirm else
                      f'Marked KES {handover.amount:,.0f} from {handover.staff.name} as not received. '
                      'It still counts as cash they are holding.')
+    return redirect('payments:cash_with_staff')
+
+
+@login_required
+@require_POST
+def expense_decide(request, pk):
+    expense = get_object_or_404(StaffExpense, pk=pk, owner=request.user, status=StaffExpense.Status.PENDING)
+    approve = request.POST.get('action') == 'approve'
+    reason = request.POST.get('reason', '').strip()
+    if not approve and not reason:
+        messages.error(request, f'Say why you are not approving the KES {expense.amount:,.0f}, so {expense.staff.name} knows.')
+        return redirect('payments:cash_with_staff')
+    decide_expense(expense, approve, request.user, reason)
+    messages.success(request, f'Approved KES {expense.amount:,.0f} spent by {expense.staff.name}.' if approve else
+                     f'Not approved. KES {expense.amount:,.0f} still counts as cash {expense.staff.name} is holding.')
     return redirect('payments:cash_with_staff')
 

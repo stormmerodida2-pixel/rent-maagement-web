@@ -313,7 +313,7 @@ def is_trusted_device(request, two_factor):
 
 # Everything else (dashboard, reports, payments, settings…) is off limits to staff accounts.
 STAFF_ALLOWED = ('/staff/', '/logout/', '/login/', '/static/', '/sw.js', '/manifest.webmanifest', '/offline/',
-                 '/privacy/', '/terms/', '/help/', '/healthz/', '/robots.txt', '/t/')
+                 '/privacy/', '/terms/', '/help/', '/healthz/', '/robots.txt', '/t/', '/private/')
 
 
 class StaffAreaMiddleware:
