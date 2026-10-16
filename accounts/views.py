@@ -567,6 +567,7 @@ def record_cash(request, pk):
         try:
             with transaction.atomic():
                 payment = Payment.objects.create(lease=lease, amount=data['amount'], method=Payment.Method.CASH,
+                                                 recorded_by=request.user,
                                                  reference=data['reference'], paid_at=data['paid_at'],
                                                  notes=notes[:255])
         except IntegrityError:

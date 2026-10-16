@@ -74,6 +74,11 @@
   </a>
   {% endif %}
   {% if user.is_superuser %}
+  <a class="card settings-item" href="{% url 'notifications:whatsapp' %}">
+    <span class="settings-icon">{% icon 'message' %}</span>
+    <span class="settings-text"><strong>WhatsApp</strong><span class="muted small">Rentipay's WhatsApp Business number, for landlords' payment summaries.</span></span>
+    {% icon 'arrow-right' %}
+  </a>
   <a class="card settings-item" href="{% url 'business_details' %}">
     <span class="settings-icon">{% icon 'building' %}</span>
     <span class="settings-text"><strong>Business details</strong><span class="muted small">Your legal name and address, contact numbers and social media links.</span></span>

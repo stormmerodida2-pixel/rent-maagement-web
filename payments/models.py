@@ -104,6 +104,9 @@ class Payment(Voidable):
     )
     paid_at = models.DateTimeField(default=timezone.now)
     notes = models.CharField(max_length=255, blank=True)
+    # Who entered a cash or bank payment (the landlord or a caretaker); empty for M-Pesa, which records itself.
+    recorded_by = models.ForeignKey(settings.AUTH_USER_MODEL, on_delete=models.SET_NULL, null=True, blank=True,
+                                    related_name='+')
 
     class Meta:
         ordering = ['-paid_at']

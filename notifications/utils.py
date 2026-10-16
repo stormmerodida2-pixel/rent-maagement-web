@@ -435,3 +435,117 @@ def send_plan_reminders(today=None):
         nxt.save(update_fields=['reminded_on'])
         sent += 1
     return sent
+
+
+# --- WhatsApp payment summaries for landlords ----------------------------------------------------------
+# At 8pm, landlords who received payments that day get one WhatsApp message: how much, how, and who still
+# owes. Nothing on days without payments. Sent from Rentipay's WhatsApp Business number with a template
+# approved by Meta (see Settings → WhatsApp); by SMS until that's set up.
+
+WHATSAPP_API = 'https://graph.facebook.com/v21.0'
+
+
+class WhatsAppError(Exception):
+    pass
+
+
+def send_whatsapp_template(to, params, conf=None):
+    """Send the approved template to `to` (2547…) with its {{1}}…{{n}} filled in. Raises WhatsAppError."""
+    from .models import WhatsAppSettings
+
+    conf = conf or WhatsAppSettings.load()
+    if not conf.ready():
+        raise WhatsAppError("WhatsApp isn't set up yet (Settings → WhatsApp).")
+    payload = {
+        'messaging_product': 'whatsapp', 'to': to, 'type': 'template',
+        'template': {'name': conf.template_name, 'language': {'code': conf.template_language},
+                     'components': [{'type': 'body',
+                                     'parameters': [{'type': 'text', 'text': str(p)} for p in params]}]},
+    }
+    try:
+        resp = requests.post(f'{WHATSAPP_API}/{conf.phone_number_id}/messages', json=payload, timeout=20,
+                             headers={'Authorization': f'Bearer {conf.access_token}'})
+        data = resp.json()
+    except (requests.RequestException, ValueError) as exc:
+        raise WhatsAppError(f"Couldn't reach WhatsApp: {exc}") from exc
+    if resp.status_code != 200:
+        error = data.get('error', {}) if isinstance(data, dict) else {}
+        raise WhatsAppError(error.get('error_user_msg') or error.get('message') or f'HTTP {resp.status_code}')
+    return data
+
+
+def payment_summary(owner, day):
+    """The four parts of a landlord's summary for `day`, or None if nothing was paid that day."""
+    from payments.models import Payment
+
+    payments = list(Payment.objects.filter(lease__unit__property__owner=owner, paid_at__date=day)
+                    .select_related('recorded_by'))
+    if not payments:
+        return None
+    mpesa = sum(1 for p in payments if p.method == Payment.Method.MPESA)
+    bank = sum(1 for p in payments if p.method == Payment.Method.BANK)
+    cash_by = {}
+    for p in payments:
+        if p.method == Payment.Method.CASH:
+            who = ('you' if p.recorded_by_id == owner.pk else (p.recorded_by.first_name or 'staff')) \
+                if p.recorded_by else ''
+            cash_by[who] = cash_by.get(who, 0) + 1
+    parts = [f'{mpesa} M-Pesa'] if mpesa else []
+    # Caretakers by name first (the cash an absent landlord most wants to see), then their own.
+    for who in sorted(cash_by, key=lambda w: (w == 'you', w)):
+        parts.append(f'{cash_by[who]} cash' + (f' by {who}' if who else ''))
+    parts += [f'{bank} bank'] if bank else []
+    owing = [b for b in (lease.balance for lease in Lease.objects.filter(is_active=True, unit__property__owner=owner))
+             if b > 0]
+    still = (f'{len(owing)} tenant{"s" if len(owing) != 1 else ""} still owe{"s" if len(owing) == 1 else ""} '
+             f'{_kes(sum(owing))}.') if owing else 'Everyone is paid up.'
+    return [f'{day:%a %d %b}', _kes(sum(p.amount for p in payments)), ', '.join(parts), still]
+
+
+def summary_text(parts):
+    """The message, in the same words as the WhatsApp template (also used for the SMS fallback)."""
+    day, total, how, still = parts
+    return (f'{settings.APP_NAME} update for {day}: {total} received ({how}). {still} '
+            'You can turn these messages off in Settings → Notifications.')
+
+
+def summary_phone(owner, prefs):
+    from accounts.models import Profile
+
+    return prefs.phone or Profile.objects.filter(user=owner).values_list('phone', flat=True).first() or ''
+
+
+def send_payment_summaries(day=None):
+    """Send each landlord who was paid on `day` (default today) their summary, once. Returns counts."""
+    from django.utils import timezone
+
+    from billing.utils import locked_owner_ids
+    from .models import WhatsAppSettings
+
+    day = day or timezone.localdate()
+    conf = WhatsAppSettings.load()
+    counts = {'whatsapp': 0, 'sms': 0, 'failed': 0}
+    owners = get_user_model().objects.filter(
+        properties__units__leases__payments__paid_at__date=day, is_active=True,
+    ).exclude(pk__in=locked_owner_ids()).distinct()
+    for owner in owners:
+        prefs = LandlordPreferences.for_user(owner)
+        phone = summary_phone(owner, prefs)
+        if not prefs.payment_summary or prefs.summary_sent_on == day or not phone:
+            continue
+        parts = payment_summary(owner, day)
+        if parts is None:
+            continue
+        try:
+            if conf.ready():
+                send_whatsapp_template(phone, parts, conf)
+                counts['whatsapp'] += 1
+            else:
+                send_sms(phone, summary_text(parts))
+                counts['sms'] += 1
+        except WhatsAppError as exc:
+            logger.warning('WhatsApp summary to %s failed (%s); sending by SMS', owner.pk, exc)
+            send_sms(phone, summary_text(parts))
+            counts['failed'] += 1
+        LandlordPreferences.objects.filter(pk=prefs.pk).update(summary_sent_on=day)
+    return counts

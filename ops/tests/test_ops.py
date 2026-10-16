@@ -64,7 +64,7 @@ class ScheduleTests(TestCase):
 
         with mock.patch('ops.utils.call_command', side_effect=flaky), \
                 self.assertLogs('ops.utils', level='ERROR') as logs:
-            ran = run_due_jobs(now=at(10))
+            ran = run_due_jobs(now=at(23))  # late enough that every daily job is due
         self.assertIn('Scheduled job backup_db failed', logs.output[0])
         self.assertFalse(JobRun.objects.get(name='backup_db').last_ok)
         self.assertEqual(len(ran), len(JOBS))

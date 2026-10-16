@@ -1,6 +1,8 @@
 from django.conf import settings
 from django.db import models
 
+from payments.utils import EncryptedTextField
+
 from rentals.models import Lease
 
 
@@ -43,6 +45,11 @@ class LandlordPreferences(models.Model):
                              help_text='For SMS from us, e.g. 0712 345 678.')
     report_email = models.BooleanField('email me a monthly report card', default=True)
     report_sms = models.BooleanField('SMS me a short monthly summary', default=False)
+    payment_summary = models.BooleanField(
+        'WhatsApp me a summary on days rent comes in', default=True,
+        help_text="At 8pm on days you received payments: how much, how, and who still owes. Nothing on days with "
+                  'no payments. Sent to your phone number above.')
+    summary_sent_on = models.DateField(null=True, blank=True, editable=False)
 
     def __str__(self):
         return f'Preferences of {self.user}'
@@ -63,3 +70,33 @@ class ReportCardSent(models.Model):
 
     class Meta:
         constraints = [models.UniqueConstraint(fields=['owner', 'month'], name='one_report_card_per_month')]
+
+
+class WhatsAppSettings(models.Model):
+    """Rentipay's own WhatsApp Business number (Meta's WhatsApp Cloud API), set by an administrator. One row."""
+
+    phone_number_id = models.CharField('phone number ID', max_length=40, blank=True,
+                                       help_text='From Meta: WhatsApp → API Setup. Not the phone number itself.')
+    access_token = EncryptedTextField('access token', blank=True,
+                                      help_text='A permanent token for a System User with WhatsApp messaging access.')
+    template_name = models.CharField('message template name', max_length=100, default='payments_summary')
+    template_language = models.CharField('template language code', max_length=10, default='en')
+    updated_at = models.DateTimeField(auto_now=True)
+
+    class Meta:
+        verbose_name = verbose_name_plural = 'WhatsApp settings'
+
+    def __str__(self):
+        return 'WhatsApp settings'
+
+    def save(self, *args, **kwargs):
+        self.pk = 1
+        super().save(*args, **kwargs)
+
+    @classmethod
+    def load(cls):
+        return cls.objects.get_or_create(pk=1)[0]
+
+    def ready(self):
+        return bool(self.phone_number_id and self.access_token and self.template_name)
+
