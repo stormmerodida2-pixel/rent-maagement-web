@@ -270,3 +270,74 @@ def apply_statement(checked, account, actor, send_receipts=False):
                              f'recorded, {unmatched} to assign.')
     return matched, unmatched
 
+
+
+# --- Cash with staff ------------------------------------------------------------------------------------
+# A caretaker who records a cash payment is holding that cash until the landlord confirms receiving it.
+
+def staff_cash(member):
+    """What a caretaker has collected, handed over and is holding (from when payments recorded who took them)."""
+    from django.db.models import Sum
+
+    from .models import CashHandover, Payment
+
+    def total(qs):
+        return qs.aggregate(t=Sum('amount'))['t'] or Decimal('0')
+
+    collected = total(Payment.objects.filter(method=Payment.Method.CASH, recorded_by=member.user_id,
+                                             lease__unit__property__owner=member.owner_id))
+    handovers = CashHandover.objects.filter(staff=member)
+    confirmed = total(handovers.filter(status=CashHandover.Status.CONFIRMED))
+    pending = total(handovers.filter(status=CashHandover.Status.PENDING))
+    return {'member': member, 'collected': collected, 'confirmed': confirmed, 'pending': pending,
+            'holding': collected - confirmed, 'to_hand_over': max(collected - confirmed - pending, Decimal('0'))}
+
+
+def staff_cash_for(owner):
+    from accounts.models import StaffMember
+
+    members = StaffMember.objects.filter(owner=owner).select_related('user')
+    return [staff_cash(m) for m in members]
+
+
+class HandoverError(ValueError):
+    pass
+
+
+def record_handover(member, amount, method, reference, note, actor, handed_at=None):
+    """A caretaker says they passed cash on; if the landlord records it themselves, it's confirmed at once."""
+    from audit import utils as audit
+
+    from .models import CashHandover
+
+    amount = Decimal(amount)
+    available = staff_cash(member)['to_hand_over']
+    landlord = actor.pk == member.owner_id
+    if amount <= 0:
+        raise HandoverError('Enter the amount handed over.')
+    if not landlord and amount > available:
+        raise HandoverError(f'That is more than the cash you are holding (KES {available:,.0f}).')
+    handover = CashHandover.objects.create(
+        owner_id=member.owner_id, staff=member, amount=amount, method=method, reference=reference[:50],
+        note=note[:200], handed_at=handed_at or timezone.now(), recorded_by=actor,
+        status=CashHandover.Status.CONFIRMED if landlord else CashHandover.Status.PENDING,
+        decided_at=timezone.now() if landlord else None, decided_by=actor if landlord else None)
+    who = 'You recorded' if landlord else f'{member.name} (staff) recorded'
+    audit.record(owner=member.owner, actor=actor, action='cash.handed_over',
+                 summary=f'{who} handing over KES {amount:,.0f} cash ({handover.get_method_display().lower()}'
+                         f'{", " + handover.reference if handover.reference else ""}).')
+    return handover
+
+
+def decide_handover(handover, confirm, actor):
+    from audit import utils as audit
+
+    from .models import CashHandover
+
+    handover.status = CashHandover.Status.CONFIRMED if confirm else CashHandover.Status.DISPUTED
+    handover.decided_at, handover.decided_by = timezone.now(), actor
+    handover.save(update_fields=['status', 'decided_at', 'decided_by'])
+    audit.record(owner=handover.owner, actor=actor, action='cash.confirmed' if confirm else 'cash.disputed',
+                 summary=f'{"Confirmed" if confirm else "Marked as not received"}: KES {handover.amount:,.0f} cash '
+                         f'from {handover.staff.name}.')
+    return handover

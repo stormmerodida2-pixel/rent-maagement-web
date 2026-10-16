@@ -26,8 +26,9 @@ from maintenance.models import MaintenanceRequest
 from notifications.models import LandlordPreferences
 from notifications.utils import send_cash_receipt
 from payments import mpesa
-from payments.forms import StkPushForm
+from payments.forms import HandoverForm, StkPushForm
 from payments.models import MpesaAccount, MpesaTransaction, Payment
+from payments.utils import HandoverError, record_handover, staff_cash
 from rentals.models import Lease, Property, Tenant, Unit
 
 from . import utils as ratelimit
@@ -495,7 +496,7 @@ def staff_home(request):
     rows.sort(key=lambda r: -r['balance'])
     account = MpesaAccount.objects.filter(owner=staff.owner).first()
     return render(request, 'staff/home.html', {
-        'rows': rows, 'show_all': show_all, 'q': q,
+        'rows': rows, 'show_all': show_all, 'q': q, 'cash': staff_cash(staff),
         'mpesa_ready': account is not None and account.is_complete(),
         'open_repairs': MaintenanceRequest.objects.filter(unit__in=staff.units(), status__in=OPEN_REPAIRS).count(),
     })
@@ -586,6 +587,46 @@ def record_cash(request, pk):
         'submit': 'Record cash',
         'confirm': f'Record KES {{amount}} cash from {lease.tenant}? They will get an SMS receipt with your name.',
     })
+
+
+@staff_required
+def handover(request):
+    """A caretaker records passing collected cash on to the landlord; the landlord then confirms it."""
+    cash = staff_cash(request.staff)
+    form = HandoverForm(request.POST or None, initial={'amount': cash['to_hand_over'] or None})
+    if request.method == 'POST' and form.is_valid():
+        data = form.cleaned_data
+        try:
+            record_handover(request.staff, data['amount'], data['method'], data['reference'], data['note'],
+                            request.user)
+        except HandoverError as exc:
+            form.add_error('amount', str(exc))
+        else:
+            _tell_landlord_about_handover(request.staff, data['amount'])
+            messages.success(request, f"Recorded. {request.staff.owner.first_name or 'The landlord'} will confirm "
+                                      f"receiving KES {data['amount']:,.0f}.")
+            return redirect('staff:home')
+    return render(request, 'staff/form.html', {
+        'form': form, 'title': 'Hand over cash',
+        'intro': f"You're holding KES {cash['holding']:,.0f}"
+                 + (f" (KES {cash['pending']:,.0f} already handed over, waiting for confirmation)" if cash['pending'] else '')
+                 + f". {request.staff.owner.first_name or 'The landlord'} confirms when they receive it.",
+        'submit': 'Record handover',
+        'confirm': 'Record handing over KES {amount}? The landlord will be asked to confirm it.',
+    })
+
+
+def _tell_landlord_about_handover(member, amount):
+    owner = member.owner
+    if not owner.email:
+        return
+    try:
+        send_mail(f'{settings.APP_NAME}: {member.name} handed over KES {amount:,.0f}',
+                  f'Hi {owner.first_name or "there"},\n\n{member.name} says they handed over KES {amount:,.0f} cash. '
+                  f'Please confirm you received it: {settings.SITE_URL}{reverse("payments:cash_with_staff")}\n\n'
+                  f'{settings.APP_NAME}', None, [owner.email])
+    except Exception:
+        logger.exception('Could not email %s about a cash handover', owner.pk)
 
 
 @staff_required

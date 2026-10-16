@@ -44,7 +44,8 @@ class SummaryTests(TestCase):
         day, total, how, still = payment_summary(self.owner, TODAY)
         self.assertEqual(total, 'KES 17,000')
         self.assertEqual(how, '1 M-Pesa, 1 cash by Peter, 1 cash by you')
-        self.assertEqual(still, '1 tenant still owes KES 13,000.')  # A2: 15,000 rent − 2,000
+        # A2: 15,000 rent − 2,000; and Peter hasn't handed over the cash he took yet.
+        self.assertEqual(still, '1 tenant still owes KES 13,000. Peter is holding KES 5,000 cash.')
         text = summary_text([day, total, how, still])
         self.assertIn('KES 17,000 received (1 M-Pesa, 1 cash by Peter, 1 cash by you)', text)
 

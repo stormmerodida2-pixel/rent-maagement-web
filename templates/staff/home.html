@@ -7,6 +7,17 @@
   <p class="muted">Send an M-Pesa prompt and watch for the payment, or record cash you were handed.</p>
 </div>
 
+{% if cash.holding > 0 or cash.pending > 0 %}
+<section class="card cash-card card-body">
+  <div style="flex:1;min-width:180px">
+    <div class="muted small">Cash you're holding</div>
+    <div class="amount">{{ cash.holding|kes }}</div>
+    {% if cash.pending %}<div class="muted small">{{ cash.pending|kes }} handed over, waiting for confirmation</div>{% endif %}
+  </div>
+  {% if cash.to_hand_over > 0 %}<a class="btn btn-primary" href="{% url 'staff:handover' %}">{% icon 'wallet' %}Hand over cash</a>{% endif %}
+</section>
+{% endif %}
+
 {% if not mpesa_ready %}
 <div class="alert alert-warning">{% icon 'wallet' 18 %}<span>M-Pesa prompts aren't available: the landlord hasn't connected Daraja yet. You can still record cash.</span></div>
 {% endif %}
