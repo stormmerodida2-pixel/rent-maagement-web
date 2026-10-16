@@ -40,6 +40,15 @@ else
   report site problem "https://$DOMAIN isn't healthy: ${body:0:300}"
 fi
 
+# 1b. Off-site backups (from the same health reply). "off" and "pending" aren't problems: not set up yet,
+# or no nightly backup since it was.
+backups=$(echo "$body" | grep -o '"backups": "[a-z]*"' | cut -d'"' -f4)
+case "$backups" in
+  failed) report backups problem "Last night's off-site backup copy failed. See: docker compose logs scheduler | grep backup" ;;
+  stale) report backups problem "No off-site backup copy for over a day. Is the scheduler running? docker compose logs scheduler" ;;
+  ok) report backups ok "Off-site backup copy is up to date." ;;
+esac
+
 # 2. The certificate.
 end=$(echo | openssl s_client -connect 127.0.0.1:443 -servername "$DOMAIN" 2>/dev/null | openssl x509 -noout -enddate 2>/dev/null | cut -d= -f2)
 if [ -n "$end" ]; then

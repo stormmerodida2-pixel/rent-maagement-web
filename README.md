@@ -252,14 +252,38 @@ sudo systemctl start liskodi-autodeploy  # deploy now (it also runs by itself ev
 docker compose exec web python manage.py check --deploy
 ```
 
-- **Backups** go to the `backups` volume every night. **Copy them off the server**, because a backup on the same disk won't survive losing the server. For example:
-  - `docker compose cp scheduler:/backups ./backups-copy`, or
-  - sync to cloud storage with rclone from the host's crontab.
-- **Restore** a backup with:
-  `docker compose exec -T db pg_restore --clean --no-owner -U rentals -d rentals < rentals-YYYYMMDD-HHMMSS.dump`
+- **Backups** run every night at 02:00 (Nairobi time), encrypted with `BACKUP_ENCRYPTION_KEY`. They go to the server's `backups` volume (kept `BACKUP_KEEP_DAYS`), and, once set up, a copy goes to S3 in another region (see **Off-site backups** below).
+- **Restore** a backup: decrypt it, then load it.
+  ```bash
+  docker compose --env-file .env_prod exec scheduler python manage.py decrypt_backup /backups/rentals-YYYYMMDD-HHMMSS.dump.enc
+  docker compose --env-file .env_prod exec -T scheduler cat /backups/rentals-YYYYMMDD-HHMMSS.dump \
+    | docker compose --env-file .env_prod exec -T db pg_restore --clean --no-owner -U rentals -d rentals
+  ```
 - **Error alerts:** set `SENTRY_DSN` (free at sentry.io) to be notified of every server error. Tenants' personal data isn't sent.
 - **Monitoring:** point an uptime monitor at `/healthz/`. It returns 503 if the database or cache is down.
 - After a few days of confirmed HTTPS, raise `DJANGO_HSTS_SECONDS` to `31536000`.
+
+### Off-site backups
+
+Each night's encrypted backup is also copied to an S3 bucket in a different AWS region from the server, so losing the server (or its region) doesn't lose the data.
+
+- **Upload only.** The server's IAM role can only add files under `backups/`. It can't list, read or delete them, so someone who breaks into the server can't wipe the copies. S3 deletes copies after 90 days (bucket lifecycle rule), and the bucket is private, encrypted, versioned and HTTPS-only.
+- **Only encrypted files leave the server.** Without `BACKUP_ENCRYPTION_KEY` the upload is refused. Keep that key in a password manager, off the server; it's what lets you read a copy after losing the server.
+- **Alerts.** `/healthz/` reports `"backups"`: `ok`, `failed`, `stale` (none for over a day), `pending` (none since set-up) or `off`. The server's health check sends a phone alert for `failed` or `stale`.
+
+**Setting it up (once).** From a computer with admin AWS CLI access:
+```bash
+deploy/setup_offsite_backups.sh i-0e45ba60a755f30f7   # instance id; server region ap-south-1, bucket eu-west-1
+```
+It creates the bucket and the role, attaches the role to the server, and prints the two lines to add to `.env_prod` (`BACKUP_S3_BUCKET`, `BACKUP_S3_REGION`). Restart with `docker compose --env-file .env_prod up -d`, then test with `docker compose --env-file .env_prod exec scheduler python manage.py backup_db`.
+
+**Getting a copy back** (admin AWS access, on any computer):
+```bash
+aws s3 ls s3://rentipay-backups-<account>/backups/
+aws s3 cp s3://rentipay-backups-<account>/backups/rentals-YYYYMMDD-HHMMSS.dump.enc .
+BACKUP_ENCRYPTION_KEY=... python manage.py decrypt_backup rentals-YYYYMMDD-HHMMSS.dump.enc
+```
+Then load the `.dump` with `pg_restore` as above.
 
 ### Live payments, monthly report cards, install on phones
 
