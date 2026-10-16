@@ -174,11 +174,14 @@ All webhooks are idempotent. Safaricom retries don't create duplicates, and a re
 
 ## Accounts and security
 
-- New landlords confirm their email before they can connect M-Pesa. The confirmation link is valid for 3 days and can be resent from the banner in the app.
-- Password reset is at `/password-reset/`. Reset emails don't reveal whether an address has an account.
+- **No usernames.** Landlords sign up with their name, an **email address or phone number**, and a password, and log in with either (a phone number in any format: 0712…, +254712…, with spaces). They can add the other one later in Settings → Profile; changing either needs the current password. Caretakers log in with the phone number their landlord entered. Accounts made before this, and administrators, can still use their username. (Django still keeps a username internally; it's generated, e.g. `user-3f9a1c02de`, and never shown.)
+- New landlords confirm their email (a link, valid for 3 days) or phone number (a 6-digit SMS code, valid for 10 minutes) before they can connect M-Pesa. Both can be resent from the banner in the app.
+- Password reset is at `/password-reset/`: by email (a link) or by phone number (an SMS code, then a new password). Neither reveals whether an account exists.
+- Landlords without an email get their Rentipay bills, notices and receipts by SMS instead.
 - Rate limits:
   - sign-ups: 5 per IP per hour
-  - logins: 5 failed attempts per username per 15 minutes, and 30 attempts per IP
+  - logins: 5 failed attempts per account per 15 minutes (however the email or number is typed), and 30 attempts per IP
+  - SMS codes: 5 wrong tries per code; 3 resends per hour
   - password-reset requests: 5 per IP per hour
 - Rate limits are stored in Django's cache, so use a shared cache (Redis/Memcached) when running more than one process. Behind a reverse proxy, make sure `REMOTE_ADDR` is the real client IP.
 - Set `EMAIL_HOST` and the other email settings in your env file (`.env_local`, `.env_dev` or `.env_prod`) to send real email (any SMTP provider). Without them, emails are printed to the console.

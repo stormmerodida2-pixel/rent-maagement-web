@@ -6,6 +6,9 @@ from payments.utils import EncryptedTextField
 
 class Profile(models.Model):
     user = models.OneToOneField(settings.AUTH_USER_MODEL, on_delete=models.CASCADE, related_name='profile')
+    # Log in with this or the email; stored as 2547XXXXXXXX. Empty (not '') when unset, so it can be unique.
+    phone = models.CharField(max_length=12, unique=True, null=True, blank=True)
+    phone_verified_at = models.DateTimeField(null=True, blank=True)
     email_verified_at = models.DateTimeField(null=True, blank=True)
     terms_accepted_at = models.DateTimeField(null=True, blank=True)
     terms_version = models.CharField(max_length=20, blank=True)
@@ -16,6 +19,10 @@ class Profile(models.Model):
     @property
     def email_verified(self):
         return self.email_verified_at is not None
+
+    @property
+    def phone_verified(self):
+        return bool(self.phone) and self.phone_verified_at is not None
 
 
 def profile_for(user):

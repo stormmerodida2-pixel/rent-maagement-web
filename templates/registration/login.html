@@ -16,10 +16,10 @@
     <form method="post" novalidate>
       {% csrf_token %}
       {% if form.non_field_errors %}
-        <div class="alert alert-error">Your username and password didn't match. Please try again.</div>
+        <div class="alert alert-error">That email or phone number and password didn't match. Please try again.</div>
       {% endif %}
       <div class="field">
-        <label for="{{ form.username.id_for_label }}">Username</label>
+        <label for="{{ form.username.id_for_label }}">Email or phone number</label>
         {{ form.username }}
       </div>
       <div class="field">

@@ -18,7 +18,7 @@
     <div class="doc-title"><h1>{% if invoice.status == 'paid' %}Receipt{% else %}Invoice{% endif %}</h1><div class="muted small">{{ invoice.number }}</div></div>
   </header>
   <dl class="doc-meta">
-    <div><dt>Billed to</dt><dd>{{ invoice.account.owner.get_full_name|default:invoice.account.owner.username }}{% if invoice.account.owner.email %}<br><span class="muted">{{ invoice.account.owner.email }}</span>{% endif %}</dd></div>
+    <div><dt>Billed to</dt><dd>{{ invoice.account.owner.get_full_name }}<br><span class="muted">{{ invoice.account.owner|login_label }}</span></dd></div>
     <div><dt>Period</dt><dd>{{ invoice.period_start|date:"d M Y" }} – {{ invoice.period_last|date:"d M Y" }}</dd></div>
     <div><dt>Due</dt><dd>{{ invoice.due_date|date:"d M Y" }}</dd></div>
     <div><dt>Status</dt><dd>{{ invoice.get_status_display }}{% if invoice.paid_at %} · {{ invoice.paid_at|date:"d M Y" }}{% endif %}</dd></div>

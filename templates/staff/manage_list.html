@@ -9,12 +9,12 @@
 <section class="card">
   {% if members %}
   <div class="table-wrap"><table class="table">
-    <thead><tr><th>Name</th><th>Username</th><th>Looks after</th><th>Last login</th><th></th></tr></thead>
+    <thead><tr><th>Name</th><th>Logs in with</th><th>Looks after</th><th>Last login</th><th></th></tr></thead>
     <tbody>
     {% for m in members %}
     <tr>
       <td><div class="who"><span class="avatar">{{ m.name|initials }}</span><div><div class="name">{{ m.name }}</div>{% if m.phone %}<div class="meta">{{ m.phone }}</div>{% endif %}</div></div></td>
-      <td>{{ m.user.username }}{% if not m.user.is_active %} <span class="badge">Can't log in</span>{% endif %}</td>
+      <td>{{ m.user|login_label }}{% if not m.user.is_active %} <span class="badge">Can't log in</span>{% endif %}</td>
       <td>{% for p in m.properties.all %}{{ p }}{% if not forloop.last %}, {% endif %}{% empty %}All properties{% endfor %}</td>
       <td class="nowrap">{{ m.user.last_login|date:"d M Y, H:i"|default:"Never" }}</td>
       <td class="num"><a class="btn btn-sm btn-ghost" href="{% url 'staff:edit' m.pk %}">Edit</a></td>
@@ -26,5 +26,5 @@
   <div class="empty"><strong>No staff yet</strong>Add your caretaker so they can collect rent and log repairs from their phone.</div>
   {% endif %}
 </section>
-<p class="muted small" style="margin-top:14px">Staff log in on the normal login page with the username and password you set. Everything they record shows in your Activity log with "(staff)" next to their name.</p>
+<p class="muted small" style="margin-top:14px">Staff log in on the normal login page with their phone number and the password you set. Everything they record shows in your Activity log with "(staff)" next to their name.</p>
 {% endblock %}

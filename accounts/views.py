@@ -8,6 +8,7 @@ from django.conf import settings
 from django.contrib import messages
 from django.contrib.auth import get_user_model, login
 from django.contrib.auth import views as auth_views
+from django.contrib.auth.forms import SetPasswordForm
 from django.contrib.auth.decorators import login_required
 from django.core.mail import send_mail
 from django.db import IntegrityError, transaction
@@ -30,13 +31,18 @@ from payments.models import MpesaAccount, MpesaTransaction, Payment
 from rentals.models import Lease, Property, Tenant, Unit
 
 from . import utils as ratelimit
-from .forms import CashForm, ChangePasswordForm, ProfileForm, RepairForm, SignupForm, StaffForm
+from .forms import (
+    CashForm, ChangePasswordForm, PhoneCodeForm, ProfileForm, RepairForm, ResetRequestForm, SignupForm, StaffForm,
+)
 from .models import Profile, StaffMember, TwoFactor, profile_for
 from .utils import (
     TRUST_COOKIE, TRUST_DAYS, check_totp, is_trusted_device, new_recovery_codes, new_totp_secret, qr_svg, totp_uri,
     trust_token, use_recovery_code,
 )
-from .utils import is_verified, mark_verified, send_verification_email, user_from_token
+from .utils import (
+    canonical_login, check_phone_code, find_user, is_verified, login_label, mark_verified,
+    send_phone_code, send_verification_email, user_from_token,
+)
 
 logger = logging.getLogger(__name__)
 
@@ -67,9 +73,17 @@ def signup(request):
         if form.is_valid():
             ratelimit.hit('signup', ip, 60 * 60)
             user = form.save()
-            Profile.objects.create(user=user, terms_accepted_at=timezone.now(),
+            Profile.objects.create(user=user, phone=form.phone, terms_accepted_at=timezone.now(),
                                    terms_version=settings.LEGAL['TERMS_VERSION'])
-            login(request, user, backend='django.contrib.auth.backends.ModelBackend')
+            if form.phone:
+                prefs = LandlordPreferences.for_user(user)
+                prefs.phone = form.phone
+                prefs.save(update_fields=['phone'])
+            login(request, user, backend='accounts.utils.EmailOrPhoneBackend')
+            if form.phone:
+                send_phone_code(user, form.phone, 'verify')
+                messages.success(request, f'Welcome, {user.first_name}! We sent a code by SMS to confirm your number.')
+                return redirect('accounts:verify_phone')
             _send_verification(request, user)
             messages.success(
                 request, f'Welcome, {user.first_name}! We sent a confirmation link to {user.email}.'
@@ -91,7 +105,7 @@ def verify_email(request, token):
 @login_required
 @require_POST
 def resend_verification(request):
-    if is_verified(request.user):
+    if not request.user.email or profile_for(request.user).email_verified:
         messages.info(request, 'Your email is already confirmed.')
     elif ratelimit.hit('resend', request.user.pk, 60 * 60) > RESENDS_PER_USER_PER_HOUR:
         messages.error(request, 'Please wait a while before requesting another email.')
@@ -113,7 +127,7 @@ def throttle_login(view):
         if request.method != 'POST':
             return view(request, *args, **kwargs)
         ip = ratelimit.client_ip(request)
-        username = request.POST.get('username', '')
+        username = canonical_login(request.POST.get('username', ''))
         if ratelimit.hit('login-ip', ip, LOGIN_WINDOW) > LOGIN_ATTEMPTS_PER_IP or \
                 ratelimit.is_limited('login-user', username, LOGIN_FAILURES_PER_USER):
             return ratelimit.too_many(request, LOGIN_WINDOW // 60)
@@ -131,7 +145,8 @@ def throttle_login(view):
 
 @method_decorator(throttle_login, name='dispatch')
 class LoginView(auth_views.LoginView):
-    """Django's login, throttled per IP and per username to slow down password guessing.
+    """Django's login (email or phone number, see EmailOrPhoneBackend), throttled per IP and per login to slow
+    down password guessing.
 
     With two-step login on (and this browser not trusted), a right password only leads to the code
     page: the person isn't logged in until the code checks out.
@@ -206,6 +221,9 @@ def login_verify(request):
 
 
 class PasswordResetView(auth_views.PasswordResetView):
+    """Reset by email (a link, Django's flow) or by phone number (an SMS code, then a new password)."""
+
+    form_class = ResetRequestForm
     email_template_name = 'registration/password_reset_email.txt'
     subject_template_name = 'registration/password_reset_subject.txt'
 
@@ -213,6 +231,17 @@ class PasswordResetView(auth_views.PasswordResetView):
         if ratelimit.hit('reset', ratelimit.client_ip(request), 60 * 60) > RESETS_PER_IP_PER_HOUR:
             return ratelimit.too_many(request, 60)
         return super().post(request, *args, **kwargs)
+
+    def form_valid(self, form):
+        if not form.is_phone:
+            return super().form_valid(form)
+        user = find_user(form.cleaned_data['email'])
+        phone = getattr(getattr(user, 'profile', None), 'phone', None) if user else None
+        if user is not None and phone and user.is_active and user.has_usable_password():
+            send_phone_code(user, phone, 'reset')
+        # The same next step whether or not the number has an account, so this can't be used to find accounts.
+        self.request.session[RESET_KEY] = {'user': user.pk if phone else None, 'at': int(time.time()), 'tries': 0}
+        return redirect('password_reset_phone')
 
     @property
     def extra_email_context(self):
@@ -306,23 +335,25 @@ def profile_edit(request):
             messages.error(request, 'Too many changes in a short time. Please try again in an hour.')
             return redirect('accounts:profile')
         if form.is_valid():
-            old_email, email_changed = form.original_email, form.email_changed
+            old_email, email_changed, phone_changed = form.original_email, form.email_changed, form.phone_changed
             changes = audit.form_changes(form)
             changes.pop('Current password', None)  # typed to confirm, not changed
             user = form.save()
             audit.record(owner=user, actor=user, action='account.profile_changed',
                          summary='Updated profile details.', changes=changes)
-            if email_changed:
-                profile = profile_for(user)
-                profile.email_verified_at = None
-                profile.save(update_fields=['email_verified_at'])
-                _send_verification(request, user)
+            notes = []
+            if email_changed and old_email:
                 _notify(old_email, 'your email was changed',
-                        f'Hi {user.first_name or user.username},\n\nThe email on your account was changed to '
-                        f'{user.email}. If this wasn\'t you, reply to this email or contact support right away.')
-                messages.success(request, f'Saved. We sent a link to {user.email}: open it to confirm your new email.')
-            else:
-                messages.success(request, 'Saved.')
+                        f'Hi {user.first_name or "there"},\n\nThe email on your account was changed to '
+                        f'{user.email or "(none)"}. If this wasn\'t you, reply to this email or contact support right away.')
+            if email_changed and user.email:
+                _send_verification(request, user)
+                notes.append(f'We sent a link to {user.email}: open it to confirm your new email.')
+            if phone_changed and form.cleaned_data['phone']:
+                send_phone_code(user, form.cleaned_data['phone'], 'verify')
+                messages.success(request, 'Saved. We sent a code by SMS to confirm your new number.')
+                return redirect('accounts:verify_phone')
+            messages.success(request, ' '.join(['Saved.', *notes]))
             return redirect('accounts:settings')
     return render(request, 'accounts/profile.html', {'form': form})
 
@@ -352,7 +383,7 @@ class ChangePasswordView(auth_views.PasswordChangeView):
         user = form.user
         audit.record(owner=user, actor=user, action='account.password_changed', summary='Changed password.')
         _notify(user.email, 'your password was changed',
-                f'Hi {user.first_name or user.username},\n\nYour password was just changed. If this wasn\'t you, '
+                f'Hi {user.first_name or "there"},\n\nYour password was just changed. If this wasn\'t you, '
                 'reset it now using "Forgot password?" on the login page, and contact support.')
         messages.success(self.request, 'Password changed.')
         return response
@@ -383,7 +414,7 @@ def two_factor_settings(request):
                 ctx['new_codes'] = new_recovery_codes(two_factor)
                 audit.record(owner=owner, actor=user, action='account.two_factor_on', summary='Turned on two-step login.')
                 _notify(user.email, 'two-step login is on',
-                        f'Hi {user.first_name or user.username},\n\nTwo-step login is now on for your account: '
+                        f'Hi {user.first_name or "there"},\n\nTwo-step login is now on for your account: '
                         'logging in needs a code from your authenticator app as well as your password.')
             else:
                 ctx['error'] = "That code didn't work. Make sure you scanned the code on this page, then try the newest code."
@@ -403,7 +434,7 @@ def two_factor_settings(request):
                 two_factor.delete()
                 audit.record(owner=owner, actor=user, action='account.two_factor_off', summary='Turned off two-step login.')
                 _notify(user.email, 'two-step login was turned off',
-                        f'Hi {user.first_name or user.username},\n\nTwo-step login was just turned off for your account. '
+                        f'Hi {user.first_name or "there"},\n\nTwo-step login was just turned off for your account. '
                         "If this wasn't you, change your password now and contact support.")
                 messages.success(request, 'Two-step login is off.')
                 return redirect(request.path)
@@ -622,8 +653,8 @@ def staff_edit(request, pk=None):
             messages.success(request, f'Saved {member.name}.')
         else:
             audit.record(owner=request.user, actor=request.user, action='staff.added',
-                         summary=f'Added staff member {member.name} ({member.user.username}).')
-            messages.success(request, f'Added {member.name}. They log in with the username "{member.user.username}" '
+                         summary=f'Added staff member {member.name} ({login_label(member.user)}).')
+            messages.success(request, f'Added {member.name}. They log in with their phone number ({member.phone}) '
                                       'and the password you set.')
         return redirect('staff:manage')
     return render(request, 'form_page.html', {
@@ -658,3 +689,67 @@ def accept_terms(request):
     return render(request, 'accounts/accept_terms.html', {'next': nxt, 'error': error,
                                                           'updated': settings.LEGAL['UPDATED']})
 
+
+# --- Password reset by phone, and confirming a phone number ---------------------------------------------
+
+RESET_KEY = 'phone_reset'
+RESET_SECONDS = 10 * 60
+
+
+def password_reset_phone(request):
+    """Second step of a reset by phone: the SMS code and a new password."""
+    pending = request.session.get(RESET_KEY)
+    if not pending or time.time() - pending['at'] > RESET_SECONDS:
+        request.session.pop(RESET_KEY, None)
+        messages.info(request, 'Please start the password reset again.')
+        return redirect('password_reset')
+    user = get_user_model().objects.filter(pk=pending['user']).first() if pending['user'] else None
+    code_form = PhoneCodeForm(request.POST or None)
+    password_form = SetPasswordForm(user or get_user_model()(), request.POST or None)
+    if request.method == 'POST' and code_form.is_valid() and password_form.is_valid():
+        if user is not None and check_phone_code(user, 'reset', code_form.cleaned_data['code']):
+            password_form.save()
+            request.session.pop(RESET_KEY, None)
+            audit.record(owner=user, actor=user, action='account.password_reset',
+                         summary='Reset the password by SMS code.')
+            messages.success(request, 'Your password is changed. Log in with your new password.')
+            return redirect('login')
+        pending['tries'] += 1
+        if pending['tries'] >= CODE_TRIES:
+            request.session.pop(RESET_KEY, None)
+            messages.error(request, 'Too many wrong codes. Please start again.')
+            return redirect('password_reset')
+        request.session[RESET_KEY] = pending
+        code_form.add_error('code', "That code isn't right, or it has expired.")
+    return render(request, 'registration/password_reset_phone.html',
+                  {'code_form': code_form, 'password_form': password_form})
+
+
+@login_required
+def verify_phone(request):
+    """Confirm the account's phone number with the code we texted."""
+    profile = profile_for(request.user)
+    if not profile.phone:
+        return redirect('accounts:profile')
+    if profile.phone_verified:
+        messages.info(request, 'Your phone number is already confirmed.')
+        return redirect('rentals:dashboard')
+    form = PhoneCodeForm(request.POST or None)
+    if request.method == 'POST' and request.POST.get('action') == 'resend':
+        if ratelimit.hit('resend', request.user.pk, 60 * 60) > RESENDS_PER_USER_PER_HOUR:
+            messages.error(request, 'Please wait a while before requesting another code.')
+        else:
+            send_phone_code(request.user, profile.phone, 'verify')
+            messages.success(request, 'Sent a new code.')
+        return redirect('accounts:verify_phone')
+    if request.method == 'POST' and form.is_valid():
+        if ratelimit.hit('verify-phone', request.user.pk, 15 * 60) > 3 * CODE_TRIES:
+            return ratelimit.too_many(request, 15)
+        if check_phone_code(request.user, 'verify', form.cleaned_data['code']):
+            profile.phone_verified_at = timezone.now()
+            profile.save(update_fields=['phone_verified_at'])
+            messages.success(request, 'Thanks, your phone number is confirmed.')
+            return redirect('accounts:welcome' if not Property.objects.filter(owner=request.user).exists()
+                            else 'rentals:dashboard')
+        form.add_error('code', "That code isn't right, or it has expired. Use the newest one, or send a new code.")
+    return render(request, 'accounts/verify_phone.html', {'form': form, 'phone': f'0{profile.phone[3:]}'})

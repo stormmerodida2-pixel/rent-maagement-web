@@ -38,11 +38,11 @@ class StaffTests(TestCase):
                                     passkey='p')
 
         self.client.force_login(self.owner)
-        self.client.post(reverse('staff:add'), {'name': 'Peter Kamau', 'username': 'peter', 'phone': '0711000111',
+        self.client.post(reverse('staff:add'), {'name': 'Peter Kamau', 'phone': '0711000111',
                                                 'password': 'Caretaker-2026'})
         self.member = StaffMember.objects.get()
         self.client.logout()
-        self.client.login(username='peter', password='Caretaker-2026')
+        self.client.login(username='0711 000 111', password='Caretaker-2026')  # they log in with their phone
 
     # --- Setting staff up ---------------------------------------------------------------
 
@@ -58,13 +58,13 @@ class StaffTests(TestCase):
     def test_deactivated_staff_cannot_log_in(self):
         self.client.force_login(self.owner)
         self.client.post(reverse('staff:edit', args=[self.member.pk]),
-                         {'name': 'Peter Kamau', 'username': 'peter', 'phone': '', 'password': ''})  # active unticked
+                         {'name': 'Peter Kamau', 'phone': '0711000111', 'password': ''})  # active unticked
         self.client.logout()
-        self.assertFalse(self.client.login(username='peter', password='Caretaker-2026'))
+        self.assertFalse(self.client.login(username='0711000111', password='Caretaker-2026'))
 
     def test_login_lands_in_the_staff_area(self):
         self.client.logout()
-        resp = self.client.post(reverse('login'), {'username': 'peter', 'password': 'Caretaker-2026'}, follow=True)
+        resp = self.client.post(reverse('login'), {'username': '+254711000111', 'password': 'Caretaker-2026'}, follow=True)
         self.assertEqual(resp.redirect_chain[-1][0], reverse('staff:home'))
 
     # --- What staff can't see -----------------------------------------------------------

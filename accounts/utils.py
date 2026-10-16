@@ -1,6 +1,7 @@
 """Helpers for accounts: rate limiting, email verification, two-step login, and keeping staff in their area."""
 
 import hashlib
+import re
 import secrets
 import time
 
@@ -8,6 +9,8 @@ import pyotp
 import qrcode
 import qrcode.image.svg
 from django.conf import settings
+from django.contrib.auth import get_user_model
+from django.contrib.auth.backends import ModelBackend
 from django.core import signing
 from django.core.cache import cache
 from django.core.mail import send_mail
@@ -110,7 +113,119 @@ def mark_verified(user):
 
 
 def is_verified(user):
-    return user.is_authenticated and profile_for(user).email_verified
+    """The person has proved they own the account's email or phone number."""
+    if not user.is_authenticated:
+        return False
+    profile = profile_for(user)
+    return profile.email_verified or profile.phone_verified
+
+
+# --- Logging in with an email or phone number ---------------------------------------------------------
+
+def canonical_login(identifier):
+    """The same person typing their login differently (case, 07… vs +254…) counts as one, e.g. for limits."""
+    from rentals.utils import normalize_phone
+
+    value = (identifier or '').strip()
+    if '@' in value:
+        return value.lower()
+    try:
+        return normalize_phone(value)
+    except ValueError:
+        return value
+
+
+def find_user(identifier):
+    """The account for an email, a phone number (any common format) or, for older accounts, a username."""
+    from rentals.utils import normalize_phone
+
+    User = get_user_model()
+    value = (identifier or '').strip()
+    if not value:
+        return None
+    if '@' in value:
+        matches = list(User.objects.filter(email__iexact=value)[:2])
+        if len(matches) == 1:
+            return matches[0]
+    try:
+        phone = normalize_phone(value)
+    except ValueError:
+        phone = None
+    if phone:
+        user = User.objects.filter(profile__phone=phone).first()
+        if user:
+            return user
+    return User.objects.filter(username=value).first()
+
+
+class EmailOrPhoneBackend(ModelBackend):
+    """Log in with an email address or phone number and password (or an older account's username)."""
+
+    def authenticate(self, request, username=None, password=None, **kwargs):
+        if username is None or password is None:
+            return None
+        user = find_user(username)
+        if user is None:
+            get_user_model()().set_password(password)  # same work as a real check, so timing reveals nothing
+            return None
+        if user.check_password(password) and self.user_can_authenticate(user):
+            return user
+        return None
+
+
+def new_username():
+    """Accounts still need a unique username inside Django; nobody sees or types it."""
+    User = get_user_model()
+    while True:
+        name = f'user-{secrets.token_hex(5)}'
+        if not User.objects.filter(username=name).exists():
+            return name
+
+
+def login_label(user):
+    """How to show someone's login: their email, else phone, else (older accounts) username."""
+    if user.email:
+        return user.email
+    phone = getattr(getattr(user, 'profile', None), 'phone', None)
+    return f'0{phone[3:]}' if phone else user.username
+
+
+# --- SMS codes (verifying a phone, resetting a password by phone) ---------------------------------------
+
+CODE_TTL = 10 * 60
+CODE_TRIES = 5
+
+
+def _code_key(purpose, user_id):
+    return f'phone-code:{purpose}:{user_id}'
+
+
+def send_phone_code(user, phone, purpose):
+    """Text a 6-digit code to `phone`. Only its hash is kept, for 10 minutes. Returns the SmsMessage."""
+    from notifications.utils import send_sms
+
+    code = f'{secrets.randbelow(10 ** 6):06d}'
+    cache.set(_code_key(purpose, user.pk), {'hash': _hash_code(code), 'tries': 0}, CODE_TTL)
+    what = 'confirm your phone number' if purpose == 'verify' else 'reset your password'
+    return send_sms(phone, f'{code} is your {settings.APP_NAME} code to {what}. It expires in 10 minutes. '
+                           'Never share it with anyone.')
+
+
+def check_phone_code(user, purpose, code):
+    """True once for the right code; a code is used up after 5 wrong tries or when it's accepted."""
+    key = _code_key(purpose, user.pk)
+    stored = cache.get(key)
+    if not stored:
+        return False
+    if _hash_code(re.sub(r'\D', '', code or '')) == stored['hash']:
+        cache.delete(key)
+        return True
+    stored['tries'] += 1
+    if stored['tries'] >= CODE_TRIES:
+        cache.delete(key)
+    else:
+        cache.set(key, stored, CODE_TTL)
+    return False
 
 
 # --- Two-step login ---------------------------------------------------------------------------------
@@ -127,8 +242,8 @@ def new_totp_secret():
 
 
 def totp_uri(user, secret):
-    """What the QR code holds: authenticator apps show it as "Rentipay (username)"."""
-    return pyotp.TOTP(secret).provisioning_uri(name=user.get_username(), issuer_name=settings.APP_NAME)
+    """What the QR code holds: authenticator apps show it as "Rentipay (their email or phone)"."""
+    return pyotp.TOTP(secret).provisioning_uri(name=login_label(user), issuer_name=settings.APP_NAME)
 
 
 def qr_svg(text):

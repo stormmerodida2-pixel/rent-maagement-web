@@ -59,7 +59,14 @@
 
   <main class="main">
     <div class="container">
-      {% if email_unverified %}
+      {% if verify_prompt == 'phone' %}
+      <div class="alert alert-info" style="margin-bottom:16px">
+        {% icon 'phone' 18 %}
+        <span>Please confirm your phone number with the code we sent by SMS.</span>
+        <span class="spacer"></span>
+        <a class="btn btn-sm" href="{% url 'accounts:verify_phone' %}">Enter code</a>
+      </div>
+      {% elif verify_prompt == 'email' %}
       <div class="alert alert-info" style="margin-bottom:16px">
         {% icon 'message' 18 %}
         <span>Please confirm your email. We sent a link to <strong>{{ user.email }}</strong>.</span>

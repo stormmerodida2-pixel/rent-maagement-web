@@ -101,6 +101,9 @@ MIDDLEWARE = [
     'django.middleware.clickjacking.XFrameOptionsMiddleware',
 ]
 
+# Log in with an email address or phone number (older accounts: their username too).
+AUTHENTICATION_BACKENDS = ['accounts.utils.EmailOrPhoneBackend']
+
 ROOT_URLCONF = 'config.urls'
 
 TEMPLATES = [
