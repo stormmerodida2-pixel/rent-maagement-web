@@ -7,6 +7,7 @@ from django.core.mail import EmailMessage, send_mail
 from django.urls import reverse
 from django.utils.translation import gettext as _
 
+from accounts.utils import login_label
 from notifications.models import SmsMessage
 from notifications.utils import send_sms
 from rentals.utils import tenant_language
@@ -55,7 +56,7 @@ def support_message(msg):
     try:
         EmailMessage(
             subject=f'[{settings.APP_NAME}] {msg.get_topic_display()} from {msg.name}',
-            body=(f'From: {msg.name} <{msg.email}>' + (f' (user: {msg.user.username})' if msg.user else '') +
+            body=(f'From: {msg.name} <{msg.email}>' + (f' (account: {login_label(msg.user)})' if msg.user else '') +
                   f'\nPage: {msg.page or "-"}\n\n{msg.message}'),
             to=[settings.SUPPORT_EMAIL], reply_to=[msg.email],
         ).send()

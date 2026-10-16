@@ -9,6 +9,7 @@ from django.urls import reverse
 from audit.models import AuditEntry
 from notifications.models import LandlordPreferences
 
+from ..models import Profile
 from ..utils import is_verified, mark_verified
 
 
@@ -32,18 +33,25 @@ class ProfileTests(TestCase):
         self.assertContains(page, reverse('accounts:profile'))
         self.assertContains(page, reverse('accounts:password_change'))
 
-    def test_change_name_and_phone_without_password(self):
-        resp = self.post(first_name='Grace Wanjiru', phone='0712 345 678')
+    def test_change_name_without_password(self):
+        resp = self.post(first_name='Grace Wanjiru')
         self.assertRedirects(resp, reverse('accounts:settings'))
         self.user.refresh_from_db()
         self.assertEqual(self.user.first_name, 'Grace Wanjiru')
-        self.assertEqual(LandlordPreferences.for_user(self.user).phone, '254712345678')
         self.assertTrue(AuditEntry.objects.filter(action='account.profile_changed').exists())
         self.assertEqual(mail.outbox, [])  # no email change, no emails
 
+    def test_adding_a_phone_needs_the_password_then_a_code(self):
+        self.assertContains(self.post(phone='0712 345 678'), 'Enter your current password')
+        resp = self.post(phone='0712 345 678', current_password='old-pass-123')
+        self.assertRedirects(resp, reverse('accounts:verify_phone'))
+        self.assertEqual(LandlordPreferences.for_user(self.user).phone, '254712345678')
+        self.assertEqual(Profile.objects.get(user=self.user).phone, '254712345678')
+        self.assertTrue(self.client.login(username='0712345678', password='old-pass-123'))  # can log in with it
+
     def test_changing_email_needs_current_password(self):
         resp = self.post(email='new@example.com', current_password='wrong')
-        self.assertContains(resp, 'Enter your current password to change your email.')
+        self.assertContains(resp, 'Enter your current password to change your email or phone.')
         self.user.refresh_from_db()
         self.assertEqual(self.user.email, 'grace@example.com')
 
@@ -60,7 +68,7 @@ class ProfileTests(TestCase):
 
     def test_email_already_used(self):
         resp = self.post(email='taken@example.com', current_password='old-pass-123')
-        self.assertContains(resp, 'Another account already uses this email.')
+        self.assertContains(resp, 'An account with this email already exists.')
 
     def test_bad_phone_and_sms_summary_needs_a_phone(self):
         self.assertContains(self.post(phone='12'), 'phone', status_code=200)
@@ -68,6 +76,10 @@ class ProfileTests(TestCase):
         prefs.phone, prefs.report_sms = '254712345678', True
         prefs.save()
         self.assertContains(self.post(phone=''), 'Turn it off under Notifications first')
+
+    def test_keep_an_email_or_a_phone(self):
+        resp = self.post(email='', current_password='old-pass-123')
+        self.assertContains(resp, 'Keep an email address or a phone number')
 
     def test_login_required(self):
         self.client.logout()

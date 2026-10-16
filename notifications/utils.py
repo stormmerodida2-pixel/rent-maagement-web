@@ -351,7 +351,7 @@ def send_move_out_reminders(today=None):
             try:
                 send_mail(
                     subject=f'{lease.tenant} moves out of {lease.unit.label} on {when}',
-                    message=(f'Hi {owner.first_name or owner.username},\n\n'
+                    message=(f'Hi {owner.first_name or "there"},\n\n'
                              f'{lease.tenant} moves out of {lease.unit} on {when}.\n\n'
                              'Before then: inspect the house with them, take photos, and agree any deductions '
                              'from the deposit.\nOn the day: open their lease and choose "Finish move-out" to '

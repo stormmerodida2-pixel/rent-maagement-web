@@ -313,3 +313,19 @@ class SwitchTests(BillingTestCase):
         self.client.force_login(self.owner)
         self.client.post(reverse('billing:toggle'))
         self.assertFalse(BillingSettings.load().enabled)
+
+
+class PhoneOnlyLandlordTests(BillingTestCase):
+    def test_bill_comes_by_sms_without_an_email(self):
+        from accounts.models import Profile
+
+        billing_on()
+        owner = landlord('phoneonly')
+        owner.email = ''
+        owner.save()
+        Profile.objects.create(user=owner, phone='254700111222')
+        account = account_for(owner)
+        make_invoice(account, account.paid_until)
+        sms = SmsMessage.objects.get(phone='254700111222')
+        self.assertIn('Till 9505957', sms.body)
+        self.assertIn('KES 225', sms.body)

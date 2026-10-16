@@ -95,7 +95,7 @@
     <div class="settings-item">
       <span class="avatar settings-avatar">{{ user.get_full_name|default:user.username|initials }}</span>
       <span class="settings-text"><strong>{{ user.get_full_name|default:user.username }}</strong>
-        <span class="muted small">{{ user.email|default:"No email address" }}{% if user.email and not email_verified %} · <span class="text-danger">not confirmed</span>{% endif %}</span></span>
+        <span class="muted small">{{ user|login_label }}{% if not email_verified %} · <span class="text-danger">not confirmed</span>{% endif %}</span></span>
     </div>
     <a class="settings-row settings-link" href="{% url 'accounts:profile' %}">
       <span class="settings-text"><strong>Profile</strong><span class="muted small">Your name, email and phone number</span></span>{% icon 'arrow-right' %}</a>

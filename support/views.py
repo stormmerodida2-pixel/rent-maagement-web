@@ -128,7 +128,7 @@ def complaint_detail(request, pk):
 
 def contact(request):
     user = request.user if request.user.is_authenticated else None
-    initial = {'name': user.get_full_name() or user.username, 'email': user.email} if user else {}
+    initial = {'name': user.get_full_name(), 'email': user.email} if user else {}
     form = ContactForm(request.POST or None, initial=initial)
     if request.method == 'POST':
         if ratelimit.hit('contact', ratelimit.client_ip(request), 60 * 60) > CONTACTS_PER_IP_PER_HOUR:

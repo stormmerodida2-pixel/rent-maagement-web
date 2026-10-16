@@ -15,6 +15,8 @@ from django.shortcuts import redirect
 from django.urls import reverse
 from django.utils import timezone
 
+from accounts.utils import login_label
+
 from .models import BillingAccount, BillingSettings, Invoice
 
 logger = logging.getLogger(__name__)
@@ -175,7 +177,7 @@ def claim_till_payment(invoice, code):
     invoice.claimed_reference, invoice.claimed_at = code, timezone.now()
     invoice.save(update_fields=['claimed_reference', 'claimed_at'])
     notify_admins(f'{invoice.account.owner} says they paid {invoice.number}',
-                  f'{invoice.account.owner} (username {invoice.account.owner.username}) says they paid KES '
+                  f'{invoice.account.owner.get_full_name()} ({login_label(invoice.account.owner)}) says they paid KES '
                   f'{invoice.amount:,} for {invoice.number} to Till {conf("TILL")}, M-Pesa code {code}.\n\n'
                   f'Check it on your M-Pesa statement, then confirm it in Billing overview: '
                   f'{settings.SITE_URL}{reverse("billing:overview")}')
@@ -277,11 +279,37 @@ def _how_to_pay(invoice):
             f'Billing page: {settings.SITE_URL}{reverse("billing:billing")}')
 
 
+def sms_landlord(invoice, kind):
+    """For landlords who signed up with a phone number and no email."""
+    from accounts.models import Profile
+    from notifications.utils import send_sms
+
+    phone = Profile.objects.filter(user=invoice.account.owner).values_list('phone', flat=True).first()
+    if not phone:
+        return
+    app, amount, till = settings.APP_NAME, f'KES {invoice.amount:,}', conf('TILL')
+    text = {
+        'bill': f'{app} bill {invoice.number}: {amount}, due {invoice.due_date:%d %b}. Pay to Till {till}, then enter '
+                f'the M-Pesa code in {app} (Settings > Billing).',
+        'overdue': f'{app} bill {invoice.number} ({amount}) is overdue. Pay to Till {till} by '
+                   f'{lock_date(invoice.account):%d %b} to keep making changes.',
+        'locked': f'Your {app} account is read-only until bill {invoice.number} ({amount}) is paid to Till {till}. '
+                  'Nothing is deleted; tenants can still pay rent.',
+        'receipt': f'Thank you. {app} received {amount} for {invoice.number}. Paid until '
+                   f'{invoice.account.paid_until:%d %b %Y}.',
+    }[kind]
+    try:
+        send_sms(phone, text)
+    except Exception:
+        logger.exception('Could not text %s about %s', invoice.account.owner, invoice.number)
+
+
 def email_landlord(invoice, kind):
     owner = invoice.account.owner
     if not owner.email:
+        sms_landlord(invoice, kind)
         return
-    name = owner.get_full_name() or owner.username
+    name = owner.get_full_name() or 'there'
     period = f'{invoice.period_start:%d %b} – {invoice.period_end - datetime.timedelta(days=1):%d %b %Y}'
     if kind == 'bill':
         subject = f'Your {settings.APP_NAME} bill: KES {invoice.amount:,}, due {invoice.due_date:%d %b}'

@@ -317,7 +317,11 @@ def branding(request):
         context['platform_notices'] = list(PlatformNotice.current_for(user)[:3])
         from accounts.utils import is_verified
 
-        context['email_unverified'] = not is_verified(user)
+        if not is_verified(user):
+            from accounts.models import profile_for
+
+            # Ask them to confirm whichever they have: the email link, or the SMS code for a phone-only account.
+            context['verify_prompt'] = 'email' if user.email else ('phone' if profile_for(user).phone else None)
         if context['BILLING_ENABLED']:
             from billing.utils import banner
 

@@ -1,0 +1,16 @@
+{% extends 'registration/auth_card.html' %}
+{% block title %}Confirm your phone · {{ APP_NAME }}{% endblock %}
+{% block card %}
+<h1>Confirm your phone number</h1>
+<p class="muted">We sent a 6-digit code by SMS to <strong>{{ phone }}</strong>. It expires in 10 minutes.</p>
+<form method="post" novalidate>
+  {% csrf_token %}
+  {% include 'includes/form_fields.html' %}
+  <button type="submit" class="btn btn-primary btn-block btn-lg">Confirm</button>
+</form>
+<form method="post" style="margin-top:10px">{% csrf_token %}
+  <input type="hidden" name="action" value="resend">
+  <button class="btn btn-ghost btn-block">Send a new code</button>
+</form>
+{% endblock %}
+{% block below %}<p class="muted small" style="text-align:center;margin-top:20px">Wrong number? <a href="{% url 'accounts:profile' %}">Change it in your profile</a> · <a href="{% url 'rentals:dashboard' %}">Do this later</a></p>{% endblock %}

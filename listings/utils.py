@@ -54,7 +54,7 @@ def notify_landlord(application):
     try:
         send_mail(
             subject=f'New application: {application.name} for {listing.unit}',
-            message=(f'Hi {owner.first_name or owner.username},\n\n{application.name} ({application.phone}) applied '
+            message=(f'Hi {owner.first_name or "there"},\n\n{application.name} ({application.phone}) applied '
                      f'for {listing.title} ({listing.unit}).\n\n'
                      + (f'Move-in: {application.move_in:%d %b %Y}\n' if application.move_in else '')
                      + (f'People: {application.occupants}\n' if application.occupants else '')

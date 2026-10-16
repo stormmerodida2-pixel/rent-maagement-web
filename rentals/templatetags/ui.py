@@ -89,3 +89,12 @@ def notice_title(announcement, language):
 @register.filter
 def notice_body(announcement, language):
     return announcement.body_in(language)
+
+
+@register.filter
+def login_label(user):
+    """What someone logs in with: their email, else phone number, else (older accounts) username."""
+    from accounts.utils import login_label as label
+
+    return label(user)
+

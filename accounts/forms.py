@@ -2,7 +2,7 @@ import datetime
 
 from django import forms
 from django.contrib.auth import get_user_model, password_validation
-from django.contrib.auth.forms import PasswordChangeForm, UserCreationForm
+from django.contrib.auth.forms import PasswordChangeForm, PasswordResetForm, UserCreationForm
 from django.urls import reverse_lazy
 from django.utils import timezone
 from django.utils.functional import lazy
@@ -20,9 +20,43 @@ TERMS_LABEL = lazy(lambda: format_html(
 ), str)
 
 
+def clean_login_contact(value, exclude_user=None):
+    """('email', address) or ('phone', 2547…) from what someone typed; raises ValidationError if taken or invalid."""
+    from django.core.validators import validate_email
+
+    from .models import Profile
+
+    value = (value or '').strip()
+    if '@' in value:
+        validate_email(value)
+        email = value.lower()
+        taken = get_user_model().objects.filter(email__iexact=email)
+        if exclude_user is not None:
+            taken = taken.exclude(pk=exclude_user.pk)
+        if taken.exists():
+            raise forms.ValidationError('An account with this email already exists. Try logging in.')
+        return 'email', email
+    try:
+        phone = normalize_phone(value)
+    except ValueError:
+        raise forms.ValidationError('Enter an email address, or a Kenyan mobile number like 0712 345 678.') from None
+    taken = Profile.objects.filter(phone=phone)
+    if exclude_user is not None:
+        taken = taken.exclude(user=exclude_user)
+    if taken.exists():
+        raise forms.ValidationError('An account with this phone number already exists. Try logging in.')
+    return 'phone', phone
+
+
 class SignupForm(UserCreationForm):
-    first_name = forms.CharField(max_length=150, label='Your name')
-    email = forms.EmailField()
+    """Name, an email address or phone number to log in with, and a password. No username."""
+
+    first_name = forms.CharField(max_length=150, label='Your name',
+                                 widget=forms.TextInput(attrs={'autocomplete': 'name', 'autofocus': True}))
+    contact = forms.CharField(label='Email or phone number', max_length=254,
+                              widget=forms.TextInput(attrs={'autocomplete': 'username', 'autocapitalize': 'none',
+                                                            'placeholder': 'you@example.com or 0712 345 678'}),
+                              help_text='You log in with this. A phone number gets a code by SMS to confirm it.')
     accept_terms = forms.BooleanField(
         label=TERMS_LABEL(),
         error_messages={'required': 'Please read and accept the terms and privacy policy to continue.'},
@@ -30,35 +64,46 @@ class SignupForm(UserCreationForm):
 
     class Meta(UserCreationForm.Meta):
         model = get_user_model()
-        fields = ['first_name', 'email', 'username']
-        help_texts = {'username': 'Letters, digits and @/./+/-/_ only. You will log in with this.'}
+        fields = ['first_name']
 
     def __init__(self, *args, **kwargs):
         super().__init__(*args, **kwargs)
-        self.fields['username'].widget.attrs.pop('autofocus', None)
-        self.fields['first_name'].widget.attrs['autofocus'] = True
+        self.order_fields(['first_name', 'contact', 'password1', 'password2', 'accept_terms'])
         self.fields['password1'].help_text = 'At least 8 characters. Avoid common words or only numbers.'
         self.fields['password2'].help_text = ''
 
-    def clean_email(self):
-        email = self.cleaned_data['email'].lower()
-        if get_user_model().objects.filter(email__iexact=email).exists():
-            raise forms.ValidationError('An account with this email already exists. Try logging in.')
-        return email
+    def clean_contact(self):
+        self.contact_kind, value = clean_login_contact(self.cleaned_data['contact'])
+        return value
+
+    def save(self, commit=True):
+        from .utils import new_username
+
+        user = super().save(commit=False)
+        user.username = new_username()
+        user.email = self.cleaned_data['contact'] if self.contact_kind == 'email' else ''
+        if commit:
+            user.save()
+        return user
+
+    @property
+    def phone(self):
+        return self.cleaned_data['contact'] if self.contact_kind == 'phone' else None
 
 
 class ProfileForm(forms.ModelForm):
-    """Name, email and phone. Changing the email needs the current password (it controls password resets)."""
+    """Name, email and phone. Either can be used to log in, so at least one is needed, and changing either
+    needs the current password (they control logging in and password resets)."""
 
     phone = forms.CharField(
         label='Your phone number', required=False, max_length=20,
         widget=forms.TextInput(attrs={'inputmode': 'tel', 'placeholder': '0712 345 678', 'autocomplete': 'tel'}),
-        help_text='For SMS from us, such as the monthly summary.',
+        help_text='You can log in with it, and we send SMS here (such as the monthly summary).',
     )
     current_password = forms.CharField(
         label='Current password', required=False, strip=False,
         widget=forms.PasswordInput(attrs={'autocomplete': 'current-password'}),
-        help_text='Only needed if you change your email.',
+        help_text='Only needed if you change your email or phone number.',
     )
 
     class Meta:
@@ -69,17 +114,22 @@ class ProfileForm(forms.ModelForm):
                    'email': forms.EmailInput(attrs={'autocomplete': 'email'})}
 
     def __init__(self, *args, prefs, **kwargs):
+        from .models import profile_for
+
         self.prefs = prefs
         super().__init__(*args, **kwargs)
+        self.profile = profile_for(self.instance)
         self.original_email = self.instance.email
+        self.original_phone = self.profile.phone or ''
         self.fields['first_name'].required = True
-        self.fields['email'].required = True
-        self.fields['phone'].initial = prefs.phone
+        self.fields['email'].required = False
+        self.fields['email'].help_text = 'You can log in with it, and we email bills and alerts here.'
+        self.fields['phone'].initial = (f'0{self.original_phone[3:]}' if self.original_phone else prefs.phone)
 
     def clean_email(self):
         email = self.cleaned_data['email'].strip().lower()
-        if get_user_model().objects.filter(email__iexact=email).exclude(pk=self.instance.pk).exists():
-            raise forms.ValidationError('Another account already uses this email.')
+        if email and email != (self.original_email or '').lower():
+            clean_login_contact(email, exclude_user=self.instance)
         return email
 
     def clean_phone(self):
@@ -87,19 +137,29 @@ class ProfileForm(forms.ModelForm):
         if not phone:
             return ''
         try:
-            return normalize_phone(phone)
+            phone = normalize_phone(phone)
         except ValueError as exc:
             raise forms.ValidationError(str(exc)) from exc
+        if phone != self.original_phone:
+            clean_login_contact(phone, exclude_user=self.instance)
+        return phone
 
     @property
     def email_changed(self):
         return self.cleaned_data.get('email', '').lower() != (self.original_email or '').lower()
 
+    @property
+    def phone_changed(self):
+        return self.cleaned_data.get('phone', '') != self.original_phone
+
     def clean(self):
         cleaned = super().clean()
-        if 'email' in cleaned and self.email_changed:
-            if not self.instance.check_password(cleaned.get('current_password') or ''):
-                self.add_error('current_password', 'Enter your current password to change your email.')
+        if 'email' in cleaned and 'phone' in cleaned:
+            if not cleaned['email'] and not cleaned['phone']:
+                raise forms.ValidationError('Keep an email address or a phone number: you log in with them.')
+            if (self.email_changed or self.phone_changed) and \
+                    not self.instance.check_password(cleaned.get('current_password') or ''):
+                self.add_error('current_password', 'Enter your current password to change your email or phone.')
         if 'phone' in cleaned and not cleaned['phone'] and self.prefs.report_sms:
             self.add_error('phone', 'You get the monthly SMS summary. Turn it off under Notifications first, '
                                     'or keep a phone number.')
@@ -107,10 +167,33 @@ class ProfileForm(forms.ModelForm):
 
     def save(self, commit=True):
         user = super().save(commit)
-        self.prefs.phone = self.cleaned_data['phone']
+        phone = self.cleaned_data['phone']
+        self.prefs.phone = phone
+        if self.phone_changed:
+            self.profile.phone, self.profile.phone_verified_at = phone or None, None
+        if self.email_changed:
+            self.profile.email_verified_at = None
         if commit:
             self.prefs.save(update_fields=['phone'])
+            self.profile.save(update_fields=['phone', 'phone_verified_at', 'email_verified_at'])
         return user
+
+
+class ResetRequestForm(PasswordResetForm):
+    """Django's reset form, but the account can be found by email or phone number."""
+
+    email = forms.CharField(label='Email or phone number', max_length=254,
+                            widget=forms.TextInput(attrs={'autocomplete': 'username', 'autocapitalize': 'none'}))
+
+    @property
+    def is_phone(self):
+        return '@' not in self.cleaned_data.get('email', '')
+
+
+class PhoneCodeForm(forms.Form):
+    code = forms.CharField(label='6-digit code', max_length=10,
+                           widget=forms.TextInput(attrs={'inputmode': 'numeric', 'autocomplete': 'one-time-code',
+                                                         'autofocus': True}))
 
 
 class ChangePasswordForm(PasswordChangeForm):
@@ -139,9 +222,9 @@ class StaffForm(forms.Form):
     """Landlord adds or edits a staff member (and, optionally, sets their password)."""
 
     name = forms.CharField(max_length=150, label='Their name')
-    username = forms.CharField(max_length=150, help_text='What they type to log in, e.g. "peter.caretaker".')
-    phone = forms.CharField(max_length=20, required=False, label='Their phone',
-                            widget=forms.TextInput(attrs={'inputmode': 'tel', 'placeholder': '0712 345 678'}))
+    phone = forms.CharField(max_length=20, label='Their phone number',
+                            widget=forms.TextInput(attrs={'inputmode': 'tel', 'placeholder': '0712 345 678'}),
+                            help_text='They log in with this number and the password you set.')
     password = forms.CharField(
         strip=False, required=False, widget=forms.PasswordInput(attrs={'autocomplete': 'new-password'}),
         help_text='At least 8 characters. Give it to them in person; they can change it after logging in.',
@@ -163,38 +246,35 @@ class StaffForm(forms.Form):
         else:
             self.fields['password'].label = 'New password (optional)'
             self.fields['password'].help_text = 'Leave blank to keep their current password.'
-            self.initial.update(name=member.name, username=member.user.username, phone=member.phone,
-                                properties=member.property_ids(), active=member.user.is_active)
-
-    def clean_username(self):
-        username = self.cleaned_data['username'].strip()
-        taken = get_user_model().objects.filter(username__iexact=username)
-        if self.member:
-            taken = taken.exclude(pk=self.member.user_id)
-        if taken.exists():
-            raise forms.ValidationError('That username is taken. Try adding their unit or a number.')
-        get_user_model().username_validator(username)
-        return username
+            self.initial.update(name=member.name, phone=member.phone, properties=member.property_ids(),
+                                active=member.user.is_active)
 
     def clean_phone(self):
-        return _clean_phone(self.cleaned_data['phone'])
+        phone = _clean_phone(self.cleaned_data['phone'])
+        if not phone:
+            raise forms.ValidationError('Enter their phone number: they log in with it.')
+        _, phone = clean_login_contact(phone, exclude_user=self.member.user if self.member else None)
+        return phone
 
     def clean_password(self):
         password = self.cleaned_data['password']
         if password:
-            user = self.member.user if self.member else get_user_model()(username=self.cleaned_data.get('username', ''))
+            user = self.member.user if self.member else get_user_model()(first_name=self.cleaned_data.get('name', ''))
             password_validation.validate_password(password, user)
         return password
 
     def save(self):
         data = self.cleaned_data
+        from .models import Profile
+        from .utils import new_username
+
         if self.member is None:
-            user = get_user_model().objects.create_user(data['username'], password=data['password'],
+            user = get_user_model().objects.create_user(new_username(), password=data['password'],
                                                         first_name=data['name'])
             member = StaffMember.objects.create(owner=self.owner, user=user, phone=data['phone'])
         else:
             member, user = self.member, self.member.user
-            user.username, user.first_name = data['username'], data['name']
+            user.first_name = data['name']
             user.is_active = data['active']
             if data['password']:
                 user.set_password(data['password'])
@@ -202,6 +282,8 @@ class StaffForm(forms.Form):
             member.phone = data['phone']
             member.save(update_fields=['phone'])
         member.properties.set(data['properties'])
+        # The landlord vouches for the number, so it counts as confirmed.
+        Profile.objects.update_or_create(user=user, defaults={'phone': data['phone'], 'phone_verified_at': timezone.now()})
         return member
 
 

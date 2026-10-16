@@ -37,7 +37,7 @@
     <tbody>
     {% for r in rows %}
     <tr>
-      <td><strong>{{ r.owner.get_full_name|default:r.owner.username }}</strong><div class="muted small">{{ r.owner.username }}{% if r.owner.email %} · {{ r.owner.email }}{% endif %}</div></td>
+      <td><strong>{{ r.owner.get_full_name|default:"(no name)" }}</strong><div class="muted small">{{ r.owner|login_label }}</div></td>
       <td class="num">{{ r.units }}</td>
       <td class="small">
         {% if r.state == 'trial' %}<span class="badge badge-info">Trial</span> until {{ r.account.trial_ends|date:"d M" }}
@@ -57,7 +57,7 @@
         {% if r.invoice %}
           <form method="post" action="{% url 'billing:mark_paid' r.invoice.pk %}" class="row" style="gap:6px">{% csrf_token %}
             {% if not r.invoice.claimed_reference %}<input name="code" placeholder="M-Pesa code" maxlength="12" class="input-narrow" aria-label="M-Pesa code (optional)">{% endif %}
-            <button class="btn btn-sm btn-primary" data-confirm="{{ r.invoice.number }} ({{ r.invoice.amount|kes }}) will be marked paid and {{ r.owner.username }} gets a receipt. Check the payment is on your M-Pesa statement first." data-confirm-title="Mark paid?" data-confirm-ok="Mark paid">{% if r.invoice.claimed_reference %}Confirm paid{% else %}Mark paid{% endif %}</button>
+            <button class="btn btn-sm btn-primary" data-confirm="{{ r.invoice.number }} ({{ r.invoice.amount|kes }}) will be marked paid and the landlord gets a receipt. Check the payment is on your M-Pesa statement first." data-confirm-title="Mark paid?" data-confirm-ok="Mark paid">{% if r.invoice.claimed_reference %}Confirm paid{% else %}Mark paid{% endif %}</button>
           </form>
           {% if r.invoice.claimed_reference %}
           <form method="post" action="{% url 'billing:reject_claim' r.invoice.pk %}">{% csrf_token %}
@@ -67,7 +67,7 @@
         {% endif %}
           {% if enabled %}<form method="post" action="{% url 'billing:extend' r.owner.pk %}">{% csrf_token %}
             <input type="hidden" name="days" value="30">
-            <button class="btn btn-sm btn-ghost" data-confirm="{{ r.owner.username }} gets 30 more free days{% if r.invoice %}, and the current bill is cancelled{% endif %}." data-confirm-title="Give 30 free days?" data-confirm-ok="Give 30 days">+30 days free</button>
+            <button class="btn btn-sm btn-ghost" data-confirm="This landlord gets 30 more free days{% if r.invoice %}, and the current bill is cancelled{% endif %}." data-confirm-title="Give 30 free days?" data-confirm-ok="Give 30 days">+30 days free</button>
           </form>{% endif %}
         </div>
       </td>
