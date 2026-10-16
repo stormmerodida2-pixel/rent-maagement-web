@@ -1,0 +1,29 @@
+{% extends 'app_base.html' %}
+{% block page_title %}Business details{% endblock %}
+{% block content %}
+<div class="form-page">
+<div class="page-header"><div><h1>Business details</h1>
+  <p class="sub">How {{ APP_NAME }} presents your business to landlords and visitors. Changes show on the site straight away.</p></div></div>
+<form method="post" novalidate class="stack">
+  {% csrf_token %}
+  {% for title, text, fields in form.grouped %}
+  <section class="card form-card">
+    <div class="card-header"><h2>{{ title }}</h2></div>
+    <div class="card-body">
+      <p class="muted small" style="margin:0 0 12px">{{ text }}</p>
+      {% for field in fields %}
+      <div class="field{% if field.errors %} has-error{% endif %}">
+        <label for="{{ field.id_for_label }}">{{ field.label|capfirst }}</label>
+        {{ field }}
+        {% if field.help_text %}<span class="helptext">{{ field.help_text }}</span>{% endif %}
+        {{ field.errors }}
+      </div>
+      {% endfor %}
+    </div>
+  </section>
+  {% endfor %}
+  <div class="form-actions"><button class="btn btn-primary">Save</button>
+    <a class="btn btn-ghost" href="{% url 'accounts:settings' %}">Cancel</a></div>
+</form>
+</div>
+{% endblock %}

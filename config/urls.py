@@ -7,7 +7,7 @@ from django.urls import include, path, reverse
 
 from accounts import views as account_views
 from accounts.urls import staff_patterns
-from ops.views import healthz
+from ops.views import business_details, healthz
 
 from . import views
 from .views import SITEMAPS, robots_txt
@@ -30,6 +30,7 @@ urlpatterns = [
     path('sitemap.xml', sitemap, {'sitemaps': SITEMAPS}, name='sitemap'),
     path('privacy/', views.privacy, name='privacy'),
     path('terms/', views.terms, name='terms'),
+    path('help/', views.help_page, name='help'),
     path('admin/', admin.site.urls),
     path('login/', account_views.LoginView.as_view(), name='login'),
     path('logout/', auth_views.LogoutView.as_view(), name='logout'),
@@ -49,6 +50,7 @@ urlpatterns = [
     path('announcements/', include('announcements.urls')),
     path('', include('support.urls')),
     path('', include('billing.urls')),
+    path('settings/business/', business_details, name='business_details'),
     path('', include('rentals.urls')),
 ]
 

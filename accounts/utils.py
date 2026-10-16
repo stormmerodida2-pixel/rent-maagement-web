@@ -198,7 +198,7 @@ def is_trusted_device(request, two_factor):
 
 # Everything else (dashboard, reports, payments, settings…) is off limits to staff accounts.
 STAFF_ALLOWED = ('/staff/', '/logout/', '/login/', '/static/', '/sw.js', '/manifest.webmanifest', '/offline/',
-                 '/privacy/', '/terms/', '/healthz/', '/robots.txt', '/t/')
+                 '/privacy/', '/terms/', '/help/', '/healthz/', '/robots.txt', '/t/')
 
 
 class StaffAreaMiddleware:
@@ -212,3 +212,35 @@ class StaffAreaMiddleware:
         if request.staff is not None and not request.path.startswith(STAFF_ALLOWED):
             return redirect('staff:home')
         return self.get_response(request)
+
+
+# --- Updated terms -------------------------------------------------------------------------------------
+
+TERMS_SESSION_KEY = 'terms_version'
+# Still reachable before accepting: the terms themselves, getting out, and background requests.
+TERMS_OPEN_PATHS = ('/terms', '/privacy', '/help/', '/logout/', '/login/', '/static/', '/media/', '/sw.js', '/manifest.webmanifest',
+                    '/offline/', '/healthz/', '/robots.txt', '/t/', '/live/', '/payments/hooks/', '/billing/hooks/')
+
+
+class UpdatedTermsMiddleware:
+    """A landlord who accepted an older version of the terms is asked to accept the current one before going on.
+
+    Accounts with no recorded acceptance (created by an administrator) aren't interrupted.
+    """
+
+    def __init__(self, get_response):
+        self.get_response = get_response
+
+    def __call__(self, request):
+        user = request.user
+        if user.is_authenticated and not user.is_superuser and getattr(request, 'staff', None) is None \
+                and not request.path.startswith(TERMS_OPEN_PATHS):
+            current = settings.LEGAL['TERMS_VERSION']
+            if request.session.get(TERMS_SESSION_KEY) != current:
+                accepted = profile_for(user).terms_version
+                if accepted and accepted != current:
+                    return redirect(f"{reverse('accounts:accept_terms')}?next={request.get_full_path()}"
+                                    if request.method == 'GET' else reverse('accounts:accept_terms'))
+                request.session[TERMS_SESSION_KEY] = current
+        return self.get_response(request)
+

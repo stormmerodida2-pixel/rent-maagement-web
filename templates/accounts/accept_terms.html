@@ -1,0 +1,22 @@
+{% extends 'registration/auth_card.html' %}
+{% block title %}Updated terms · {{ APP_NAME }}{% endblock %}
+{% block card %}
+<h1>We've updated our terms</h1>
+<p class="muted">Please read what changed and accept to carry on. Updated {{ updated }}.</p>
+<ul class="small" style="padding-left:18px;display:grid;gap:8px;margin:14px 0">
+  <li><strong>Fees and billing:</strong> how {{ APP_NAME }} is priced (per occupied unit, with your first units free), the free trial, monthly bills paid by M-Pesa, and what happens if a bill is late: read-only, never deletion, and your tenants can always pay rent.</li>
+  <li><strong>Refunds and price changes:</strong> fees are for the month ahead; at least 30 days' notice before any price increase.</li>
+  <li><strong>Privacy:</strong> we keep records of your {{ APP_NAME }} bills and payments, and encrypted backups are also kept off-site in Ireland for 90 days.</li>
+</ul>
+<p class="small"><a href="{% url 'terms' %}" target="_blank" rel="noopener">Read the terms of service</a> · <a href="{% url 'privacy' %}" target="_blank" rel="noopener">Read the privacy policy</a></p>
+<form method="post" novalidate>
+  {% csrf_token %}
+  <input type="hidden" name="next" value="{{ next }}">
+  {% if error %}<div class="alert alert-error">{{ error }}</div>{% endif %}
+  <div class="field field-check">
+    <input type="checkbox" name="accept" id="id_accept" value="1"><label for="id_accept">I have read and accept the updated terms of service and privacy policy</label>
+  </div>
+  <button class="btn btn-primary btn-block" style="margin-top:12px">Accept and continue</button>
+</form>
+<form method="post" action="{% url 'logout' %}" style="margin-top:10px">{% csrf_token %}<button class="btn btn-ghost btn-block">Log out</button></form>
+{% endblock %}

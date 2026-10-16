@@ -41,9 +41,31 @@ repairs and tenant messages.</p>
   <li>You are responsible for your Daraja (M-Pesa API) credentials and for keeping them up to date.</li>
 </ul>
 
-<h2>5. Fees</h2>
-<p>Any fees for {{ APP_NAME }}, and for SMS messages sent through it, will be shown to you before you are charged.
-We will give you notice before introducing or changing fees.</p>
+<h2>5. Fees and billing</h2>
+<ul>
+  <li><strong>Price.</strong> {% if billing.enabled %}Your first {{ billing.free_units }} occupied units are free, and each
+    further occupied unit costs KES {{ billing.price_per_unit }} a month.{% else %}{{ APP_NAME }} is currently free to use.
+    When we start charging, the price will be per occupied unit per month, with your first units free; we will tell you
+    the price at least 30 days before your first bill.{% endif %} Empty units are not charged. The price that applies to
+    you is always shown on your Billing page.</li>
+  <li><strong>Free trial.</strong> When billing starts for you, you get {{ billing.trial_days }} days free. You can stop
+    using {{ APP_NAME }} during the trial without paying anything.</li>
+  <li><strong>Bills.</strong> We bill each month in advance, 3 days before it starts, counting your occupied units on
+    that day. Bills are emailed to you and shown on your Billing page. You pay by M-Pesa, to our Till or with an M-Pesa
+    prompt.</li>
+  <li><strong>Late payment.</strong> If a bill is still unpaid {{ billing.grace_days }} days after it was due, your account
+    becomes read-only: you can still see and export everything, but not make changes, and reminder SMS to your tenants
+    are paused. Your tenants can still view their rent page and pay rent, and their payments are still recorded. Full
+    access returns as soon as the bill is paid. We never delete your data because a bill is late.</li>
+  <li><strong>Refunds.</strong> Fees pay for the month ahead and are not refunded for part of a month, except where we
+    billed you in error, which we will correct promptly. If you want to stop using {{ APP_NAME }}, tell us and you will
+    not be billed again.</li>
+  <li><strong>Price changes.</strong> We will tell you at least 30 days before a price increase applies to you.</li>
+  <li><strong>SMS.</strong> SMS reminders, receipts and announcements are currently included in the price. We will give
+    you at least 30 days' notice before charging for them separately.</li>
+  <li><strong>Tax.</strong> Prices are in Kenya shillings. If we become required to charge VAT, we will tell you before
+    it is added to your bills.</li>
+</ul>
 
 <h2>6. Acceptable use</h2>
 <p>Do not try to access other landlords' or tenants' data, interfere with or overload the service, probe it for
@@ -61,7 +83,8 @@ including keeping financial records for as long as the law requires.</p>
 
 <h2>9. Suspension and termination</h2>
 <p>We may suspend or close an account that breaks these terms, puts others at risk or is used unlawfully. Where
-reasonable we will warn you first and give you a chance to fix the problem and export your data.</p>
+reasonable we will warn you first and give you a chance to fix the problem and export your data. Late payment is
+handled as described in section 5 (read-only, never deletion).</p>
 
 <h2>10. Liability</h2>
 <p>As far as the law allows, {{ legal.ENTITY }} is not liable for indirect or consequential losses (such as lost

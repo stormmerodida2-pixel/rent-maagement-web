@@ -263,6 +263,17 @@ class SafeDeleteMixin:
 
 # --- Template context ----------------------------------------------------------------------------
 
+def social_links():
+    from django.db import OperationalError, ProgrammingError
+
+    from ops.models import SiteSettings
+
+    try:
+        return SiteSettings.load().social_links()
+    except (OperationalError, ProgrammingError):  # before the first migrate
+        return []
+
+
 def billing_enabled():
     from django.db import OperationalError, ProgrammingError
 
@@ -275,7 +286,7 @@ def billing_enabled():
 
 
 def branding(request):
-    context = {'APP_NAME': settings.APP_NAME, 'SITE_URL': settings.SITE_URL, 'SOCIAL_LINKS': settings.SOCIAL_LINKS,
+    context = {'APP_NAME': settings.APP_NAME, 'SITE_URL': settings.SITE_URL, 'SOCIAL_LINKS': social_links(),
                'BILLING_ENABLED': billing_enabled()}
     user = getattr(request, 'user', None)
     if user is not None and user.is_authenticated and request.resolver_match \

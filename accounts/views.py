@@ -633,3 +633,28 @@ def staff_edit(request, pk=None):
                                      'totals, reports or settings.',
         'submit_label': 'Save' if member else 'Add staff member', 'cancel_url': reverse('staff:manage'),
     })
+
+
+@login_required
+def accept_terms(request):
+    """The terms changed since this landlord accepted them: show what's new and ask them to accept."""
+    from .utils import TERMS_SESSION_KEY
+
+    current = settings.LEGAL['TERMS_VERSION']
+    nxt = request.GET.get('next') or request.POST.get('next') or ''
+    if not url_has_allowed_host_and_scheme(nxt, {request.get_host()}, request.is_secure()) or nxt.startswith('/terms'):
+        nxt = reverse('rentals:dashboard')
+    error = ''
+    if request.method == 'POST':
+        if request.POST.get('accept'):
+            profile = profile_for(request.user)
+            profile.terms_version, profile.terms_accepted_at = current, timezone.now()
+            profile.save(update_fields=['terms_version', 'terms_accepted_at'])
+            request.session[TERMS_SESSION_KEY] = current
+            audit.record(owner=request.user, actor=request.user, action='account.terms_accepted',
+                         summary=f'Accepted the terms of service ({current}).')
+            return redirect(nxt)
+        error = 'Tick the box to accept the updated terms, or log out.'
+    return render(request, 'accounts/accept_terms.html', {'next': nxt, 'error': error,
+                                                          'updated': settings.LEGAL['UPDATED']})
+

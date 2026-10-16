@@ -239,7 +239,7 @@ Scheduled jobs (no cron needed; times are Nairobi time, and a job missed during 
    EMAIL_HOST=smtp.gmail.com  EMAIL_PORT=587  EMAIL_USE_TLS=1  EMAIL_HOST_USER=  EMAIL_HOST_PASSWORD=  DEFAULT_FROM_EMAIL=  SUPPORT_EMAIL=
    SMS_BACKEND=africastalking  AT_USERNAME=  AT_API_KEY=  AT_SENDER_ID=
    ```
-   (one per line). Optional: `APP_NAME`, `SENTRY_DSN`, `DJANGO_HSTS_SECONDS`, `BACKUP_KEEP_DAYS`, `SESSION_IDLE_MINUTES`, `CSP_REPORT_ONLY`, `WEB_CONCURRENCY`, `MPESA_CALLBACK_IPS`, and `LEGAL_ENTITY_NAME`, `LEGAL_ADDRESS`, `PRIVACY_EMAIL` for the privacy and terms pages. Social media buttons in the home page footer appear for whichever of `SOCIAL_FACEBOOK`, `SOCIAL_INSTAGRAM`, `SOCIAL_X`, `SOCIAL_TIKTOK`, `SOCIAL_LINKEDIN` (full URLs) and `SOCIAL_WHATSAPP` (a phone number, e.g. 0712345678) are set.
+   (one per line). Optional: `APP_NAME`, `SENTRY_DSN`, `DJANGO_HSTS_SECONDS`, `BACKUP_KEEP_DAYS`, `SESSION_IDLE_MINUTES`, `CSP_REPORT_ONLY`, `WEB_CONCURRENCY`, `MPESA_CALLBACK_IPS`.
 3. Open `https://your-domain/healthz/`. It should say `"status": "ok"` with `"scheduler": "ok"`, and the site should load over HTTPS.
 4. **Keep a copy of `FIELD_ENCRYPTION_KEY` somewhere safe** (a password manager). Without it, the M-Pesa credentials saved in a backup can't be decrypted.
 5. M-Pesa webhooks use `SITE_URL` automatically. Each landlord clicks **Register** under Settings → M-Pesa.
@@ -311,8 +311,10 @@ Then load the `.dump` with `pg_restore` as above.
 ### Privacy policy and terms
 
 - `/privacy/` and `/terms/` are written for Kenya's Data Protection Act, 2019. Landlords are the data controllers for their tenants' data, and the platform is their processor. **They are a first draft: have an advocate review them before launch.**
-- Set `LEGAL_ENTITY_NAME`, `LEGAL_ADDRESS` and `PRIVACY_EMAIL` so the pages show your business details.
-- Sign-up requires accepting both. The date and the terms version (`LEGAL['TERMS_VERSION']` in settings) are saved on each landlord's profile. When you change the terms materially, bump the version and the "last updated" date.
+- Your business details (registered name, address, privacy email) are set in the app by an administrator: **Settings → Business details**, which also holds the support phone, WhatsApp number and social media links shown on the help page and home page footer.
+- The terms include **Fees and billing**, quoting the live prices from Billing overview, so they always match what landlords are charged.
+- Sign-up requires accepting both. The date and the terms version (`LEGAL['TERMS_VERSION']` in settings) are saved on each landlord's profile. When you change the terms materially, bump the version and the "last updated" date: landlords who accepted an older version are then asked to accept the new one when they next open the app (they can read the terms first, or log out). Accounts with no recorded acceptance (made by an administrator) aren't interrupted.
+- `/help/` answers common landlord questions (setting up, M-Pesa, reminders, tenants, billing when it's on) and ends with your WhatsApp, phone and contact form. It's linked from the side menu, Settings and the home page footer.
 - Register with the Office of the Data Protection Commissioner (odpc.go.ke) if the law requires it for your business.
 
 ### Rent day: ring, chime and reminding everyone
