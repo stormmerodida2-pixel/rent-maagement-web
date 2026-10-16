@@ -362,7 +362,35 @@ label, .label { display: block; font-size: 13px; font-weight: 500; color: var(--
 .cta-band p { opacity: .85; margin-top: 6px; }
 .cta-band .btn { margin-left: auto; background: var(--brand-ink); color: var(--brand); border-color: var(--brand-ink); }
 .site-footer { padding: 32px 0 48px; color: var(--muted); font-size: 14px; }
-.site-footer .wrap { display: flex; gap: 16px; flex-wrap: wrap; align-items: center; }
+.footer-inner { display: flex; flex-wrap: wrap; align-items: center; justify-content: space-between; gap: 20px 32px; }
+.footer-brand { display: grid; gap: 8px; min-width: 0; justify-items: start; }
+.footer-brand .logo-lockup { align-items: flex-start; }
+.footer-brand .logo { background-position: left center; }
+.footer-links { display: flex; flex-wrap: wrap; gap: 4px 22px; }
+.footer-links a { padding: 6px 0; }
+.footer-base { margin-top: 20px; font-size: 13px; }
+.footer-base::before { content: ""; display: block; border-top: 1px solid var(--border); margin-bottom: 16px; }
+.social-links { display: flex; flex-wrap: wrap; gap: 12px; margin-top: 8px; }
+.social-links a {
+  display: grid; place-items: center; width: 44px; height: 44px; border-radius: 50%;
+  background: var(--surface-2); color: var(--text); border: 1px solid var(--border);
+  transition: background .15s, color .15s, transform .15s;
+}
+.social-links a:hover { background: var(--brand); color: #fff; border-color: var(--brand); transform: translateY(-1px); }
+.social-links a:focus-visible { outline: 2px solid var(--brand); outline-offset: 2px; }
+.social-links svg { width: 20px; height: 20px; }
+@media (prefers-reduced-motion: reduce) { .social-links a { transition: none; } .social-links a:hover { transform: none; } }
+@media (max-width: 640px) {
+  .site-footer { padding: 32px 0 36px; text-align: center; }
+  .footer-inner { flex-direction: column; align-items: center; gap: 22px; }
+  .footer-brand { justify-items: center; }
+  .footer-brand .logo-lockup { align-items: center; }
+  .footer-brand .logo { background-position: center; }
+  .footer-logo .logo { height: 44px; }
+  .social-links { justify-content: center; margin-top: 10px; }
+  .footer-links { flex-direction: column; align-items: center; gap: 2px; }
+  .footer-links a { padding: 8px 12px; }
+}
 
 @media (max-width: 900px) {
   .hero, .split { grid-template-columns: 1fr; gap: 40px; }

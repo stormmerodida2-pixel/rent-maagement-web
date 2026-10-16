@@ -264,7 +264,7 @@ class SafeDeleteMixin:
 # --- Template context ----------------------------------------------------------------------------
 
 def branding(request):
-    context = {'APP_NAME': settings.APP_NAME, 'SITE_URL': settings.SITE_URL}
+    context = {'APP_NAME': settings.APP_NAME, 'SITE_URL': settings.SITE_URL, 'SOCIAL_LINKS': settings.SOCIAL_LINKS}
     user = getattr(request, 'user', None)
     if user is not None and user.is_authenticated and request.resolver_match \
             and request.resolver_match.app_name in ('rentals', 'payments', 'maintenance', 'notifications', 'accounts', 'reports', 'audit', 'support', 'announcements'):

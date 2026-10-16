@@ -10,6 +10,7 @@ if present). See the "Deploying" section of README.md.
 """
 
 import os
+import re
 from pathlib import Path
 from urllib.parse import urlsplit
 
@@ -257,6 +258,18 @@ SERVER_EMAIL = DEFAULT_FROM_EMAIL
 
 # Product name shown across the site, home page and emails/SMS footers.
 APP_NAME = os.environ.get('APP_NAME', 'Rentipay')
+
+# Social media links in the home page footer; only the ones set are shown. Full URLs, except
+# SOCIAL_WHATSAPP, which is a phone number (e.g. 0712345678) that opens a WhatsApp chat.
+SOCIAL_LINKS = [(name, url) for name, url in [
+    ('facebook', os.environ.get('SOCIAL_FACEBOOK', '')),
+    ('instagram', os.environ.get('SOCIAL_INSTAGRAM', '')),
+    ('x', os.environ.get('SOCIAL_X', '')),
+    ('tiktok', os.environ.get('SOCIAL_TIKTOK', '')),
+    ('linkedin', os.environ.get('SOCIAL_LINKEDIN', '')),
+    ('whatsapp', 'https://wa.me/' + re.sub(r'\D', '', re.sub(r'^\s*0', '254', os.environ.get('SOCIAL_WHATSAPP', '')))
+     if os.environ.get('SOCIAL_WHATSAPP', '').strip() else ''),
+] if url.strip()]
 
 # Shown on the privacy policy and terms. Set them to your registered business details.
 LEGAL = {
