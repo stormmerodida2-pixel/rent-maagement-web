@@ -135,6 +135,30 @@
 
   <div class="stack">
     <section class="card">
+      <div class="card-header"><h2>Notes</h2></div>
+      {% if notes %}
+      <div class="table-wrap"><table class="table"><tbody>
+        {% for n in notes %}
+        <tr><td>
+          {% if n.promised_by %}<span class="badge {% if n.promise_missed %}badge-danger{% else %}badge-info{% endif %}">{% if n.promise_missed %}Missed promise{% else %}Promised{% endif %}{% if n.promised_amount %} {{ n.promised_amount|kes }}{% endif %} by {{ n.promised_by|date:"D d M" }}</span> {% endif %}{{ n.text }}
+          <div class="muted small">{% if n.author_id == user.pk %}You{% else %}{{ n.author.get_full_name|default:"Staff" }} (staff){% endif %} · {{ n.created_at|date:"d M, H:i" }}</div>
+        </td></tr>
+        {% endfor %}
+      </tbody></table></div>
+      {% endif %}
+      <div class="card-body"{% if notes %} style="border-top:1px solid var(--border)"{% endif %}>
+        <details{% if not notes %} open{% endif %}>
+          <summary class="small" style="cursor:pointer">Add a note</summary>
+          <form method="post" action="{% url 'rentals:lease_note' lease.pk %}" novalidate style="margin-top:10px">
+            {% csrf_token %}
+            {% include 'includes/form_fields.html' with form=note_form %}
+            <button class="btn btn-sm" style="margin-top:8px">Save note</button>
+          </form>
+        </details>
+      </div>
+    </section>
+
+    <section class="card">
       <div class="card-header"><h2>Details</h2></div>
       <div class="card-body profile">
         <dl>

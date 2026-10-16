@@ -27,13 +27,34 @@
 </section>
 {% endif %}
 
+{% if spending %}
+<section class="card" style="margin-bottom:16px">
+  <div class="card-header"><h2>Spending to approve</h2></div>
+  <div class="table-wrap"><table class="table"><tbody>
+    {% for e in spending %}
+    <tr>
+      <td><strong>{{ e.staff.name }}</strong> spent <strong>{{ e.amount|kes }}</strong> on {{ e.description }}
+        <div class="muted small">{{ e.spent_on|date:"D d M" }}{% if e.unit %} · {{ e.unit }}{% endif %} · {% if e.receipt %}<a href="{% url 'private_file' 'receipt' e.pk %}" target="_blank" rel="noopener">See receipt</a>{% else %}<span class="text-warn">No receipt photo</span>{% endif %}</div></td>
+      <td class="num nowrap">
+        <form method="post" action="{% url 'payments:expense_decide' e.pk %}" class="row" style="gap:6px;justify-content:flex-end;flex-wrap:wrap">{% csrf_token %}
+          <button name="action" value="approve" class="btn btn-sm btn-primary" data-confirm="{{ e.amount|kes }} spent by {{ e.staff.name }} on {{ e.description }}. It reduces the cash they hold." data-confirm-title="Approve spending?" data-confirm-ok="Approve">Approve</button>
+          <input name="reason" placeholder="Why not?" maxlength="200" class="input-narrow" aria-label="Why you're not approving it">
+          <button name="action" value="reject" class="btn btn-sm">Don't approve</button>
+        </form>
+      </td>
+    </tr>
+    {% endfor %}
+  </tbody></table></div>
+</section>
+{% endif %}
+
 {% if rows %}
 <div class="kpis" style="margin-bottom:16px">
   {% for r in rows %}
   <div class="card kpi">
     <div class="label">{{ r.member.name }} is holding</div>
     <div class="value {% if r.holding > 0 %}text-warn{% endif %}">{{ r.holding|kes }}</div>
-    <div class="sub">Collected {{ r.collected|kes }} · passed on {{ r.confirmed|kes }}{% if r.pending %} · {{ r.pending|kes }} to confirm{% endif %}</div>
+    <div class="sub">Collected {{ r.collected|kes }} · passed on {{ r.confirmed|kes }}{% if r.spent %} · spent {{ r.spent|kes }}{% endif %}{% if r.pending or r.spend_pending %} · {{ r.pending|add:r.spend_pending|kes }} to check{% endif %}</div>
   </div>
   {% endfor %}
 </div>
@@ -74,6 +95,21 @@
     </section>
   </div>
 
+  <div class="stack">
+  {% if spending_history %}
+  <section class="card">
+    <div class="card-header"><h2>Spending</h2></div>
+    <div class="table-wrap"><table class="table"><tbody>
+      {% for e in spending_history %}
+      <tr>
+        <td>{{ e.description }}<div class="muted small">{{ e.staff.name }} · {{ e.spent_on|date:"d M Y" }}{% if e.unit %} · {{ e.unit.label }}{% endif %}{% if e.receipt %} · <a href="{% url 'private_file' 'receipt' e.pk %}" target="_blank" rel="noopener">receipt</a>{% endif %}</div></td>
+        <td class="num">{{ e.amount|kes }}</td>
+        <td class="num">{% if e.status == 'approved' %}<span class="badge badge-success">Approved</span>{% elif e.status == 'pending' %}<span class="badge badge-warn">To approve</span>{% else %}<span class="badge badge-danger">Not approved</span>{% endif %}</td>
+      </tr>
+      {% endfor %}
+    </tbody></table></div>
+  </section>
+  {% endif %}
   {% if rows %}
   <section class="card">
     <div class="card-header"><h2>Record cash you received</h2></div>
@@ -87,5 +123,6 @@
     </div>
   </section>
   {% endif %}
+  </div>
 </div>
 {% endblock %}

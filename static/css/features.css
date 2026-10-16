@@ -251,3 +251,6 @@ details.daraja[open] > summary h2::before { transform: rotate(90deg); }
 .text-warn { color: var(--warn); }
 .cash-card { display: flex; align-items: center; gap: 12px; flex-wrap: wrap; margin-bottom: 14px; }
 .cash-card .amount { font-size: 22px; font-weight: 700; }
+.staff-quick { display: flex; gap: 8px; flex-wrap: wrap; margin-bottom: 14px; }
+.staff-quick .btn { flex: 1; min-width: 140px; justify-content: center; }
+.staff-note { background: var(--surface-2); border-radius: 8px; padding: 6px 10px; }

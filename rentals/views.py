@@ -16,6 +16,7 @@ from django.views.decorators.http import require_POST
 
 from accounts.views import setup_steps
 from announcements.models import current_notices
+from accounts.forms import TenantNoteForm
 from audit import utils as audit
 from maintenance.forms import TenantMaintenanceForm
 from maintenance.models import MaintenanceRequest
@@ -23,11 +24,11 @@ from notifications.models import SmsMessage
 from notifications.utils import plan_agreed_text, reminder_text, send_personal_sms, send_rent_reminder, send_sms
 from payments import mpesa
 from payments.forms import StkPushForm
-from payments.models import C2BPayment, CashHandover, MpesaAccount, Payment
+from payments.models import C2BPayment, CashHandover, MpesaAccount, Payment, StaffExpense
 
 from . import utils as rent_changes
 from .forms import BulkRentChangeForm, NoticeForm, PaymentPlanForm, RentChangeForm
-from .utils import create_plan, on_track_plan, plan_progress, plan_schedule, refresh_plan, tenant_page
+from .utils import add_tenant_note, create_plan, on_track_plan, plan_progress, plan_schedule, refresh_plan, tenant_page
 from .models import Lease, PaymentPlan, Property, RentCharge, Tenant, Unit
 
 
@@ -114,6 +115,7 @@ def dashboard(request):
         'unmatched_c2b': C2BPayment.objects.filter(account__owner=user, payment__isnull=True).count(),
         'handovers_to_confirm': CashHandover.objects.filter(owner=user, status=CashHandover.Status.PENDING)
         .select_related('staff__user'),
+        'spending_to_approve': StaffExpense.objects.filter(owner=user, status=StaffExpense.Status.PENDING).count(),
         'mpesa_account': account,
         'statement_due': statement_due(account),
         'setup_incomplete': not all(step['done'] for step in steps),
@@ -214,6 +216,8 @@ def lease_detail(request, pk):
         'balance': balance,
         'plan': plan,
         'plan_progress': refresh_plan(plan) if plan else None,
+        'notes': lease.notes.select_related('author')[:10],
+        'note_form': TenantNoteForm(),
         'statement': statement(lease),
         'deposit_held': lease.deposit_held,
         'voided': sorted(
@@ -482,3 +486,18 @@ def tenant_portal(request, token):
         'maintenance_form': maintenance_form,
         'mpesa_account': MpesaAccount.objects.filter(owner=tenant.owner).first(),
     })
+
+
+@login_required
+@require_POST
+def lease_note(request, pk):
+    """The landlord's own note on a tenancy (caretakers add theirs from their screen)."""
+    lease = get_object_or_404(Lease, pk=pk, unit__property__owner=request.user)
+    form = TenantNoteForm(request.POST)
+    if form.is_valid():
+        add_tenant_note(lease, request.user, **form.cleaned_data)
+        messages.success(request, 'Note saved.')
+    else:
+        messages.error(request, ' '.join(e for errors in form.errors.values() for e in errors))
+    return redirect('rentals:lease_detail', pk=lease.pk)
+

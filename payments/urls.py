@@ -15,6 +15,7 @@ urlpatterns = [
     path('statement/', views.statement_upload, name='statement_upload'),
     path('cash/', views.cash_with_staff, name='cash_with_staff'),
     path('cash/<int:pk>/decide/', views.handover_decide, name='handover_decide'),
+    path('cash/spending/<int:pk>/decide/', views.expense_decide, name='expense_decide'),
     path('', views.PaymentList.as_view(), name='payment_list'),
     path('new/', views.PaymentCreate.as_view(), name='payment_create'),
     path('<int:pk>/void/', views.payment_void, name='payment_void'),

@@ -7,13 +7,38 @@ import datetime
 import hashlib
 import io
 import logging
+import os
 import re
 from decimal import Decimal, InvalidOperation
 
 from cryptography.fernet import Fernet, InvalidToken
 from django.conf import settings
+from django.core.files.storage import FileSystemStorage
 from django.db import models, transaction
 from django.utils import timezone
+
+
+# --- Private files --------------------------------------------------------------------------------------
+
+class PrivateStorage(FileSystemStorage):
+    """Receipts and meter photos: outside MEDIA_ROOT, so the web server never serves them directly. The folder is
+    read from settings each time, so it follows PRIVATE_MEDIA_ROOT (tests point it at a temporary folder)."""
+
+    @property
+    def base_location(self):
+        return settings.PRIVATE_MEDIA_ROOT
+
+    @property
+    def location(self):
+        return os.path.abspath(self.base_location)
+
+    @property
+    def base_url(self):
+        return None
+
+
+def private_storage():
+    return PrivateStorage()
 
 
 # --- Encrypted model fields --------------------------------------------------------------------------
@@ -279,7 +304,7 @@ def staff_cash(member):
     """What a caretaker has collected, handed over and is holding (from when payments recorded who took them)."""
     from django.db.models import Sum
 
-    from .models import CashHandover, Payment
+    from .models import CashHandover, Payment, StaffExpense
 
     def total(qs):
         return qs.aggregate(t=Sum('amount'))['t'] or Decimal('0')
@@ -289,8 +314,14 @@ def staff_cash(member):
     handovers = CashHandover.objects.filter(staff=member)
     confirmed = total(handovers.filter(status=CashHandover.Status.CONFIRMED))
     pending = total(handovers.filter(status=CashHandover.Status.PENDING))
+    expenses = StaffExpense.objects.filter(staff=member)
+    spent = total(expenses.filter(status=StaffExpense.Status.APPROVED))
+    spend_pending = total(expenses.filter(status=StaffExpense.Status.PENDING))
+    holding = collected - confirmed - spent
     return {'member': member, 'collected': collected, 'confirmed': confirmed, 'pending': pending,
-            'holding': collected - confirmed, 'to_hand_over': max(collected - confirmed - pending, Decimal('0'))}
+            'spent': spent, 'spend_pending': spend_pending, 'holding': holding,
+            # What they can still hand over or spend: anything already claimed is waiting on the landlord.
+            'to_hand_over': max(holding - pending - spend_pending, Decimal('0'))}
 
 
 def staff_cash_for(owner):
@@ -341,3 +372,42 @@ def decide_handover(handover, confirm, actor):
                  summary=f'{"Confirmed" if confirm else "Marked as not received"}: KES {handover.amount:,.0f} cash '
                          f'from {handover.staff.name}.')
     return handover
+
+
+def record_expense(member, amount, description, unit, receipt, spent_on, actor):
+    """A caretaker spent some of the cash they hold; it counts once the landlord approves it."""
+    from audit import utils as audit
+    from listings.utils import prepare_photo
+
+    from .models import StaffExpense
+
+    amount = Decimal(amount)
+    available = staff_cash(member)['to_hand_over']
+    if amount > available:
+        raise HandoverError(f'That is more than the cash you are holding (KES {available:,.0f}).')
+    expense = StaffExpense(owner_id=member.owner_id, staff=member, amount=amount, description=description[:200],
+                           unit=unit, spent_on=spent_on, recorded_by=actor)
+    if receipt:
+        content = prepare_photo(receipt)  # resized, location data removed
+        expense.receipt.save(content.name, content, save=False)
+    expense.save()
+    audit.record(owner=member.owner, actor=actor, action='cash.spent',
+                 summary=f'{member.name} (staff) recorded spending KES {amount:,.0f} of cash on "{description}"'
+                         f'{" (" + unit.label + ")" if unit else ""}. Waiting for approval.')
+    return expense
+
+
+def decide_expense(expense, approve, actor, reason=''):
+    from audit import utils as audit
+
+    from .models import StaffExpense
+
+    expense.status = StaffExpense.Status.APPROVED if approve else StaffExpense.Status.REJECTED
+    expense.reject_reason = '' if approve else reason[:200]
+    expense.decided_at, expense.decided_by = timezone.now(), actor
+    expense.save(update_fields=['status', 'reject_reason', 'decided_at', 'decided_by'])
+    audit.record(owner=expense.owner, actor=actor, action='cash.spending_approved' if approve else 'cash.spending_rejected',
+                 summary=f'{"Approved" if approve else "Did not approve"} KES {expense.amount:,.0f} spent by '
+                         f'{expense.staff.name} on "{expense.description}"{"" if approve else ": " + reason}.')
+    return expense
+

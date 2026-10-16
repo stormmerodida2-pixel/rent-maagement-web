@@ -182,6 +182,8 @@ STATIC_ROOT = BASE_DIR / 'staticfiles'
 # Uploaded files (listing photos). On the server they live on a Docker volume that Caddy serves.
 MEDIA_URL = '/media/'
 MEDIA_ROOT = Path(os.environ.get('MEDIA_ROOT', BASE_DIR / 'media'))
+# Private uploads (receipts, meter photos): never served directly, only through a page that checks who's asking.
+PRIVATE_MEDIA_ROOT = Path(os.environ.get('PRIVATE_MEDIA_ROOT', BASE_DIR / 'private_media'))
 
 STORAGES = {
     'default': {'BACKEND': 'django.core.files.storage.FileSystemStorage'},

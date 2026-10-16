@@ -1,0 +1,20 @@
+{% extends 'staff/base.html' %}
+{% load ui %}
+{% block page_title %}Meter readings{% endblock %}
+{% block content %}
+<div class="staff-head"><a class="small" href="{% url 'staff:home' %}">← Back</a><h1>Meter readings</h1>
+  <p class="muted">Tap a unit to enter today's water meter reading. Water is billed to the tenant from the difference.</p></div>
+{% if no_rate %}<div class="alert alert-info small">{% icon 'wallet' 16 %}<span>The landlord hasn't set a water price yet, so readings are saved but nothing is billed.</span></div>{% endif %}
+<div class="staff-list">
+{% for r in rows %}
+  <a class="card staff-card staff-card-link" href="{% url 'staff:meter_reading' r.unit.pk %}">
+    <div class="staff-card-head">
+      <div class="staff-card-who"><strong>{{ r.unit.label }}</strong><span class="muted small">{{ r.unit.property.name }}</span></div>
+      <span class="muted small" style="text-align:right">{% if r.last %}Last {{ r.last.value }}<br>{{ r.last.reading_date|date:"d M" }}{% else %}No reading yet{% endif %}</span>
+    </div>
+  </a>
+{% empty %}
+  <section class="card"><div class="empty">No units to read.</div></section>
+{% endfor %}
+</div>
+{% endblock %}

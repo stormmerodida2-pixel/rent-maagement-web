@@ -1,0 +1,25 @@
+{% extends 'staff/base.html' %}
+{% load ui %}
+{% block page_title %}Note · {{ lease.tenant }}{% endblock %}
+{% block content %}
+<div class="staff-head"><a class="small" href="{% url 'staff:home' %}">← Back</a><h1>Note on {{ lease.tenant }}</h1>
+  <p class="muted">{{ lease.unit }}. What they said, or a promise to pay. The landlord sees it on the tenant's page.</p></div>
+<section class="card"><div class="card-body">
+  <form method="post" novalidate>
+    {% csrf_token %}
+    {% include 'includes/form_fields.html' %}
+    <button type="submit" class="btn btn-primary btn-block" style="margin-top:16px">Save note</button>
+  </form>
+</div></section>
+{% if notes %}
+<h2 style="font-size:16px;margin:20px 0 8px">Earlier notes</h2>
+<div class="staff-list">
+{% for n in notes %}
+  <article class="card staff-card">
+    <div class="small">{% if n.promised_by %}<span class="badge {% if n.promise_missed %}badge-danger{% else %}badge-info{% endif %}">{% if n.promise_missed %}Missed promise{% else %}Promised{% endif %}{% if n.promised_amount %} {{ n.promised_amount|kes }}{% endif %} by {{ n.promised_by|date:"D d M" }}</span> {% endif %}{{ n.text }}</div>
+    <div class="muted small">{{ n.author.get_full_name|default:"Landlord" }} · {{ n.created_at|date:"d M, H:i" }}</div>
+  </article>
+{% endfor %}
+</div>
+{% endif %}
+{% endblock %}
