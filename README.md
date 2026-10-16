@@ -239,7 +239,7 @@ Scheduled jobs (no cron needed; times are Nairobi time, and a job missed during 
    EMAIL_HOST=smtp.gmail.com  EMAIL_PORT=587  EMAIL_USE_TLS=1  EMAIL_HOST_USER=  EMAIL_HOST_PASSWORD=  DEFAULT_FROM_EMAIL=  SUPPORT_EMAIL=
    SMS_BACKEND=africastalking  AT_USERNAME=  AT_API_KEY=  AT_SENDER_ID=
    ```
-   (one per line). Optional: `APP_NAME`, `SENTRY_DSN`, `DJANGO_HSTS_SECONDS`, `BACKUP_KEEP_DAYS`, `SESSION_IDLE_MINUTES`, `CSP_REPORT_ONLY`, `WEB_CONCURRENCY`, `MPESA_CALLBACK_IPS`, and `LEGAL_ENTITY_NAME`, `LEGAL_ADDRESS`, `PRIVACY_EMAIL` for the privacy and terms pages.
+   (one per line). Optional: `APP_NAME`, `SENTRY_DSN`, `DJANGO_HSTS_SECONDS`, `BACKUP_KEEP_DAYS`, `SESSION_IDLE_MINUTES`, `CSP_REPORT_ONLY`, `WEB_CONCURRENCY`, `MPESA_CALLBACK_IPS`, and `LEGAL_ENTITY_NAME`, `LEGAL_ADDRESS`, `PRIVACY_EMAIL` for the privacy and terms pages. Social media buttons in the home page footer appear for whichever of `SOCIAL_FACEBOOK`, `SOCIAL_INSTAGRAM`, `SOCIAL_X`, `SOCIAL_TIKTOK`, `SOCIAL_LINKEDIN` (full URLs) and `SOCIAL_WHATSAPP` (a phone number, e.g. 0712345678) are set.
 3. Open `https://your-domain/healthz/`. It should say `"status": "ok"` with `"scheduler": "ok"`, and the site should load over HTTPS.
 4. **Keep a copy of `FIELD_ENCRYPTION_KEY` somewhere safe** (a password manager). Without it, the M-Pesa credentials saved in a backup can't be decrypted.
 5. M-Pesa webhooks use `SITE_URL` automatically. Each landlord clicks **Register** under Settings → M-Pesa.

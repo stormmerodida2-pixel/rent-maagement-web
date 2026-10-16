@@ -57,3 +57,17 @@ class RobotsMetaTests(TestCase):
         dash = self.client.get(reverse('rentals:dashboard'))
         self.assertContains(dash, '<meta name="robots" content="noindex, nofollow">')
         self.assertNotContains(dash, 'og:title')
+
+
+class SocialLinksTests(TestCase):
+    @override_settings(SOCIAL_LINKS=[('facebook', 'https://facebook.com/rentipay'), ('whatsapp', 'https://wa.me/254712345678')])
+    def test_footer_shows_only_the_links_that_are_set(self):
+        page = self.client.get('/')
+        self.assertContains(page, 'href="https://facebook.com/rentipay"')
+        self.assertContains(page, 'href="https://wa.me/254712345678"')
+        self.assertContains(page, 'on WhatsApp')
+        self.assertNotContains(page, 'on Instagram')
+
+    @override_settings(SOCIAL_LINKS=[])
+    def test_no_links_no_icons(self):
+        self.assertNotContains(self.client.get('/'), 'social-links')
