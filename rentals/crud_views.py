@@ -136,33 +136,31 @@ class PropertyDetail(OwnedMixin, DetailView):
 
 @login_required
 def property_rents(request, pk):
-    """Set every unit's type, bedrooms and usual rent on one page (units often differ in price)."""
+    """Set every unit's type and usual rent on one page (units often differ in price)."""
     prop = get_object_or_404(Property, pk=pk, owner=request.user)
-    units = list(prop.units.order_by('label'))
+    units = list(prop.units.order_by('sort_key'))
     errors = {}
     if request.method == 'POST':
         changes = []
         for unit in units:
             rent_text = request.POST.get(f'rent-{unit.pk}', '').replace(',', '').strip()
-            beds_text = request.POST.get(f'bedrooms-{unit.pk}', '').strip()
-            unit_type = request.POST.get(f'type-{unit.pk}', '').strip()[:40]
+            unit_type = request.POST.get(f'type-{unit.pk}', unit.unit_type)
             try:
                 rent = Decimal(rent_text)
-                beds = int(beds_text)
-                if rent < 0 or beds < 0 or beds > 20:
+                if rent < 0 or unit_type not in Unit.Type.values:
                     raise ValueError
             except (InvalidOperation, ValueError):
                 errors[unit.pk] = 'Check this row'
                 continue
-            if (rent, beds, unit_type) != (unit.default_rent, unit.bedrooms, unit.unit_type):
+            if (rent, unit_type) != (unit.default_rent, unit.unit_type):
                 changes.append(f'{unit.label}: KES {unit.default_rent:,.0f} -> {rent:,.0f}'
-                               if rent != unit.default_rent else f'{unit.label}: details')
-                unit.default_rent, unit.bedrooms, unit.unit_type = rent, beds, unit_type
+                               if rent != unit.default_rent else f'{unit.label}: now {Unit.Type(unit_type).label}')
+                unit.default_rent, unit.unit_type = rent, unit_type
         if errors:
             messages.error(request, 'Some rows need fixing. Rents must be numbers like 18000.')
         else:
             for unit in units:
-                unit.save(update_fields=['default_rent', 'bedrooms', 'unit_type'])
+                unit.save(update_fields=['default_rent', 'unit_type'])
             if changes:
                 audit.record(owner=request.user, actor=request.user, action='property.rents_updated',
                              summary=f'Updated units at {prop}: ' + '; '.join(changes)[:250])
@@ -170,7 +168,8 @@ def property_rents(request, pk):
                              if changes else 'Nothing changed.')
             return redirect('rentals:property_detail', pk=prop.pk)
     rows = [{'unit': u, 'lease': u.active_lease(), 'error': errors.get(u.pk)} for u in units]
-    return render(request, 'rentals/property_rents.html', {'property': prop, 'rows': rows})
+    return render(request, 'rentals/property_rents.html', {'property': prop, 'rows': rows,
+                                                           'types': Unit.Type.choices})
 
 
 IMPORT_SESSION_KEY = 'import_preview'

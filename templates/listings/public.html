@@ -8,7 +8,7 @@
 <meta property="og:type" content="website">
 <meta property="og:site_name" content="{{ APP_NAME }}">
 <meta property="og:title" content="{{ listing.title }} · KES {{ listing.rent|floatformat:'0g' }}/month">
-<meta property="og:description" content="{{ listing.unit.property.name }}{% if listing.unit.property.address %}, {{ listing.unit.property.address }}{% endif %} · {{ listing.unit.bedrooms }} bedroom{{ listing.unit.bedrooms|pluralize }} · available {{ listing.available_from|date:'j M' }}">
+<meta property="og:description" content="{{ listing.unit.property.name }}{% if listing.unit.property.address %}, {{ listing.unit.property.address }}{% endif %} · {{ listing.unit.get_unit_type_display }} · available {{ listing.available_from|date:'j M' }}">
 <meta property="og:url" content="{{ listing.public_url }}">
 {% if listing.cover %}<meta property="og:image" content="{{ SITE_URL }}{{ listing.cover.image.url }}">{% endif %}
 <meta name="twitter:card" content="summary_large_image">
@@ -38,7 +38,7 @@
     <div class="card-body listing-facts">
       <div><span class="label">Rent</span><strong>{{ listing.rent|kes }}</strong><span class="muted small">a month</span></div>
       {% if listing.deposit %}<div><span class="label">Deposit</span><strong>{{ listing.deposit|kes }}</strong></div>{% endif %}
-      <div><span class="label">Bedrooms</span><strong>{{ listing.unit.bedrooms }}</strong></div>
+      <div><span class="label">Type</span><strong>{{ listing.unit.get_unit_type_display }}</strong></div>
       <div><span class="label">Available</span><strong>{{ listing.available_from|date:"j M Y" }}</strong></div>
     </div>
     {% if listing.description %}<div class="card-body" style="border-top:1px solid var(--border)"><p style="margin:0">{{ listing.description|linebreaksbr }}</p></div>{% endif %}

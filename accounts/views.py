@@ -448,7 +448,7 @@ def staff_home(request):
     staff = request.staff
     show_all = request.GET.get('show') == 'all'
     q = request.GET.get('q', '').strip()
-    leases = staff.leases().select_related('tenant', 'unit__property').order_by('unit__property__name', 'unit__label')
+    leases = staff.leases().select_related('tenant', 'unit__property').order_by('unit__property__name', 'unit__sort_key')
     if q:
         leases = leases.filter(Q(tenant__full_name__icontains=q) | Q(unit__label__icontains=q))
     last_paid = dict(Payment.objects.filter(lease__in=leases).values_list('lease').annotate(last=Max('paid_at')))

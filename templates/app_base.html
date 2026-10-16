@@ -85,7 +85,6 @@
      data-dashboard="{% if url_name == 'dashboard' %}1{% endif %}" data-icon="{% static 'img/icons/icon-192.png' %}"
      data-payments-url="{% url 'payments:payment_list' %}"></div>
 <div id="toasts" class="toasts" aria-live="polite"></div>
-{% include 'includes/unit_types.html' %}
 <script src="{% static 'js/live.js' %}" defer></script>
 {% endwith %}
 {% endblock %}

@@ -37,7 +37,7 @@ class Listing(models.Model):
 
     def save(self, *args, **kwargs):
         if not self.slug:
-            base = slugify(f'{self.unit.bedrooms}-bedroom {self.unit.property.name} {self.unit.label}')[:100]
+            base = slugify(f'{self.unit.get_unit_type_display()} {self.unit.property.name} {self.unit.label}')[:100]
             self.slug = f'{base}-{secrets.token_hex(2)}'
         super().save(*args, **kwargs)
 

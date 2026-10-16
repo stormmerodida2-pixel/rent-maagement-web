@@ -55,8 +55,8 @@ class PropertyPagesTests(PageTestCase):
     def test_add_unit_rejects_duplicate_label(self):
         prop = Property.objects.create(owner=self.alice, name='P')
         url = reverse('rentals:unit_create', args=[prop.pk])
-        self.client.post(url, {'label': 'A1', 'bedrooms': 1, 'default_rent': '9000'})
-        resp = self.client.post(url, {'label': 'a1', 'bedrooms': 1, 'default_rent': '9000'})
+        self.client.post(url, {'label': 'A1', 'unit_type': 'single', 'default_rent': '9000'})
+        resp = self.client.post(url, {'label': 'a1', 'unit_type': 'single', 'default_rent': '9000'})
         self.assertContains(resp, 'already has a unit called a1')
         self.assertEqual(prop.units.count(), 1)
 

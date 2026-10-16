@@ -48,7 +48,9 @@ class ImportTests(TestCase):
         resp = self.client.get(reverse('rentals:import_template'))
         self.assertEqual(resp['Content-Type'], 'application/vnd.openxmlformats-officedocument.spreadsheetml.sheet')
         sheet = load_workbook(io.BytesIO(resp.content)).active
-        self.assertEqual([c.value for c in sheet[1]], HEAD)
+        # Older sheets with a Bedrooms column (HEAD, used below) are still read.
+        self.assertEqual([c.value for c in sheet[1]], [h for h in HEAD if h != 'Bedrooms'])
+        self.assertEqual(sheet.data_validations.dataValidation[0].formula1, '"Single room,One bedroom,Two bedroom,Shop"')
 
     def test_preview_checks_rows_and_saves_nothing(self):
         occupied = make_lease(self.owner, label='Z1')
@@ -79,7 +81,8 @@ class ImportTests(TestCase):
         resp = self.confirm()
         self.assertRedirects(resp, reverse('rentals:property_detail', args=[self.prop.pk]))
         a2 = Unit.objects.get(property=self.prop, label='A2')
-        self.assertEqual((a2.default_rent, a2.unit_type, a2.active_lease()), (Decimal('12000'), 'Bedsitter', None))
+        self.assertEqual((a2.default_rent, a2.unit_type, a2.active_lease()), (Decimal('12000'), 'single', None))
+        self.assertEqual(Unit.objects.get(property=self.prop, label='A1').unit_type, 'one_bedroom')
         lease = Lease.objects.get(unit__label='A1')
         self.assertEqual((lease.monthly_rent, lease.due_day, lease.start_date), (Decimal('18000'), 1, datetime.date(2024, 6, 1)))
         self.assertEqual(lease.tenant.language, 'sw')

@@ -37,7 +37,7 @@ def listing_list(request):
     let_units = Lease.objects.filter(is_active=True, end_date__isnull=True).values('unit')
     open_units = Listing.objects.filter(owner=request.user, is_open=True).values('unit')
     candidates = (Unit.objects.filter(property__owner=request.user).exclude(pk__in=let_units)
-                  .exclude(pk__in=open_units).select_related('property').order_by('property__name', 'label'))
+                  .exclude(pk__in=open_units).select_related('property').order_by('property__name', 'sort_key'))
     return render(request, 'listings/list.html', {'listings': listings, 'candidates': candidates})
 
 
@@ -68,7 +68,7 @@ def listing_create(request, unit_pk):
     available = moving_out.end_date + datetime.timedelta(days=1) if moving_out else datetime.date.today()
     prefs = LandlordPreferences.for_user(request.user)
     form = ListingForm(request.POST or None, request.FILES or None, initial={
-        'title': f'{unit.bedrooms}-bedroom at {unit.property.name}',
+        'title': f'{unit.get_unit_type_display()} at {unit.property.name}',
         'rent': unit.default_rent, 'deposit': unit.default_rent, 'available_from': available,
         'contact_phone': prefs.phone,
     })
