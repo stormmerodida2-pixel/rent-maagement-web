@@ -34,6 +34,7 @@ class PublicPagesSitemap(Sitemap):
         'accounts:signup': (0.8, 'monthly'),
         'login': (0.5, 'yearly'),
         'support:contact': (0.4, 'yearly'),
+        'help': (0.5, 'monthly'),
         'privacy': (0.3, 'yearly'),
         'terms': (0.3, 'yearly'),
     }
@@ -105,10 +106,16 @@ class LegalPage(TemplateView):
     page_title = ''
 
     def get_context_data(self, **kwargs):
-        return super().get_context_data(legal=settings.LEGAL, page_title=self.page_title, **kwargs)
+        from billing.models import BillingSettings
+        from ops.models import SiteSettings
+
+        site = SiteSettings.load()
+        return super().get_context_data(legal=site.legal(), site=site, billing=BillingSettings.public(),
+                                        page_title=self.page_title, **kwargs)
 
 
 privacy = LegalPage.as_view(template_name='legal/privacy.html', page_title='Privacy policy')
+help_page = LegalPage.as_view(template_name='help.html', page_title='Help')
 terms = LegalPage.as_view(template_name='legal/terms.html', page_title='Terms of service')
 
 

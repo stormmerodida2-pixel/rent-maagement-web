@@ -12,6 +12,7 @@ urlpatterns = [
     path('settings/password/', views.ChangePasswordView.as_view(), name='password_change'),
     path('settings/two-step/', views.two_factor_settings, name='two_factor'),
     path('login/verify/', views.login_verify, name='login_verify'),
+    path('terms/accept/', views.accept_terms, name='accept_terms'),
     path('verify-email/resend/', views.resend_verification, name='resend_verification'),
     path('verify-email/<str:token>/', views.verify_email, name='verify_email'),
 ]

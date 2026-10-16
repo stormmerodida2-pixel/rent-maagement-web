@@ -323,7 +323,7 @@ def notify_admins(subject, body):
 # --- Read-only when unpaid ------------------------------------------------------------------------------
 
 # Paths that still accept changes on a read-only account: paying the bill, and getting in and out.
-UNLOCKED_PATHS = ('/billing/', '/logout/', '/login/', '/settings/password/', '/staff/password/')
+UNLOCKED_PATHS = ('/billing/', '/logout/', '/login/', '/settings/password/', '/staff/password/', '/terms/accept/')
 
 
 class ReadOnlyWhenUnpaidMiddleware:

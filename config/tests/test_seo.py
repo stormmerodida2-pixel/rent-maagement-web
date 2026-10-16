@@ -1,7 +1,9 @@
 from django.contrib.auth import get_user_model
+from django.core.cache import cache
 from django.test import TestCase, override_settings
 from django.urls import reverse
 
+from ops.models import SiteSettings
 from rentals.tests import make_lease
 
 
@@ -60,14 +62,20 @@ class RobotsMetaTests(TestCase):
 
 
 class SocialLinksTests(TestCase):
-    @override_settings(SOCIAL_LINKS=[('facebook', 'https://facebook.com/rentipay'), ('whatsapp', 'https://wa.me/254712345678')])
+    """Set by an administrator in Settings → Business details."""
+
+    def tearDown(self):
+        cache.delete(SiteSettings.CACHE_KEY)
+
     def test_footer_shows_only_the_links_that_are_set(self):
+        SiteSettings.objects.update_or_create(pk=1, defaults={'facebook': 'https://facebook.com/rentipay',
+                                                              'whatsapp': '0712 345 678'})
         page = self.client.get('/')
         self.assertContains(page, 'href="https://facebook.com/rentipay"')
         self.assertContains(page, 'href="https://wa.me/254712345678"')
         self.assertContains(page, 'on WhatsApp')
         self.assertNotContains(page, 'on Instagram')
 
-    @override_settings(SOCIAL_LINKS=[])
     def test_no_links_no_icons(self):
+        cache.delete(SiteSettings.CACHE_KEY)
         self.assertNotContains(self.client.get('/'), 'social-links')

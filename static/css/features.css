@@ -236,3 +236,13 @@ details.daraja[open] > summary h2::before { transform: rotate(90deg); }
 /* --- Billing ------------------------------------------------------------------------------------------ */
 .switch-dot { width: 12px; height: 12px; border-radius: 50%; background: var(--muted); flex: none; }
 .switch-dot.on { background: var(--brand); box-shadow: 0 0 0 4px color-mix(in srgb, var(--brand) 20%, transparent); }
+
+/* --- Help page ----------------------------------------------------------------------------------------- */
+.help details { border-bottom: 1px solid var(--border); }
+.help details > summary { cursor: pointer; padding: 12px 28px 12px 0; font-weight: 600; list-style: none; position: relative; }
+.help details > summary::-webkit-details-marker { display: none; }
+.help details > summary::after { content: '+'; position: absolute; right: 4px; top: 10px; font-size: 20px; color: var(--muted); font-weight: 400; }
+.help details[open] > summary::after { content: '−'; }
+.help details > p { margin: 0 0 14px; }
+.help h2 { margin-top: 28px; }
+.help-contact { display: flex; flex-wrap: wrap; gap: 10px; margin: 8px 0 10px; }

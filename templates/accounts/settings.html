@@ -60,9 +60,9 @@
   </div>
   <p class="install-hint" data-install-ios hidden>On iPhone: tap <strong>Share</strong> {% icon 'external' 14 %} at the bottom of Safari, then <strong>Add to Home Screen</strong>.</p>
 
-  <a class="card settings-item" href="{% url 'support:contact' %}?from={{ request.path|urlencode }}">
+  <a class="card settings-item" href="{% url 'help' %}">
     <span class="settings-icon">{% icon 'message' %}</span>
-    <span class="settings-text"><strong>Help &amp; support</strong><span class="muted small">Questions, problems or ideas: we'll reply by email.</span></span>
+    <span class="settings-text"><strong>Help &amp; support</strong><span class="muted small">Answers to common questions, and how to reach us.</span></span>
     {% icon 'arrow-right' %}
   </a>
 
@@ -74,6 +74,11 @@
   </a>
   {% endif %}
   {% if user.is_superuser %}
+  <a class="card settings-item" href="{% url 'business_details' %}">
+    <span class="settings-icon">{% icon 'building' %}</span>
+    <span class="settings-text"><strong>Business details</strong><span class="muted small">Your legal name and address, contact numbers and social media links.</span></span>
+    {% icon 'arrow-right' %}
+  </a>
   <a class="card settings-item" href="{% url 'billing:overview' %}">
     <span class="settings-icon">{% icon 'chart' %}</span>
     <span class="settings-text"><strong>Billing overview</strong><span class="muted small">Landlords' plans, payments to confirm, trials.</span></span>

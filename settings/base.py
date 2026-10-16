@@ -10,7 +10,6 @@ if present). See the "Deploying" section of README.md.
 """
 
 import os
-import re
 from pathlib import Path
 from urllib.parse import urlsplit
 
@@ -98,6 +97,7 @@ MIDDLEWARE = [
     'accounts.utils.StaffAreaMiddleware',  # staff accounts only reach /staff/
     'django.contrib.messages.middleware.MessageMiddleware',
     'billing.utils.ReadOnlyWhenUnpaidMiddleware',  # landlords with an unpaid bill can look but not change
+    'accounts.utils.UpdatedTermsMiddleware',  # landlords accept changed terms before going on
     'django.middleware.clickjacking.XFrameOptionsMiddleware',
 ]
 
@@ -261,26 +261,14 @@ SERVER_EMAIL = DEFAULT_FROM_EMAIL
 # Product name shown across the site, home page and emails/SMS footers.
 APP_NAME = os.environ.get('APP_NAME', 'Rentipay')
 
-# Social media links in the home page footer; only the ones set are shown. Full URLs, except
-# SOCIAL_WHATSAPP, which is a phone number (e.g. 0712345678) that opens a WhatsApp chat.
-SOCIAL_LINKS = [(name, url) for name, url in [
-    ('facebook', os.environ.get('SOCIAL_FACEBOOK', '')),
-    ('instagram', os.environ.get('SOCIAL_INSTAGRAM', '')),
-    ('x', os.environ.get('SOCIAL_X', '')),
-    ('tiktok', os.environ.get('SOCIAL_TIKTOK', '')),
-    ('linkedin', os.environ.get('SOCIAL_LINKEDIN', '')),
-    ('whatsapp', 'https://wa.me/' + re.sub(r'\D', '', re.sub(r'^\s*0', '254', os.environ.get('SOCIAL_WHATSAPP', '')))
-     if os.environ.get('SOCIAL_WHATSAPP', '').strip() else ''),
-] if url.strip()]
-
-# Shown on the privacy policy and terms. Set them to your registered business details.
+# Fallbacks for the privacy policy and terms; administrators set the real details in Settings → Business details.
 LEGAL = {
     'ENTITY': os.environ.get('LEGAL_ENTITY_NAME', APP_NAME),
     'ADDRESS': os.environ.get('LEGAL_ADDRESS', ''),
     'EMAIL': os.environ.get('PRIVACY_EMAIL', '') or os.environ.get('SUPPORT_EMAIL', ''),
     # Bump TERMS_VERSION when the terms change materially; each landlord's accepted version is recorded.
-    'UPDATED': 'October 14, 2026',
-    'TERMS_VERSION': '2026-10-14',
+    'UPDATED': 'October 16, 2026',
+    'TERMS_VERSION': '2026-10-16',  # adds fees and billing
 }
 
 # M-Pesa Daraja. Each landlord connects their own Paybill/Till and Daraja app in the

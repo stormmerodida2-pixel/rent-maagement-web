@@ -1,0 +1,80 @@
+{% extends 'base.html' %}
+{% block seo %}{% with seo_title="Help" %}{% include 'includes/seo_public.html' %}{% endwith %}{% endblock %}
+{% block title %}Help · {{ APP_NAME }}{% endblock %}
+{% block body %}
+<header class="topbar">
+  <a class="brand" href="{% url 'rentals:home' %}" style="padding:0">{% include 'includes/logo.html' %}</a>
+  <span class="spacer"></span>
+  {% if user.is_authenticated %}<a class="btn btn-sm" href="{% url 'rentals:dashboard' %}">Back to {{ APP_NAME }}</a>{% endif %}
+  {% include 'includes/theme_switch.html' %}
+</header>
+<main class="legal help">
+  <article class="card prose">
+    <h1>Help</h1>
+    <p class="muted">Quick answers for landlords. Can't find yours? <a href="#contact">Talk to us</a>.</p>
+
+    <h2 id="start">Getting started</h2>
+    <details><summary>How do I add my building and units?</summary>
+      <p><strong>Properties → Add property.</strong> Give it a name, then optionally create its units in one go: a label prefix (e.g. "A" gives A1, A2, A3…), how many, their type (Single room, One bedroom, Two bedroom or Shop) and the rent. You can change any unit's type and rent afterwards with <strong>Set rents</strong> on the property page.</p></details>
+    <details><summary>Can I bring in my tenants from Excel?</summary>
+      <p>Yes. <strong>Properties → Import from Excel</strong>: download the template, fill in one row per unit (tenant, phone, rent, rent day, what they owe now), upload it and check the preview before anything is saved.</p></details>
+    <details><summary>How do I move a tenant in?</summary>
+      <p><strong>Tenants → Move a tenant in.</strong> Choose the unit, enter their name and M-Pesa phone number, the rent and the move-in date. Their rent day is the day they moved in (someone who moved in on the 12th pays every 12th), and rent is billed automatically each month.</p></details>
+    <details><summary>Can my caretaker use {{ APP_NAME }}?</summary>
+      <p>Yes. <strong>Settings → Staff</strong> gives them their own login. They can send M-Pesa prompts and see whether the tenant paid, record cash and log repairs, for all your properties or only some. They never see your totals, reports or settings.</p></details>
+
+    <h2 id="mpesa">M-Pesa and payments</h2>
+    <details><summary>How do tenants pay me?</summary>
+      <p>Straight into <strong>your own Paybill or Till</strong>: {{ APP_NAME }} never holds your money. Add the number under <strong>Settings → M-Pesa</strong> and tenants see it in their reminders and on their rent page. With a Paybill, each tenant uses their own account number (shown on their page, e.g. LEASE12), so payments match automatically.</p></details>
+    <details><summary>I don't have a Daraja app. Can I still use {{ APP_NAME }}?</summary>
+      <p>Yes. Add your Paybill or Till number, then every week or so download your statement from Safaricom's M-Pesa business portal (Excel or CSV) and upload it under <strong>Payments → Upload M-Pesa statement</strong>. Payments are matched to tenants, and anything already recorded is skipped.</p></details>
+    <details><summary>What does connecting Daraja give me?</summary>
+      <p>Payments appear the moment tenants pay, without statement uploads, and you and your caretakers can send tenants an M-Pesa PIN prompt for the exact amount. <strong>Settings → M-Pesa</strong> walks you through creating the Daraja app and going live; we can go through it with you.</p></details>
+    <details><summary>A payment says "unmatched". What do I do?</summary>
+      <p>The tenant probably typed the wrong account number. Open <strong>Payments → Unmatched</strong> and choose who it belongs to. It's then recorded and they get a receipt.</p></details>
+    <details><summary>How do I record cash or a bank payment?</summary>
+      <p><strong>Payments → Record cash/bank payment.</strong> The tenant gets an SMS receipt. If you made a mistake, use <strong>Move</strong> (wrong tenant) or <strong>Void</strong> (shouldn't be there) on the payment; every correction is kept in Activity.</p></details>
+
+    <h2 id="rent">Rent, reminders and arrears</h2>
+    <details><summary>Are tenants reminded automatically?</summary>
+      <p>Yes. Tenants who owe get an SMS reminder with their balance and how to pay. On rent day you can also tap <strong>Remind everyone who owes</strong> on the dashboard and check the messages before they're sent.</p></details>
+    <details><summary>A tenant is far behind. Can they pay in instalments?</summary>
+      <p>Yes. On their page, choose <strong>Set up payment plan</strong>, e.g. KES 45,000 as KES 10,000 every Friday. They're reminded before each instalment, and <strong>Tenants → Payment plans</strong> shows who's keeping to theirs.</p></details>
+    <details><summary>How do I raise the rent?</summary>
+      <p>On the tenant's page (or for a whole property), choose <strong>Change rent</strong> and the date it starts. The tenant is told by SMS, and the new rent is billed from that date.</p></details>
+    <details><summary>A tenant is moving out. What about the deposit?</summary>
+      <p>On their page, choose <strong>Move out</strong>. Record any deductions; the rest of the deposit is applied to what they owe or shown as a refund, and their statement is updated.</p></details>
+
+    <h2 id="tenants">Your tenants</h2>
+    <details><summary>What do tenants see?</summary>
+      <p>Each tenant gets a private link by SMS to their own rent page: what they owe, how to pay, statements and receipts. They can report repairs and message you there. No app or password needed.</p></details>
+    <details><summary>Can tenants get messages in Kiswahili?</summary>
+      <p>Yes. Set their language to Kiswahili on their page; their SMS, rent page and receipts switch over.</p></details>
+    <details><summary>How do I tell all my tenants something?</summary>
+      <p><strong>Announcements → New announcement.</strong> It goes by SMS and appears on their rent pages, to everyone or only some properties or units.</p></details>
+
+    <h2 id="account">Your account</h2>
+    {% if billing.enabled %}
+    <details><summary>How much does {{ APP_NAME }} cost?</summary>
+      <p>Your first {{ billing.free_units }} occupied units are free; each further occupied unit is KES {{ billing.price_per_unit }} a month. Empty units are never charged, and you start with {{ billing.trial_days }} days free. See <strong>Settings → Billing</strong>.</p></details>
+    <details><summary>How do I pay my {{ APP_NAME }} bill?</summary>
+      <p>On <strong>Settings → Billing</strong>: pay to {% if billing.till %}Till {{ billing.till }}{% else %}our Till{% endif %} from Lipa na M-Pesa → Buy Goods and Services, then enter the M-Pesa code. If a bill is more than {{ billing.grace_days }} days late, your account becomes read-only until it's paid. Nothing is deleted and your tenants can still pay rent.</p></details>
+    {% endif %}
+    <details><summary>Can I use {{ APP_NAME }} on my phone?</summary>
+      <p>Yes. Open it in your phone's browser and add it to your home screen: in Chrome, menu → <strong>Install app</strong>; on iPhone, Safari's Share button → <strong>Add to Home Screen</strong>. Turn on payment alerts in <strong>Settings</strong> to hear when rent comes in.</p></details>
+    <details><summary>How do I keep my account safe?</summary>
+      <p>Turn on <strong>Settings → Two-step login</strong>: you then also need a code from an authenticator app on your phone. Your data is backed up every night, encrypted, and copied off-site.</p></details>
+    <details><summary>Can I get my data out?</summary>
+      <p>Yes, any time: download payments and statements as CSV or PDF from Payments and Reports.</p></details>
+
+    <h2 id="contact">Talk to us</h2>
+    <div class="help-contact">
+      {% if site.whatsapp_url %}<a class="btn btn-primary" href="{{ site.whatsapp_url }}" target="_blank" rel="noopener">WhatsApp {{ site.whatsapp }}</a>{% endif %}
+      {% if site.support_phone %}<a class="btn" href="tel:{{ site.support_phone|cut:' ' }}">Call {{ site.support_phone }}</a>{% endif %}
+      <a class="btn" href="{% url 'support:contact' %}">Send us a message</a>
+    </div>
+    {% if site.support_phone or site.whatsapp %}<p class="muted small">Numbers to copy: {% if site.whatsapp %}WhatsApp {{ site.whatsapp }}{% endif %}{% if site.whatsapp and site.support_phone %} · {% endif %}{% if site.support_phone %}phone {{ site.support_phone }}{% endif %}</p>{% endif %}
+  </article>
+  <p class="muted small legal-links"><a href="{% url 'rentals:home' %}">Home</a> · <a href="{% url 'privacy' %}">Privacy policy</a> · <a href="{% url 'terms' %}">Terms of service</a></p>
+</main>
+{% endblock %}

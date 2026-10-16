@@ -41,7 +41,8 @@
     </nav>
     {# Pinned above the account row, so it's visible however long the menu gets. #}
     <nav class="nav nav-bottom" aria-label="Settings">
-      <a href="{% url 'accounts:settings' %}" class="{% if url_name == 'settings' or url_name == 'mpesa_settings' or url_name == 'preferences' or url_name == 'contact' or url_name == 'profile' or url_name == 'password_change' or request.resolver_match.app_name == 'staff' or request.resolver_match.app_name == 'billing' %}active{% endif %}">{% icon 'settings' %}Settings{% if nav_mpesa_missing %}<span class="count" title="M-Pesa isn't connected">!</span>{% endif %}</a>
+      <a href="{% url 'help' %}">{% icon 'message' %}Help</a>
+      <a href="{% url 'accounts:settings' %}" class="{% if url_name == 'settings' or url_name == 'mpesa_settings' or url_name == 'preferences' or url_name == 'contact' or url_name == 'profile' or url_name == 'password_change' or request.resolver_match.app_name == 'staff' or request.resolver_match.app_name == 'billing' or url_name == 'business_details' %}active{% endif %}">{% icon 'settings' %}Settings{% if nav_mpesa_missing %}<span class="count" title="M-Pesa isn't connected">!</span>{% endif %}</a>
     </nav>
 
     <div class="sidebar-footer">
