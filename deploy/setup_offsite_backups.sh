@@ -35,20 +35,20 @@ aws s3api put-public-access-block --bucket "$BUCKET" --public-access-block-confi
 aws s3api put-bucket-encryption --bucket "$BUCKET" --server-side-encryption-configuration \
   '{"Rules":[{"ApplyServerSideEncryptionByDefault":{"SSEAlgorithm":"AES256"}}]}'
 aws s3api put-bucket-versioning --bucket "$BUCKET" --versioning-configuration Status=Enabled
-aws s3api put-bucket-lifecycle-configuration --bucket "$BUCKET" --lifecycle-configuration "{
+aws s3api put-bucket-lifecycle-configuration --bucket "$BUCKET" --output text --lifecycle-configuration "{
   \"Rules\": [{
     \"ID\": \"expire-old-backups\", \"Status\": \"Enabled\", \"Filter\": {\"Prefix\": \"backups/\"},
     \"Expiration\": {\"Days\": $KEEP_DAYS},
     \"NoncurrentVersionExpiration\": {\"NoncurrentDays\": 7},
     \"AbortIncompleteMultipartUpload\": {\"DaysAfterInitiation\": 1}
-  }]}"
+  }]}" > /dev/null
 aws s3api put-bucket-policy --bucket "$BUCKET" --policy "{
   \"Version\": \"2012-10-17\",
   \"Statement\": [{
     \"Sid\": \"HttpsOnly\", \"Effect\": \"Deny\", \"Principal\": \"*\", \"Action\": \"s3:*\",
     \"Resource\": [\"arn:aws:s3:::$BUCKET\", \"arn:aws:s3:::$BUCKET/*\"],
     \"Condition\": {\"Bool\": {\"aws:SecureTransport\": \"false\"}}
-  }]}"
+  }]}" > /dev/null
 echo "Bucket settings applied (private, encrypted, versioned, copies kept $KEEP_DAYS days)."
 
 # --- Server role: upload only ----------------------------------------------------------------------------
