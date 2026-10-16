@@ -3,6 +3,7 @@ import datetime
 from django.core.management.base import BaseCommand
 from django.utils import timezone
 
+from billing.utils import locked_owner_ids
 from notifications.models import SmsMessage
 from notifications.utils import reminder_text, send_rent_reminder
 from rentals.models import Lease
@@ -28,7 +29,9 @@ class Command(BaseCommand):
         )
 
         sent = failed = 0
-        leases = Lease.objects.filter(is_active=True).select_related('tenant', 'unit')
+        # Landlords with an unpaid Rentipay bill don't get reminders sent for them.
+        leases = Lease.objects.filter(is_active=True).exclude(unit__property__owner_id__in=locked_owner_ids()) \
+            .select_related('tenant', 'unit')
         for lease in leases.exclude(pk__in=recently_reminded):
             balance = lease.balance
             if balance <= 0:

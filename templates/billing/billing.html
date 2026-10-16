@@ -1,0 +1,93 @@
+{% extends 'app_base.html' %}
+{% load ui %}
+{% block page_title %}Billing{% endblock %}
+{% block content %}
+<div class="page-header">
+  <div><h1>Billing</h1>
+    <p class="sub">Your first {{ free_units }} occupied units are free. After that, {{ price|kes }} per occupied unit a month. Empty units are never charged.</p></div>
+</div>
+
+<div class="grid-2">
+  <div class="stack">
+    {% if invoice %}
+    <section class="card">
+      <div class="card-header"><h2>Pay {{ invoice.amount|kes }}</h2><span class="spacer"></span><a class="small" href="{% url 'billing:invoice' invoice.pk %}">{{ invoice.number }}</a></div>
+      <div class="card-body stack">
+        <p class="small" style="margin:0">For {{ invoice.period_start|date:"d M" }} – {{ invoice.period_last|date:"d M Y" }}: {{ invoice.billed_units }} unit{{ invoice.billed_units|pluralize }} at {{ invoice.price_per_unit|kes }} after {{ invoice.free_units }} free. Due {{ invoice.due_date|date:"d M" }}{% if state == 'overdue' %}; read-only from {{ lock_date|date:"d M" }}{% endif %}.</p>
+
+        {% if can_prompt %}
+        <form method="post" action="{% url 'billing:pay' %}" class="stack">
+          {% csrf_token %}
+          <div class="field">
+            <label for="id_phone">M-Pesa number</label>
+            <input id="id_phone" name="phone" type="tel" inputmode="tel" value="{{ phone }}" placeholder="0712 345 678" required>
+          </div>
+          <button class="btn btn-primary btn-block" data-confirm="A prompt for {{ invoice.amount|kes }} will pop up on {phone}. Enter your M-Pesa PIN to pay." data-confirm-title="Pay with M-Pesa?" data-confirm-ok="Send prompt">{% icon 'phone' %}Pay with M-Pesa</button>
+        </form>
+        {% endif %}
+
+        {% if till %}
+        <div class="pay-box">
+          <strong>{% if can_prompt %}Or pay{% else %}Pay{% endif %} from the M-Pesa menu</strong>
+          <div class="muted small">Lipa na M-Pesa → Buy Goods and Services</div>
+          <dl><dt>Till no.</dt><dd>{{ till }}</dd><dt>Amount</dt><dd>{{ invoice.amount|kes }}</dd></dl>
+        </div>
+        {% if invoice.claimed_reference %}
+        <div class="alert alert-info small">You sent M-Pesa code <strong>{{ invoice.claimed_reference }}</strong>. We'll confirm it and email a receipt.</div>
+        {% else %}
+        <form method="post" action="{% url 'billing:claim' %}" class="stack">
+          {% csrf_token %}
+          <div class="field">
+            <label for="id_code">Then enter the M-Pesa code from the confirmation message</label>
+            <input id="id_code" name="code" maxlength="12" autocapitalize="characters" placeholder="e.g. SJK4H7Q2LP" required>
+          </div>
+          <button class="btn btn-block">I've paid</button>
+        </form>
+        {% endif %}
+        {% endif %}
+      </div>
+    </section>
+    {% else %}
+    <section class="card"><div class="empty"><strong>Nothing to pay</strong>{% if state == 'trial' %}Your first bill comes 3 days before the trial ends.{% else %}Your next bill comes 3 days before {{ account.paid_until|date:"d M" }}.{% endif %}</div></section>
+    {% endif %}
+  </div>
+  <div class="stack">
+    <section class="card">
+      <div class="card-header"><h2>Your plan</h2><span class="spacer"></span>
+        {% if state == 'trial' %}<span class="badge badge-info">Free trial</span>
+        {% elif state == 'active' %}<span class="badge badge-success">Paid</span>
+        {% elif state == 'checking' %}<span class="badge badge-info">Checking payment</span>
+        {% elif state == 'overdue' %}<span class="badge badge-warn">Overdue</span>
+        {% else %}<span class="badge badge-danger">Read-only</span>{% endif %}
+      </div>
+      <div class="card-body profile">
+        <dl>
+          <dt>Occupied units now</dt><dd>{{ units }}</dd>
+          <dt>Monthly bill at this size</dt><dd>{% if estimate %}{{ estimate|kes }}{% else %}Free{% endif %}</dd>
+          {% if state == 'trial' %}<dt>Free trial until</dt><dd>{{ account.trial_ends|date:"d M Y" }}</dd>
+          {% else %}<dt>Paid until</dt><dd>{{ account.paid_until|date:"d M Y" }}</dd>{% endif %}
+        </dl>
+        <p class="muted small" style="margin:12px 0 0">Each month is billed 3 days before it starts, counting the units occupied then. If a bill isn't paid within {{ grace_days }} days, your account becomes read-only: you can still see everything and your tenants can still pay rent, but you can't make changes until it's paid. Nothing is ever deleted.</p>
+      </div>
+    </section>
+
+    {% if history %}
+    <section class="card">
+      <div class="card-header"><h2>Bills and receipts</h2></div>
+      <div class="table-wrap"><table class="table">
+        <tbody>
+        {% for i in history %}
+        <tr>
+          <td><a href="{% url 'billing:invoice' i.pk %}">{{ i.number }}</a><div class="muted small">{{ i.period_start|date:"d M" }} – {{ i.period_last|date:"d M Y" }}</div></td>
+          <td class="num">{{ i.amount|kes }}</td>
+          <td class="num">{% if i.status == 'paid' %}<span class="badge badge-success">Paid</span>{% else %}<span class="badge badge-warn">Due {{ i.due_date|date:"d M" }}</span>{% endif %}</td>
+        </tr>
+        {% endfor %}
+        </tbody>
+      </table></div>
+    </section>
+    {% endif %}
+  </div>
+
+</div>
+{% endblock %}
