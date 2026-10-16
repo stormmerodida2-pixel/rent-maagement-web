@@ -15,13 +15,27 @@ from django.shortcuts import redirect
 from django.urls import reverse
 from django.utils import timezone
 
-from .models import BillingAccount, Invoice
+from .models import BillingAccount, BillingSettings, Invoice
 
 logger = logging.getLogger(__name__)
 
 
+# Fixed rules (the rest is set in Billing overview).
+FIXED = {
+    'NOTICE_DAYS': 3,  # the bill is sent this many days before it's due
+    'CLAIM_DAYS': 3,   # a landlord who entered an M-Pesa code stays unlocked this long while you check it
+}
+
+
 def conf(name):
-    return settings.BILLING[name]
+    """A billing setting by its upper-case name, e.g. conf('PRICE_PER_UNIT')."""
+    if name in FIXED:
+        return FIXED[name]
+    field = name.lower()
+    public = BillingSettings.public()
+    if field in public:
+        return public[field]
+    return getattr(BillingSettings.load(), field)  # secret keys and the callback token: not cached
 
 
 def enabled():
@@ -173,14 +187,12 @@ def platform_account():
     """The Rentipay Till as an (unsaved) M-Pesa account, or None until its Daraja keys are set."""
     from payments.models import MpesaAccount
 
-    keys = [conf('TILL'), conf('MPESA_STORE_NUMBER'), conf('MPESA_CONSUMER_KEY'), conf('MPESA_CONSUMER_SECRET'),
-            conf('MPESA_PASSKEY'), conf('CALLBACK_TOKEN')]
-    if not all(keys):
+    row = BillingSettings.load()
+    if not row.prompts_ready():
         return None
-    return MpesaAccount(environment=conf('MPESA_ENVIRONMENT'), payment_type=MpesaAccount.PaymentType.TILL,
-                        till_number=conf('TILL'), shortcode=conf('MPESA_STORE_NUMBER'),
-                        consumer_key=conf('MPESA_CONSUMER_KEY'), consumer_secret=conf('MPESA_CONSUMER_SECRET'),
-                        passkey=conf('MPESA_PASSKEY'))
+    return MpesaAccount(environment=row.mpesa_environment, payment_type=MpesaAccount.PaymentType.TILL,
+                        till_number=row.till, shortcode=row.mpesa_store_number, consumer_key=row.mpesa_consumer_key,
+                        consumer_secret=row.mpesa_consumer_secret, passkey=row.mpesa_passkey)
 
 
 def callback_url():
@@ -298,7 +310,8 @@ def email_landlord(invoice, kind):
 
 
 def notify_admins(subject, body):
-    to = [settings.SUPPORT_EMAIL] if getattr(settings, 'SUPPORT_EMAIL', '') else list(
+    email = conf('NOTIFY_EMAIL') or getattr(settings, 'SUPPORT_EMAIL', '')
+    to = [email] if email else list(
         get_user_model().objects.filter(is_superuser=True).exclude(email='').values_list('email', flat=True))
     if to:
         try:

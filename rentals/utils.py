@@ -263,9 +263,20 @@ class SafeDeleteMixin:
 
 # --- Template context ----------------------------------------------------------------------------
 
+def billing_enabled():
+    from django.db import OperationalError, ProgrammingError
+
+    from billing.utils import enabled
+
+    try:
+        return enabled()
+    except (OperationalError, ProgrammingError):  # the billing table doesn't exist yet (first migrate)
+        return False
+
+
 def branding(request):
     context = {'APP_NAME': settings.APP_NAME, 'SITE_URL': settings.SITE_URL, 'SOCIAL_LINKS': settings.SOCIAL_LINKS,
-               'BILLING_ENABLED': settings.BILLING['ENABLED']}
+               'BILLING_ENABLED': billing_enabled()}
     user = getattr(request, 'user', None)
     if user is not None and user.is_authenticated and request.resolver_match \
             and request.resolver_match.app_name in ('rentals', 'payments', 'maintenance', 'notifications', 'accounts', 'reports', 'audit', 'support', 'announcements',
@@ -296,7 +307,7 @@ def branding(request):
         from accounts.utils import is_verified
 
         context['email_unverified'] = not is_verified(user)
-        if settings.BILLING['ENABLED']:
+        if context['BILLING_ENABLED']:
             from billing.utils import banner
 
             context['billing_banner'] = banner(user)

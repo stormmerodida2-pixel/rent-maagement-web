@@ -20,14 +20,25 @@ from payments.tests import mock_daraja
 from rentals.models import Property
 from rentals.tests import make_lease
 
-from .models import BillingAccount, Invoice
+from .models import BillingAccount, BillingSettings, Invoice
 from .utils import account_for, make_invoice, mark_paid, run_billing, status
 
 TODAY = timezone.localdate()
 DAY = datetime.timedelta(days=1)
-ON = {**settings.BILLING, 'ENABLED': True, 'TILL': '9505957'}
-PROMPTS = {**ON, 'MPESA_ENVIRONMENT': 'sandbox', 'MPESA_STORE_NUMBER': '7654321', 'MPESA_CONSUMER_KEY': 'ck',
-           'MPESA_CONSUMER_SECRET': 'cs', 'MPESA_PASSKEY': 'pk', 'CALLBACK_TOKEN': 'secret-token'}
+PROMPTS = {'mpesa_environment': 'sandbox', 'mpesa_store_number': '7654321', 'mpesa_consumer_key': 'ck',
+           'mpesa_consumer_secret': 'cs', 'mpesa_passkey': 'pk', 'callback_token': 'secret-token'}
+
+
+class BillingTestCase(TestCase):
+    def tearDown(self):
+        # The database is rolled back after each test; the cached settings must go too.
+        cache.delete(BillingSettings.CACHE_KEY)
+        super().tearDown()
+
+
+def billing_on(**fields):
+    """Switch billing on, as an administrator does in Billing overview."""
+    BillingSettings.objects.update_or_create(pk=1, defaults={'enabled': True, 'till': '9505957', **fields})
 
 
 def landlord(username='landlord', units=8):
@@ -37,9 +48,9 @@ def landlord(username='landlord', units=8):
     return owner
 
 
-@override_settings(BILLING=ON)
-class BillTests(TestCase):
+class BillTests(BillingTestCase):
     def setUp(self):
+        billing_on()
         self.owner = landlord()
         self.account = account_for(self.owner, TODAY)
 
@@ -92,8 +103,9 @@ class BillTests(TestCase):
         self.assertEqual(sum('read-only' in s for s in subjects), 1)
 
 
-class SwitchedOffTests(TestCase):
+class SwitchedOffTests(BillingTestCase):
     def test_nothing_happens_while_billing_is_off(self):
+        cache.clear()
         owner = landlord()
         self.client.force_login(owner)
         self.assertEqual(run_billing(TODAY + datetime.timedelta(days=400)), {'bills': 0, 'overdue': 0, 'locked': 0})
@@ -102,10 +114,10 @@ class SwitchedOffTests(TestCase):
         self.assertNotContains(self.client.get(reverse('accounts:settings')), 'Your Rentipay plan')
 
 
-@override_settings(BILLING=ON)
-class ReadOnlyTests(TestCase):
+class ReadOnlyTests(BillingTestCase):
     def setUp(self):
         cache.clear()
+        billing_on()
         self.owner = landlord(units=6)
         mark_verified(self.owner)
         account = account_for(self.owner)
@@ -157,9 +169,9 @@ class ReadOnlyTests(TestCase):
         self.assertContains(resp, 'already been used')
 
 
-@override_settings(BILLING=ON)
-class OverviewTests(TestCase):
+class OverviewTests(BillingTestCase):
     def setUp(self):
+        billing_on()
         self.admin = get_user_model().objects.create_superuser('admin', 'admin@example.com', 'pw')
         self.owner = landlord()
         account = account_for(self.owner)
@@ -194,10 +206,11 @@ class OverviewTests(TestCase):
         self.assertEqual(self.client.get(reverse('billing:invoice', args=[self.invoice.pk])).status_code, 404)
 
 
-@override_settings(BILLING=PROMPTS, MPESA={**settings.MPESA, 'CALLBACK_BASE_URL': 'https://example.ngrok.app'})
-class PromptTests(TestCase):
+@override_settings(MPESA={**settings.MPESA, 'CALLBACK_BASE_URL': 'https://example.ngrok.app'})
+class PromptTests(BillingTestCase):
     def setUp(self):
         cache.clear()
+        billing_on(**PROMPTS)
         self.owner = landlord()
         account = account_for(self.owner)
         self.invoice = make_invoice(account, account.paid_until)
@@ -229,9 +242,74 @@ class PromptTests(TestCase):
         self.invoice.refresh_from_db()
         self.assertEqual(self.invoice.status, 'open')
 
-    @override_settings(BILLING={**PROMPTS, 'MPESA_ENVIRONMENT': 'production'},
-                       MPESA={**settings.MPESA, 'CALLBACK_IPS': ['196.201.214.0/24']})
+    @override_settings(MPESA={**settings.MPESA, 'CALLBACK_IPS': ['196.201.214.0/24']})
     def test_callbacks_from_elsewhere_are_refused(self):
+        billing_on(**{**PROMPTS, 'mpesa_environment': 'production'})
         resp = self.client.post(reverse('billing:stk_callback', args=['secret-token']), {},
                                 content_type='application/json', REMOTE_ADDR='203.0.113.9')
         self.assertEqual(resp.status_code, 403)
+
+
+class SwitchTests(BillingTestCase):
+    """Billing is switched on and set up by an administrator in Billing overview, not in server files."""
+
+    def setUp(self):
+        cache.clear()
+        self.admin = get_user_model().objects.create_superuser('admin', 'admin@example.com', 'pw')
+        self.owner = landlord()
+        self.client.force_login(self.admin)
+
+    def test_off_by_default_and_looking_starts_no_trials(self):
+        page = self.client.get(reverse('billing:overview'))
+        self.assertContains(page, 'Billing is off')
+        self.assertFalse(BillingAccount.objects.exists())
+
+    def test_set_up_then_switch_on(self):
+        self.assertEqual(BillingSettings.load().till, '9505957')  # Rentipay's Till, filled in by a migration
+        BillingSettings.objects.filter(pk=1).update(till='')
+        resp = self.client.post(reverse('billing:toggle'), follow=True)
+        self.assertContains(resp, 'Add your M-Pesa Till number first')
+        self.client.post(reverse('billing:settings'), {
+            'price_per_unit': '100', 'free_units': '3', 'trial_days': '14', 'grace_days': '5', 'till': '9505957',
+            'notify_email': 'me@example.com', 'mpesa_environment': 'production', 'mpesa_store_number': '',
+            'mpesa_consumer_key': '', 'mpesa_consumer_secret': '', 'mpesa_passkey': ''})
+        self.client.post(reverse('billing:toggle'))
+        row = BillingSettings.load()
+        self.assertTrue(row.enabled)
+        self.assertEqual((row.price_per_unit, row.free_units, row.till), (100, 3, '9505957'))
+        account = BillingAccount.objects.get(owner=self.owner)  # trial started at switch-on
+        self.assertEqual(account.trial_ends, TODAY + 14 * DAY)
+        invoice = make_invoice(account, account.paid_until)
+        self.assertEqual(invoice.amount, 500)  # 8 units, 3 free, KES 100
+
+        self.client.force_login(self.owner)
+        self.assertContains(self.client.get(reverse('accounts:settings')), 'Your Rentipay plan')
+
+    def test_daraja_keys_are_kept_secret(self):
+        billing_on(mpesa_consumer_secret='very-secret')
+        page = self.client.get(reverse('billing:overview'))
+        self.assertNotContains(page, 'very-secret')
+        self.client.post(reverse('billing:settings'), {
+            'price_per_unit': '75', 'free_units': '5', 'trial_days': '30', 'grace_days': '7', 'till': '9505957',
+            'notify_email': '', 'mpesa_environment': 'production', 'mpesa_store_number': '',
+            'mpesa_consumer_key': '', 'mpesa_consumer_secret': '', 'mpesa_passkey': ''})
+        self.assertEqual(BillingSettings.load().mpesa_consumer_secret, 'very-secret')  # blank keeps it
+
+    def test_switching_back_on_after_a_pause_starts_afresh(self):
+        billing_on()
+        account = account_for(self.owner)
+        account.paid_until = TODAY - 30 * DAY
+        account.save()
+        old = make_invoice(account, TODAY - 30 * DAY)
+        BillingSettings.objects.filter(pk=1).update(enabled=False)
+        cache.clear()
+        self.client.post(reverse('billing:toggle'))
+        old.refresh_from_db()
+        account.refresh_from_db()
+        self.assertEqual(old.status, 'void')
+        self.assertEqual(status(account), 'overdue')  # a fresh bill with the usual grace, not read-only at once
+
+    def test_landlords_cannot_change_it(self):
+        self.client.force_login(self.owner)
+        self.client.post(reverse('billing:toggle'))
+        self.assertFalse(BillingSettings.load().enabled)

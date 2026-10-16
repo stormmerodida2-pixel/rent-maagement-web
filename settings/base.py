@@ -261,28 +261,6 @@ SERVER_EMAIL = DEFAULT_FROM_EMAIL
 # Product name shown across the site, home page and emails/SMS footers.
 APP_NAME = os.environ.get('APP_NAME', 'Rentipay')
 
-# Charging landlords for Rentipay. Off until BILLING_ENABLED=1; when switched on, every landlord gets a
-# free trial from that day. The first FREE_UNITS occupied units are free, then PRICE_PER_UNIT each a month.
-# Landlords pay to BILLING_TILL from the M-Pesa menu and enter the code (you confirm it in Billing
-# overview), or, once the BILLING_MPESA_* Daraja keys for that Till are set, with an M-Pesa PIN prompt.
-BILLING = {
-    'ENABLED': env_bool('BILLING_ENABLED'),
-    'PRICE_PER_UNIT': int(os.environ.get('BILLING_PRICE_PER_UNIT', '75')),
-    'FREE_UNITS': int(os.environ.get('BILLING_FREE_UNITS', '5')),
-    'TRIAL_DAYS': int(os.environ.get('BILLING_TRIAL_DAYS', '30')),
-    'GRACE_DAYS': int(os.environ.get('BILLING_GRACE_DAYS', '7')),
-    'NOTICE_DAYS': 3,  # the bill is sent this many days before it's due
-    'CLAIM_DAYS': 3,   # a landlord who entered an M-Pesa code stays unlocked this long while you check it
-    'TILL': os.environ.get('BILLING_TILL', ''),
-    'MPESA_ENVIRONMENT': os.environ.get('BILLING_MPESA_ENVIRONMENT', 'production'),
-    'MPESA_STORE_NUMBER': os.environ.get('BILLING_MPESA_STORE_NUMBER', ''),  # Head Office / Store number
-    'MPESA_CONSUMER_KEY': os.environ.get('BILLING_MPESA_CONSUMER_KEY', ''),
-    'MPESA_CONSUMER_SECRET': os.environ.get('BILLING_MPESA_CONSUMER_SECRET', ''),
-    'MPESA_PASSKEY': os.environ.get('BILLING_MPESA_PASSKEY', ''),
-    # Secret path segment in the billing M-Pesa callback URL (any long random string).
-    'CALLBACK_TOKEN': os.environ.get('BILLING_CALLBACK_TOKEN', ''),
-}
-
 # Social media links in the home page footer; only the ones set are shown. Full URLs, except
 # SOCIAL_WHATSAPP, which is a phone number (e.g. 0712345678) that opens a WhatsApp chat.
 SOCIAL_LINKS = [(name, url) for name, url in [

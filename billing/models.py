@@ -1,7 +1,76 @@
 import datetime
+import secrets
 
 from django.conf import settings
+from django.core.cache import cache
 from django.db import models
+
+from payments.utils import EncryptedTextField
+
+
+def new_callback_token():
+    return secrets.token_urlsafe(24)
+
+
+class BillingSettings(models.Model):
+    """How Rentipay charges landlords, set by an administrator in Billing overview. One row."""
+
+    class Environment(models.TextChoices):
+        PRODUCTION = 'production', 'Live'
+        SANDBOX = 'sandbox', 'Sandbox (testing)'
+
+    enabled = models.BooleanField('billing is on', default=False)
+    price_per_unit = models.PositiveIntegerField('price per occupied unit a month (KES)', default=75)
+    free_units = models.PositiveIntegerField('free units', default=5,
+                                             help_text='Every landlord\'s first units are free.')
+    trial_days = models.PositiveIntegerField('free trial (days)', default=30)
+    grace_days = models.PositiveIntegerField('days before an unpaid account becomes read-only', default=7)
+    till = models.CharField('your M-Pesa Till number', max_length=20, blank=True,
+                            help_text='Landlords pay here from Lipa na M-Pesa → Buy Goods and Services.')
+    notify_email = models.EmailField('email me about payments at', blank=True,
+                                     help_text='When a landlord enters an M-Pesa code to check. Empty = administrators\' emails.')
+    # Optional: M-Pesa PIN prompts to the Till (its own Daraja app).
+    mpesa_environment = models.CharField('Daraja app type', max_length=10, choices=Environment.choices,
+                                         default=Environment.PRODUCTION)
+    mpesa_store_number = models.CharField('Head Office / Store number', max_length=20, blank=True)
+    mpesa_consumer_key = EncryptedTextField('consumer key', blank=True)
+    mpesa_consumer_secret = EncryptedTextField('consumer secret', blank=True)
+    mpesa_passkey = EncryptedTextField('passkey', blank=True)
+    callback_token = models.CharField(max_length=40, default=new_callback_token, editable=False)
+    updated_at = models.DateTimeField(auto_now=True)
+
+    CACHE_KEY = 'billing:settings'
+    # Read on every page, so kept in the cache; the secret keys are left out and read from the database.
+    PUBLIC = ['enabled', 'price_per_unit', 'free_units', 'trial_days', 'grace_days', 'till', 'notify_email',
+              'mpesa_environment', 'mpesa_store_number']
+
+    class Meta:
+        verbose_name = verbose_name_plural = 'billing settings'
+
+    def __str__(self):
+        return 'Billing settings'
+
+    def save(self, *args, **kwargs):
+        self.pk = 1
+        super().save(*args, **kwargs)
+        cache.delete(self.CACHE_KEY)
+
+    @classmethod
+    def load(cls):
+        return cls.objects.get_or_create(pk=1)[0]
+
+    @classmethod
+    def public(cls):
+        values = cache.get(cls.CACHE_KEY)
+        if values is None:
+            row = cls.load()
+            values = {name: getattr(row, name) for name in cls.PUBLIC}
+            cache.set(cls.CACHE_KEY, values, 300)
+        return values
+
+    def prompts_ready(self):
+        return all([self.till, self.mpesa_store_number, self.mpesa_consumer_key, self.mpesa_consumer_secret,
+                    self.mpesa_passkey])
 
 
 class BillingAccount(models.Model):

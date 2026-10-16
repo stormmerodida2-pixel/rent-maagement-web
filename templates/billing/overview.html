@@ -7,9 +7,22 @@
     <p class="sub">Every landlord's plan. Confirm Till payments here after checking them on your M-Pesa statement{% if till %} for Till {{ till }}{% endif %}.</p></div>
 </div>
 
-{% if not enabled %}
-<div class="alert alert-info" style="margin-bottom:16px">{% icon 'wallet' 18 %}<span><strong>Billing is switched off.</strong> Nobody is billed or locked. Set <code>BILLING_ENABLED=1</code> on the server to start; every landlord then gets a free trial from that day.</span></div>
-{% endif %}
+<section class="card billing-switch" style="margin-bottom:16px">
+  <div class="card-body row">
+    <span class="switch-dot {% if enabled %}on{% endif %}" aria-hidden="true"></span>
+    <div style="flex:1;min-width:220px">
+      <strong>Billing is {% if enabled %}on{% else %}off{% endif %}</strong>
+      <div class="muted small">{% if enabled %}Landlords are billed {{ billing_settings.price_per_unit|kes }} per occupied unit a month after {{ billing_settings.free_units }} free, and pay to Till {{ till }}.{% else %}Nobody is billed or made read-only. When you switch it on, every landlord gets a {{ billing_settings.trial_days }}-day free trial from that day.{% endif %}</div>
+    </div>
+    <form method="post" action="{% url 'billing:toggle' %}">{% csrf_token %}
+      {% if enabled %}
+      <button class="btn" data-confirm="Nobody will be billed or made read-only, and read-only accounts open again straight away." data-confirm-title="Switch billing off?" data-confirm-ok="Switch off" data-confirm-danger>Switch off</button>
+      {% else %}
+      <button class="btn btn-primary" {% if not till %}disabled title="Add your Till number below first"{% endif %} data-confirm="Every landlord gets a {{ billing_settings.trial_days }}-day free trial from today. Bills ({{ billing_settings.price_per_unit|kes }} per occupied unit after {{ billing_settings.free_units }} free) go out 3 days before it ends." data-confirm-title="Switch billing on?" data-confirm-ok="Switch on">Switch on</button>
+      {% endif %}
+    </form>
+  </div>
+</section>
 
 <div class="kpis" style="margin-bottom:16px">
   <div class="card kpi"><div class="label">Received this month</div><div class="value">{{ paid_this_month|kes }}</div></div>
@@ -31,6 +44,7 @@
         {% elif r.state == 'active' %}<span class="badge badge-success">Paid</span> until {{ r.account.paid_until|date:"d M" }}
         {% elif r.state == 'checking' %}<span class="badge badge-info">Check payment</span>
         {% elif r.state == 'overdue' %}<span class="badge badge-warn">Overdue</span>
+        {% elif r.state == 'off' %}<span class="muted">Billing off</span>
         {% else %}<span class="badge badge-danger">Read-only</span>{% endif %}
       </td>
       <td class="small">
@@ -51,10 +65,10 @@
           </form>
           {% endif %}
         {% endif %}
-          <form method="post" action="{% url 'billing:extend' r.owner.pk %}">{% csrf_token %}
+          {% if enabled %}<form method="post" action="{% url 'billing:extend' r.owner.pk %}">{% csrf_token %}
             <input type="hidden" name="days" value="30">
             <button class="btn btn-sm btn-ghost" data-confirm="{{ r.owner.username }} gets 30 more free days{% if r.invoice %}, and the current bill is cancelled{% endif %}." data-confirm-title="Give 30 free days?" data-confirm-ok="Give 30 days">+30 days free</button>
-          </form>
+          </form>{% endif %}
         </div>
       </td>
     </tr>
@@ -65,4 +79,39 @@
   <div class="empty"><strong>No landlords yet</strong>Landlords appear here once they add a property.</div>
   {% endif %}
 </section>
+
+<form method="post" action="{% url 'billing:settings' %}" autocomplete="off" class="grid-2" style="margin-top:16px;align-items:start">
+  {% csrf_token %}
+  <section class="card">
+    <div class="card-header"><h2>Plan and payments</h2></div>
+    <div class="card-body">
+      {% for field in form.plan_fields %}
+      <div class="field{% if field.errors %} has-error{% endif %}">
+        <label for="{{ field.id_for_label }}">{{ field.label|capfirst }}</label>
+        {{ field }}
+        {% if field.help_text %}<span class="helptext">{{ field.help_text }}</span>{% endif %}
+        {{ field.errors }}
+      </div>
+      {% endfor %}
+      <div class="form-actions"><button class="btn btn-primary">Save settings</button></div>
+    </div>
+  </section>
+  <section class="card">
+    <details class="daraja"{% if prompts_ready or form.mpesa_consumer_key.errors %} open{% endif %}>
+      <summary class="card-header"><h2>M-Pesa prompts <span class="muted" style="font-weight:400">(optional)</span></h2><span class="spacer"></span>{% if prompts_ready %}<span class="badge badge-success">On</span>{% endif %}</summary>
+      <div class="card-body">
+        <p class="muted small" style="margin:0 0 12px">With your Till's own Daraja app, landlords can pay with a PIN prompt and the bill is marked paid by itself. Without it, they pay from the M-Pesa menu and you confirm the code above. Get the keys the same way as a landlord does (see M-Pesa settings), for the app linked to your Till.</p>
+        {% for field in form.prompt_fields %}
+        <div class="field{% if field.errors %} has-error{% endif %}">
+          <label for="{{ field.id_for_label }}">{{ field.label|capfirst }}</label>
+          {{ field }}
+          {% if field.help_text %}<span class="helptext">{{ field.help_text }}</span>{% endif %}
+          {{ field.errors }}
+        </div>
+        {% endfor %}
+        <div class="form-actions"><button class="btn">Save settings</button></div>
+      </div>
+    </details>
+  </section>
+</form>
 {% endblock %}

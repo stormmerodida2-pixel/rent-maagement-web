@@ -18,7 +18,8 @@ from django.views.decorators.http import require_POST
 from accounts.utils import client_ip
 from notifications.models import LandlordPreferences
 
-from .models import Invoice
+from .forms import BillingSettingsForm
+from .models import BillingSettings, Invoice
 from .utils import (
     ClaimError, account_for, claim_till_payment, conf, enabled, landlords, lock_date, mark_paid, monthly_amount,
     occupied_units, open_invoice, platform_account, send_prompt, status,
@@ -120,22 +121,26 @@ superuser_required = user_passes_test(lambda u: u.is_superuser)
 
 @staff_member_required
 @superuser_required
-def overview(request):
-    today = timezone.localdate()
+def overview(request, form=None):
+    today, on = timezone.localdate(), enabled()
     rows = []
     for owner in landlords().order_by('username'):
-        account = account_for(owner, today)
-        invoice = open_invoice(account)
-        rows.append({'owner': owner, 'account': account, 'state': status(account, today), 'invoice': invoice,
-                     'units': occupied_units(owner)})
-    order = {'checking': 0, 'locked': 1, 'overdue': 2, 'active': 3, 'trial': 4}
+        # While billing is off, nobody's trial starts just because this page was opened.
+        account = account_for(owner, today) if on else None
+        rows.append({'owner': owner, 'account': account, 'units': occupied_units(owner),
+                     'state': status(account, today) if on else 'off',
+                     'invoice': open_invoice(account) if on else None})
+    order = {'checking': 0, 'locked': 1, 'overdue': 2, 'active': 3, 'trial': 4, 'off': 5}
     rows.sort(key=lambda r: order[r['state']])
+    billing_settings = BillingSettings.load()
     paid = Invoice.objects.filter(status=Invoice.Status.PAID, paid_at__date__gte=today.replace(day=1)) \
         .exclude(method=Invoice.Method.FREE)
     return render(request, 'billing/overview.html', {
-        'rows': rows, 'enabled': enabled(), 'till': conf('TILL'),
+        'rows': rows, 'enabled': on, 'till': conf('TILL'), 'billing_settings': billing_settings,
+        'form': form or BillingSettingsForm(instance=billing_settings),
+        'prompts_ready': billing_settings.prompts_ready(),
         'paid_this_month': sum(i.amount for i in paid),
-        'monthly_estimate': sum(monthly_amount(r['units']) for r in rows if r['state'] != 'trial'),
+        'monthly_estimate': sum(monthly_amount(r['units']) for r in rows if r['state'] not in ('trial', 'off')),
         'counts': {s: sum(1 for r in rows if r['state'] == s) for s in order},
     })
 
@@ -183,3 +188,50 @@ def overview_extend(request, pk):
         invoice.save(update_fields=['status'])
     messages.success(request, f'{account.owner} has {days} more free days, until {account.paid_until:%d %b %Y}.')
     return redirect('billing:overview')
+
+
+@staff_member_required
+@superuser_required
+@require_POST
+def overview_settings(request):
+    from audit import utils as audit
+
+    form = BillingSettingsForm(request.POST, instance=BillingSettings.load())
+    if not form.is_valid():
+        messages.error(request, 'Check the billing settings below.')
+        return overview(request, form=form)
+    form.save()
+    audit.record(owner=request.user, actor=request.user, action='billing.settings_changed',
+                 summary='Changed billing settings: ' + ', '.join(form.changed_data or ['nothing']) + '.')
+    messages.success(request, 'Billing settings saved.')
+    return redirect('billing:overview')
+
+
+@staff_member_required
+@superuser_required
+@require_POST
+def overview_toggle(request):
+    from audit import utils as audit
+
+    row = BillingSettings.load()
+    if not row.enabled and not row.till:
+        messages.error(request, 'Add your M-Pesa Till number first, so landlords know where to pay.')
+        return redirect('billing:overview')
+    row.enabled = not row.enabled
+    row.save()
+    today = timezone.localdate()
+    if row.enabled:
+        for owner in landlords():
+            account = account_for(owner, today)  # new landlords: trial starts today
+            if account.paid_until < today:  # switched on again after a pause: start afresh, no backdated bills
+                account.invoices.filter(status=Invoice.Status.OPEN).update(status=Invoice.Status.VOID)
+                account.paid_until = today
+                account.save(update_fields=['paid_until'])
+        messages.success(request, f'Billing is on. Every landlord has a {row.trial_days}-day free trial from today; '
+                                  'first bills go out 3 days before it ends.')
+    else:
+        messages.success(request, 'Billing is off. Nobody is billed or read-only until you switch it on again.')
+    audit.record(owner=request.user, actor=request.user, action='billing.switched',
+                 summary=f'Switched billing {"on" if row.enabled else "off"}.')
+    return redirect('billing:overview')
+

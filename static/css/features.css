@@ -232,3 +232,7 @@ details.daraja > summary::-webkit-details-marker { display: none; }
 details.daraja > summary h2::before { content: '▸'; display: inline-block; margin-right: 8px; color: var(--text-2); transition: transform .15s; }
 details.daraja[open] > summary h2::before { transform: rotate(90deg); }
 @media (prefers-reduced-motion: reduce) { details.daraja > summary h2::before { transition: none; } }
+
+/* --- Billing ------------------------------------------------------------------------------------------ */
+.switch-dot { width: 12px; height: 12px; border-radius: 50%; background: var(--muted); flex: none; }
+.switch-dot.on { background: var(--brand); box-shadow: 0 0 0 4px color-mix(in srgb, var(--brand) 20%, transparent); }
