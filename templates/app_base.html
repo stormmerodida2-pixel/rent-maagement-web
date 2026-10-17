@@ -54,7 +54,7 @@
       <div class="who">
         {% if request.viewer %}
         <span class="avatar">{{ request.viewer.name|initials }}</span>
-        <div><div class="name small">{{ request.viewer.name }}</div><div class="meta">Read-only{% if request.viewer.role %} · {{ request.viewer.role }}{% endif %}</div></div>
+        <div><div class="name small">{{ request.viewer.name }}</div><div class="meta">{{ request.viewer.level }}{% if request.viewer.role %} · {{ request.viewer.role }}{% endif %}</div></div>
         {% else %}
         <span class="avatar">{{ user.get_full_name|default:user.username|initials }}</span>
         <div><div class="name small">{{ user.get_full_name|default:user.username }}</div><div class="meta">{% if user.is_superuser %}Administrator{% else %}Landlord{% endif %}</div></div>
@@ -71,7 +71,7 @@
     <div class="container">
       {% if request.viewer %}
       <div class="alert alert-info viewer-banner" style="margin-bottom:16px">
-        {% icon 'users' 18 %}<span>You're viewing <strong>{{ request.viewer.owner.get_full_name|default:"the landlord" }}</strong>'s account, read-only. You can look and download, but not change anything.</span>
+        {% icon 'users' 18 %}<span>You're viewing <strong>{{ request.viewer.owner.get_full_name|default:"the landlord" }}</strong>'s account{% if request.viewer.can_edit %}. Changes you make are recorded under your name.{% else %}, read-only. You can look and download, but not change anything.{% endif %}</span>
       </div>
       {% endif %}
       {% if verify_prompt == 'phone' %}

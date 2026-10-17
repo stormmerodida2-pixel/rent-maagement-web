@@ -120,20 +120,32 @@ def staff_for(user):
 
 
 class ViewerAccess(models.Model):
-    """Someone the landlord lets see their account without changing anything: a spouse or co-owner, an
-    accountant. They log in with their own email or phone and password and see the landlord's account."""
+    """Someone the landlord lets into their account: a spouse or co-owner, an accountant. They log in with their
+    own email or phone and password and see the landlord's account; with `can_edit` they can also make changes
+    (record payments, tenants, repairs), but never the landlord's settings, M-Pesa, billing or staff."""
 
     owner = models.ForeignKey(settings.AUTH_USER_MODEL, on_delete=models.CASCADE, related_name='viewers')
     user = models.OneToOneField(settings.AUTH_USER_MODEL, on_delete=models.CASCADE, related_name='viewer_access')
     role = models.CharField('who they are', max_length=60, blank=True,
                             help_text='e.g. "Co-owner", "Accountant". Shown on your list only.')
+    can_edit = models.BooleanField('can make changes', default=False)
+    invited_at = models.DateTimeField(null=True, blank=True)
     created_at = models.DateTimeField(auto_now_add=True)
 
     class Meta:
         ordering = ['user__first_name']
 
     def __str__(self):
-        return f'{self.user.get_full_name() or self.user} (read-only for {self.owner})'
+        return f'{self.user.get_full_name() or self.user} ({self.level.lower()} for {self.owner})'
+
+    @property
+    def level(self):
+        return 'Can make changes' if self.can_edit else 'Read-only'
+
+    @property
+    def joined(self):
+        """They've chosen a password (or the landlord set one): the invite has been used."""
+        return self.user.has_usable_password()
 
     @property
     def name(self):

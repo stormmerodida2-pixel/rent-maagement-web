@@ -1,0 +1,17 @@
+{% extends 'registration/auth_card.html' %}
+{% block title %}Join {{ APP_NAME }}{% endblock %}
+{% block card %}
+{% if invalid %}
+<h1>Link expired</h1>
+<p class="muted">This invite link has expired or has already been used. If you've already chosen a password, just log in. Otherwise, ask the person who invited you to send it again.</p>
+<a class="btn btn-primary btn-block" style="margin-top:20px" href="{% url 'login' %}">Log in</a>
+{% else %}
+<h1>Welcome, {{ access.user.first_name|default:"there" }}</h1>
+<p class="muted"><strong>{{ access.owner.get_full_name|default:"A landlord" }}</strong> invited you to their rental account. {% if access.can_edit %}You'll be able to see and update their properties, tenants and payments.{% else %}You'll be able to see their properties, tenants and payments.{% endif %} Choose a password to get started.</p>
+<form method="post" novalidate style="margin-top:16px">
+  {% csrf_token %}
+  {% include 'includes/form_fields.html' %}
+  <button type="submit" class="btn btn-primary btn-block btn-lg">Join</button>
+</form>
+{% endif %}
+{% endblock %}

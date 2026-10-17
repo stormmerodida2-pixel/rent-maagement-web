@@ -1,6 +1,7 @@
 """Helpers for accounts: rate limiting, email verification, two-step login, and keeping staff in their area."""
 
 import hashlib
+import logging
 import re
 import secrets
 import time
@@ -11,6 +12,7 @@ import qrcode.image.svg
 from django.conf import settings
 from django.contrib.auth import get_user_model
 from django.contrib.auth.backends import ModelBackend
+from django.contrib.auth.tokens import PasswordResetTokenGenerator
 from django.core import signing
 from django.core.cache import cache
 from django.core.mail import send_mail
@@ -18,8 +20,12 @@ from django.shortcuts import redirect, render
 from django.template.loader import render_to_string
 from django.urls import reverse
 from django.utils import timezone
+from django.utils.encoding import force_bytes
+from django.utils.http import urlsafe_base64_encode
 
 from .models import profile_for, staff_for
+
+logger = logging.getLogger(__name__)
 
 
 # --- Rate limiting -----------------------------------------------------------------------------------
@@ -366,16 +372,18 @@ class UpdatedTermsMiddleware:
 # Their own login: password, two-step login and getting in and out stay theirs, not the landlord's.
 VIEWER_OWN_PATHS = ('/settings/password/', '/settings/two-step/', '/login/', '/logout/', '/terms/accept/',
                     '/static/', '/sw.js', '/manifest.webmanifest', '/offline/', '/help/', '/privacy/', '/terms/')
-# Never for read-only viewers: the landlord's settings, billing, M-Pesa keys, staff, the admin.
+# Never for people with access, even those who can make changes: the landlord's settings, billing, M-Pesa keys,
+# staff, the admin.
 VIEWER_BLOCKED_PATHS = ('/settings/', '/payments/settings/', '/billing/', '/admin/', '/staff/', '/messages/settings/',
                         '/messages/whatsapp/', '/messages/sms-settings/', '/verify-phone/', '/welcome/')
 
 
 class ReadOnlyViewerMiddleware:
-    """Someone with read-only access sees the landlord's account as the landlord does, but can't change it.
+    """Someone the landlord let in sees the landlord's account as the landlord does.
 
     For their requests, request.user becomes the landlord (so every page shows the landlord's records) and
-    request.viewer holds their own access; anything but looking is refused. Their own password and two-step
+    request.viewer holds their own access. Read-only people can only look; those who can make changes can do
+    anything outside VIEWER_BLOCKED_PATHS, and the activity log names them. Their own password and two-step
     pages keep them as themselves.
     """
 
@@ -398,7 +406,7 @@ class ReadOnlyViewerMiddleware:
 
             messages.info(request, "That page is only for the account owner.")
             return redirect('rentals:dashboard')
-        if request.method not in ('GET', 'HEAD', 'OPTIONS'):
+        if request.method not in ('GET', 'HEAD', 'OPTIONS') and not access.can_edit:
             from django.contrib import messages
 
             from django.utils.http import url_has_allowed_host_and_scheme
@@ -407,5 +415,58 @@ class ReadOnlyViewerMiddleware:
             back = request.META.get('HTTP_REFERER', '')
             safe = url_has_allowed_host_and_scheme(back, {request.get_host()}, request.is_secure())
             return redirect(back if safe and back else 'rentals:dashboard')
+        from audit.utils import acting_user
+
         request.viewer, request.real_user, request.user = access, request.user, access.owner
-        return self.get_response(request)
+        token = acting_user.set(request.real_user)
+        try:
+            return self.get_response(request)
+        finally:
+            acting_user.reset(token)
+
+
+# --- Invites (Settings → People with access) -----------------------------------------------------------------------
+
+class InviteTokenGenerator(PasswordResetTokenGenerator):
+    """One-use link to choose a password: it stops working once they have one (or after PASSWORD_RESET_TIMEOUT)."""
+
+    key_salt = 'accounts.invite'
+
+
+invite_tokens = InviteTokenGenerator()
+
+
+def invite_url(access):
+    uid = urlsafe_base64_encode(force_bytes(access.user.pk))
+    return settings.SITE_URL.rstrip('/') + reverse('accounts:invite', args=[uid, invite_tokens.make_token(access.user)])
+
+
+def send_invite(access):
+    """Email or text the invite link to the person. Returns how it went ('email', 'sms') or None if it couldn't."""
+    from notifications.models import SmsMessage
+    from notifications.utils import send_sms
+
+    owner = access.owner.get_full_name() or 'A landlord'
+    url = invite_url(access)
+    access.invited_at = timezone.now()
+    access.save(update_fields=['invited_at'])
+    if access.user.email:
+        try:
+            send_mail(
+                subject=f'{owner} invited you to their {settings.APP_NAME} account',
+                message=(f'Hi {access.user.first_name or "there"},\n\n{owner} has invited you to their rental account on '
+                         f'{settings.APP_NAME}, where you can '
+                         + ('see and update' if access.can_edit else 'see')
+                         + f' their properties, tenants and payments.\n\nChoose a password to get started:\n{url}\n\n'
+                         f'The link works for {settings.PASSWORD_RESET_TIMEOUT // 86400} days.\n\n{settings.APP_NAME}'),
+                from_email=None, recipient_list=[access.user.email],
+            )
+            return 'email'
+        except Exception:
+            logger.exception('Could not email invite for access %s', access.pk)
+            return None
+    phone = getattr(profile_for(access.user), 'phone', None)
+    if phone:
+        msg = send_sms(phone, f'{owner} invited you to their {settings.APP_NAME} account. Choose a password: {url}')
+        return None if msg.status == SmsMessage.Status.FAILED else 'sms'
+    return None
