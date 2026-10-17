@@ -5,7 +5,7 @@ msgid ""
 msgstr ""
 "Project-Id-Version: Rentipay\n"
 "Report-Msgid-Bugs-To: \n"
-"POT-Creation-Date: 2026-10-15 16:07+0300\n"
+"POT-Creation-Date: 2026-10-17 09:25+0300\n"
 "PO-Revision-Date: YEAR-MO-DA HO:MI+ZONE\n"
 "Last-Translator: FULL NAME <EMAIL@ADDRESS>\n"
 "Language-Team: Kiswahili\n"
@@ -187,6 +187,14 @@ msgstr "Pesa iliyorudishwa kwa mpangaji"
 
 msgid "Other"
 msgstr "Nyingine"
+
+#, python-format
+msgid "Unpaid rent %(start)s – %(end)s"
+msgstr "Kodi ambayo haijalipwa %(start)s – %(end)s"
+
+#, python-format
+msgid "(KES %(paid)s of %(total)s paid)"
+msgstr "(KES %(paid)s kati ya %(total)s zimelipwa)"
 
 #, python-format
 msgid "Rent %(start)s – %(end)s"

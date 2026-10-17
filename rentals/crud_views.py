@@ -19,7 +19,8 @@ from .forms import ChargeForm, EndLeaseForm, LeaseForm, PropertyForm, TenantForm
 from .models import Lease, MeterReading, Property, RentCharge, Tenant, Unit
 from .utils import (
     BillingError, ImportError_, OwnedMixin, SafeDeleteMixin, apply_import, check_import, format_number,
-    import_template, last_reading, read_spreadsheet, record_water_reading, settle_move_out, void_reading,
+    import_template, last_reading, read_spreadsheet, record_water_reading, rent_months, settle_move_out,
+    void_reading,
 )
 
 
@@ -416,6 +417,44 @@ class LeaseCreate(OwnedMixin, FormPageMixin, CreateView):
 
     def get_success_url(self):
         return reverse('rentals:lease_detail', args=[self.object.pk])
+
+    def form_valid(self, form):
+        if form.month_by_month:
+            # Step 2: list every month since they moved in; the landlord says which were paid.
+            months = rent_months(form.save(commit=False))
+            choices, errors = self._month_choices(months)
+            if 'months_confirmed' not in self.request.POST or errors:
+                carried = [(k, v) for k, values in self.request.POST.lists() for v in values
+                           if k != 'csrfmiddlewaretoken' and not k.startswith('month_') and k != 'months_confirmed']
+                return render(self.request, 'rentals/lease_months.html', {
+                    'form': form, 'months': [{**m, **choices[m['index']]} for m in months], 'carried': carried,
+                    'errors': errors if 'months_confirmed' in self.request.POST else [],
+                    'owed_total': sum(c['owed'] for c in choices.values()),
+                })
+            form.unpaid_months = [(m, choices[m['index']]['owed']) for m in months]
+        return super().form_valid(form)
+
+    def _month_choices(self, months):
+        """What the landlord picked for each month (paid / not paid / part paid), and anything wrong with it."""
+        choices, errors = {}, []
+        for m in months:
+            i = m['index']
+            status = self.request.POST.get(f'month_{i}', 'paid')
+            paid_text = self.request.POST.get(f'month_{i}_paid', '').replace(',', '').strip()
+            owed = Decimal('0')
+            if status == 'unpaid':
+                owed = m['amount']
+            elif status == 'part':
+                try:
+                    paid = Decimal(paid_text)
+                    if not 0 < paid < m['amount']:
+                        raise InvalidOperation
+                    owed = m['amount'] - paid
+                except (InvalidOperation, ValueError):
+                    errors.append(f"{m['start']:%d %b %Y}: enter how much they paid, between 1 and "
+                                  f"{m['amount']:,.0f}.")
+            choices[i] = {'status': status, 'paid_text': paid_text, 'owed': owed}
+        return choices, errors
 
 
 class LeaseUpdate(OwnedMixin, FormPageMixin, UpdateView):

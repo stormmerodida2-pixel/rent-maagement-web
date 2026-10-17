@@ -401,7 +401,11 @@ Use a Gmail account's **app password**: Google account → Security → 2-Step V
 
 ### Tenants who were there before Rentipay
 
-**Move a tenant in** asks *New or existing tenant?* Choosing **Already living here** replaces the "bill now" options with **Balance owed now** (everything owed today, including this month's rent if already due; negative for credit) and **Deposit they already paid**. This works exactly like the Excel import (both use `bring_forward`): a "Balance brought forward" line (not counted as income in reports), the deposit held without being billed, and this month's rent not billed again. The move-in date must be in the past, and the rent day defaults to that day of the month.
+**Move a tenant in** asks *New or existing tenant?* Choosing **Already living here** replaces the "bill now" options with **Deposit they already paid** and a choice of how to enter what they owe:
+- **Month by month** (default): the next page lists every rent month from the move-in date to now (up to five years) at the rent plus any service charge. Each is marked Paid, Not paid or Part paid (with the amount); a running total shows what they owe. Each unpaid month becomes its own line, e.g. *"Unpaid rent 5 Aug – 4 Sep 2026"* or *"… (KES 5,000 of 15,000 paid)"*.
+- **As one total:** **Balance owed now** (everything owed today, including this month's rent if already due; negative for credit).
+
+The tenant's page shows **What's unpaid** for every tenant who owes: each charge or month still unpaid, with payments counted towards the oldest first (a deposit paid before Rentipay settles its own deposit line). This works exactly like the Excel import (both use `bring_forward`): a "Balance brought forward" line (not counted as income in reports), the deposit held without being billed, and this month's rent not billed again. The move-in date must be in the past, and the rent day defaults to that day of the month.
 
 ### Payment plans for arrears
 

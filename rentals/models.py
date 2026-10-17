@@ -387,6 +387,8 @@ _FIXED_DESCRIPTIONS = {
 }
 _WATER_DESCRIPTION = re.compile(r'^Water (?P<used>\S+) units \((?P<start>\S+) → (?P<end>\S+)\) @ KES (?P<rate>\S+)$')
 _DEDUCTION_DESCRIPTION = re.compile(r'^Move-out deduction: (?P<reason>.+)$', re.S)
+# A month part-paid before Rentipay, entered month by month (the line shows the dates, then this).
+_PART_PAID_DESCRIPTION = re.compile(r'^Part paid: KES (?P<paid>[\d,]+) of (?P<total>[\d,]+)$')
 
 
 def translate_description(text):
@@ -512,6 +514,15 @@ class RentCharge(Voidable):
     @property
     def label(self):
         """What the charge is for, in the active language (tenants may read Kiswahili)."""
+        part = _PART_PAID_DESCRIPTION.match(self.description or '')
+        if self.kind == self.Kind.OPENING and (part or not self.description):
+            # A month unpaid (or part-paid) before Rentipay, entered month by month.
+            end = self.lease.cycle_end(self.period)
+            text = gettext('Unpaid rent %(start)s – %(end)s') % {'start': date_format(self.due_date, 'j M'),
+                                                                 'end': date_format(end, 'j M Y')}
+            if part:
+                text += ' ' + gettext('(KES %(paid)s of %(total)s paid)') % part.groupdict()
+            return text
         if self.description:
             return translate_description(self.description)
         if self.kind in (self.Kind.RENT, self.Kind.SERVICE) and self.due_date.day != 1:
