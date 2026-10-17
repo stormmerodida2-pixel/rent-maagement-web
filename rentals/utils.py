@@ -540,7 +540,26 @@ def check_import(rows, owner, prop):
     return checked
 
 
-def bring_forward(lease, balance, deposit_paid, actor, today=None):
+MAX_BACK_MONTHS = 60  # five years of month-by-month arrears; older than that, enter one total
+
+
+def rent_months(lease, today=None):
+    """Every rent month from when the tenant moved in up to the one now running, oldest first:
+    [{'index', 'start', 'end', 'period', 'amount'}]. The amount is the rent plus any service charge."""
+    today = today or datetime.date.today()
+    months, month = [], lease.start_date.replace(day=1)
+    while len(months) < MAX_BACK_MONTHS:
+        start = lease.cycle_start(month)
+        if start > today:
+            break
+        if start >= lease.start_date:
+            months.append({'index': len(months), 'start': start, 'end': lease.cycle_end(month), 'period': month,
+                           'amount': lease.monthly_rent + (lease.service_charge or Decimal('0'))})
+        month = (month + datetime.timedelta(days=32)).replace(day=1)
+    return months
+
+
+def bring_forward(lease, balance, deposit_paid, actor, today=None, unpaid_months=None):
     """Start Rentipay for a tenant who already lives there.
 
     `balance` is everything they owe today, including this month's rent if it was already due (negative =
@@ -550,6 +569,13 @@ def bring_forward(lease, balance, deposit_paid, actor, today=None):
     """
     today = today or datetime.date.today()
     before = (today.replace(day=1) - datetime.timedelta(days=1)).replace(day=1)  # dated before Rentipay
+    # Month by month: each unpaid (or part-paid) month is its own line, e.g. "Unpaid rent 5 Aug – 4 Sep 2026".
+    for month, owed in unpaid_months or []:
+        if owed > 0:
+            paid = month['amount'] - owed
+            RentCharge.objects.create(lease=lease, kind=RentCharge.Kind.OPENING, period=month['period'],
+                                      amount=owed, due_date=month['start'],
+                                      description=f"Part paid: KES {paid:,.0f} of {month['amount']:,.0f}" if paid > 0 else '')
     if balance:
         RentCharge.objects.create(lease=lease, kind=RentCharge.Kind.OPENING, period=before, amount=balance,
                                   due_date=today, description='Balance brought forward' if balance > 0
@@ -565,6 +591,33 @@ def bring_forward(lease, balance, deposit_paid, actor, today=None):
             defaults={'amount': lease.monthly_rent, 'due_date': lease.cycle_start(today), 'voided_at': timezone.now(),
                       'voided_by': actor, 'void_reason': 'Included in the balance brought forward'},
         )
+
+
+def unpaid_items(lease):
+    """What a tenant still owes, item by item, oldest first: [(charge, amount still unpaid)].
+
+    Payments and credits settle the oldest charges first. A deposit paid before Rentipay settles its own
+    deposit line, so it never shows as owed.
+    """
+    charges = list(lease.charges.order_by('due_date', 'pk'))
+    paid_before = sum((-c.amount for c in charges if c.kind == RentCharge.Kind.OPENING and c.amount < 0
+                       and c.description == 'Deposit paid before Rentipay'), Decimal('0'))
+    pool = lease.total_paid + sum((-c.amount for c in charges if c.amount < 0), Decimal('0')) - paid_before
+    items = []
+    for charge in charges:
+        if charge.amount <= 0:
+            continue
+        owed = charge.amount
+        if charge.kind == RentCharge.Kind.DEPOSIT and paid_before > 0:
+            used = min(paid_before, owed)
+            paid_before -= used
+            owed -= used
+        used = min(pool, owed)
+        pool -= used
+        owed -= used
+        if owed > 0:
+            items.append((charge, owed))
+    return items
 
 
 @transaction.atomic

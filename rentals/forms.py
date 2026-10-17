@@ -103,6 +103,10 @@ class LeaseForm(OwnedForm):
         label='New or existing tenant?', initial='new', required=False,  # missing means a new tenant
         choices=[('new', 'Moving in now'), ('existing', 'Already living here (before Rentipay)')],
     )
+    owed_how = forms.ChoiceField(
+        label='Enter what they owe', initial='months', required=False,
+        choices=[('months', 'Month by month: tick the months they paid'), ('total', 'As one total')],
+    )
     balance_now = forms.DecimalField(
         required=False, max_digits=10, decimal_places=2, label='Balance owed now (KES)',
         help_text="Everything they owe today, including this month's rent if it was already due. "
@@ -151,17 +155,18 @@ class LeaseForm(OwnedForm):
         for name in self.OPTIONAL_WITH_DEFAULT:
             self.fields[name].required = False
         if self.instance.pk:
-            for name in ('bill_now', 'bill_deposit', 'tenancy', 'balance_now', 'deposit_paid'):
+            for name in ('bill_now', 'bill_deposit', 'tenancy', 'owed_how', 'balance_now', 'deposit_paid'):
                 del self.fields[name]
         else:
             self.initial.setdefault('start_date', datetime.date.today())
-            for name in ('balance_now', 'deposit_paid'):
+            for name in ('owed_how', 'deposit_paid'):
                 self.fields[name].show_when = 'id_tenancy=existing'
+            self.fields['balance_now'].show_when = 'id_tenancy=existing&id_owed_how=total'
             for name in ('bill_now', 'bill_deposit', 'deposit'):
                 self.fields[name].show_when = 'id_tenancy=new'  # existing tenants give the deposit already paid
             self.fields['start_date'].label = 'Move-in date'
             self.fields['start_date'].help_text = 'For an existing tenant, the day they first moved in.'
-            self.order_fields(['tenancy', 'unit', 'tenant', 'start_date', 'balance_now', 'deposit_paid'])
+            self.order_fields(['tenancy', 'unit', 'tenant', 'start_date', 'owed_how', 'balance_now', 'deposit_paid'])
 
     # Blank means "use the model default" (no service charge, no late fee, 3-day grace).
     OPTIONAL_WITH_DEFAULT = ['deposit', 'service_charge', 'late_fee', 'late_fee_grace_days']
@@ -191,13 +196,20 @@ class LeaseForm(OwnedForm):
     def existing(self):
         return getattr(self, 'cleaned_data', {}).get('tenancy') == 'existing'
 
+    @property
+    def month_by_month(self):
+        return self.existing and self.cleaned_data.get('owed_how') == 'months'  # missing: one total
+
+    unpaid_months = None  # [(month, amount owed)], set by the view after the month-by-month step
+
     def save(self, commit=True):
         lease = super().save(commit)
         if commit and self.existing:
             from .utils import bring_forward
 
-            bring_forward(lease, self.cleaned_data.get('balance_now') or Decimal('0'),
-                          self.cleaned_data.get('deposit_paid') or Decimal('0'), self.owner)
+            balance = Decimal('0') if self.month_by_month else (self.cleaned_data.get('balance_now') or Decimal('0'))
+            bring_forward(lease, balance, self.cleaned_data.get('deposit_paid') or Decimal('0'), self.owner,
+                          unpaid_months=self.unpaid_months if self.month_by_month else None)
             return lease
         if commit and self.cleaned_data.get('bill_deposit'):
             lease.bill_deposit()

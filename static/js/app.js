@@ -24,11 +24,15 @@
   });
 
   // data-show-when="field_id=value": show an element only while another field has that value.
+  // Several conditions joined with "&" must all hold, e.g. "id_tenancy=existing&id_owed_how=total".
   function syncConditional() {
     document.querySelectorAll('[data-show-when]').forEach(function (el) {
-      var parts = el.getAttribute('data-show-when').split('=');
-      var field = document.getElementById(parts[0]);
-      if (field) el.style.display = field.value === parts[1] ? '' : 'none';
+      var show = el.getAttribute('data-show-when').split('&').every(function (cond) {
+        var parts = cond.split('=');
+        var field = document.getElementById(parts[0]);
+        return !field || field.value === parts[1];
+      });
+      el.style.display = show ? '' : 'none';
     });
   }
   document.addEventListener('change', syncConditional);

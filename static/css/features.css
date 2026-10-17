@@ -254,3 +254,8 @@ details.daraja[open] > summary h2::before { transform: rotate(90deg); }
 .staff-quick { display: flex; gap: 8px; flex-wrap: wrap; margin-bottom: 14px; }
 .staff-quick .btn { flex: 1; min-width: 140px; justify-content: center; }
 .staff-note { background: var(--surface-2); border-radius: 8px; padding: 6px 10px; }
+
+/* --- What's unpaid ------------------------------------------------------------------------------------- */
+.unpaid-table td { padding-top: 6px; padding-bottom: 6px; }
+.unpaid-table tr.overdue td:first-child { border-left: 3px solid var(--danger); padding-left: 8px; }
+.unpaid-table tr.unpaid-total td { border-top: 2px solid var(--border); }

@@ -28,7 +28,7 @@ from payments.models import C2BPayment, CashHandover, MpesaAccount, Payment, Sta
 
 from . import utils as rent_changes
 from .forms import BulkRentChangeForm, NoticeForm, PaymentPlanForm, RentChangeForm
-from .utils import add_tenant_note, create_plan, on_track_plan, plan_progress, plan_schedule, refresh_plan, tenant_page
+from .utils import add_tenant_note, create_plan, unpaid_items, on_track_plan, plan_progress, plan_schedule, refresh_plan, tenant_page
 from .models import Lease, PaymentPlan, Property, RentCharge, Tenant, Unit
 
 
@@ -214,6 +214,7 @@ def lease_detail(request, pk):
     return render(request, 'rentals/lease_detail.html', {
         'lease': lease,
         'balance': balance,
+        'unpaid': unpaid_items(lease) if balance > 0 else [],
         'plan': plan,
         'plan_progress': refresh_plan(plan) if plan else None,
         'notes': lease.notes.select_related('author')[:10],

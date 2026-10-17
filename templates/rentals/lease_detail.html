@@ -75,6 +75,21 @@
           <div class="muted small">{{ lease.monthly_rent|kes }} / month · rent day: the {{ lease.due_day|ordinal }}{% if lease.due_day > 28 %} (or the last day in shorter months){% endif %}</div>
         </div>
       </div>
+      {% if unpaid %}
+      <div class="card-body" style="border-top:1px solid var(--border)">
+        <h3 style="margin-bottom:8px">What's unpaid</h3>
+        <table class="table unpaid-table"><tbody>
+          {% for charge, owed in unpaid %}
+          <tr{% if charge.is_overdue %} class="overdue"{% endif %}>
+            <td>{{ charge.label }}{% if owed != charge.amount %} <span class="muted small">({{ charge.amount|kes }}, part paid)</span>{% endif %}</td>
+            <td class="num nowrap">{{ owed|kes }}</td>
+          </tr>
+          {% endfor %}
+          <tr class="unpaid-total"><td><strong>Total owed</strong>{% if unpaid|length > 1 %} <span class="muted small">· {{ unpaid|length }} items</span>{% endif %}</td><td class="num"><strong>{{ balance|kes }}</strong></td></tr>
+        </tbody></table>
+        <p class="muted small" style="margin:6px 0 0">Payments count towards the oldest first.</p>
+      </div>
+      {% endif %}
       <div class="card-body" style="border-top:1px solid var(--border)">
         {% if mpesa_account and mpesa_account.is_complete %}
         <h3 style="margin-bottom:12px">Request payment via M-Pesa</h3>

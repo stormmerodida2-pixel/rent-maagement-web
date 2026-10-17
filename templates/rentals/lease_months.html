@@ -1,0 +1,60 @@
+{% extends 'app_base.html' %}
+{% load static ui %}
+{% block page_title %}Which months were paid?{% endblock %}
+{% block content %}
+<div class="page-header">
+  <div><h1>Which months did {{ form.cleaned_data.tenant }} pay?</h1>
+    <p class="sub">{{ form.cleaned_data.unit }} · moved in {{ form.cleaned_data.start_date|date:"d M Y" }} · {{ months.0.amount|kes }} a month. Mark each month since they moved in. Unpaid months each show on their statement, e.g. "Unpaid rent {{ months.0.start|date:"j M" }} – {{ months.0.end|date:"j M Y" }}".</p></div>
+</div>
+
+{% if errors %}<div class="alert alert-error" style="margin-bottom:14px">{{ errors|join:" " }}</div>{% endif %}
+
+<form method="post" novalidate data-arrears>
+  {% csrf_token %}
+  {% for name, value in carried %}<input type="hidden" name="{{ name }}" value="{{ value }}">{% endfor %}
+  <input type="hidden" name="months_confirmed" value="1">
+
+  <section class="card" style="margin-bottom:16px">
+    <div class="card-body row">
+      <div style="flex:1;min-width:220px">
+        <div class="muted small">{{ months|length }} month{{ months|length|pluralize }} since they moved in</div>
+        <div style="font-size:22px;font-weight:700">Owes KES <span data-owed-total>{{ owed_total|floatformat:0 }}</span></div>
+      </div>
+      <div class="row" style="gap:6px">
+        <button type="button" class="btn btn-sm" data-set-all="paid">All paid</button>
+        <button type="button" class="btn btn-sm" data-set-all="unpaid">None paid</button>
+      </div>
+    </div>
+  </section>
+
+  <section class="card">
+    <div class="table-wrap"><table class="table">
+      <thead><tr><th>Month</th><th class="num">Rent</th><th>Paid?</th></tr></thead>
+      <tbody>
+      {% for m in months %}
+      <tr data-month data-amount="{{ m.amount|floatformat:2 }}">
+        <td class="nowrap">{{ m.start|date:"j M" }} – {{ m.end|date:"j M Y" }}</td>
+        <td class="num">{{ m.amount|kes }}</td>
+        <td>
+          <div class="row" style="gap:6px;flex-wrap:wrap">
+            <select name="month_{{ m.index }}" id="month_{{ m.index }}" aria-label="Paid for {{ m.start|date:'j M Y' }}?">
+              <option value="paid"{% if m.status == 'paid' %} selected{% endif %}>Paid</option>
+              <option value="unpaid"{% if m.status == 'unpaid' %} selected{% endif %}>Not paid</option>
+              <option value="part"{% if m.status == 'part' %} selected{% endif %}>Part paid</option>
+            </select>
+            <span data-show-when="month_{{ m.index }}=part"><input name="month_{{ m.index }}_paid" value="{{ m.paid_text }}" inputmode="numeric" placeholder="KES paid" class="input-narrow" aria-label="How much they paid for {{ m.start|date:'j M Y' }}"></span>
+          </div>
+        </td>
+      </tr>
+      {% endfor %}
+      </tbody>
+    </table></div>
+  </section>
+
+  <div class="form-actions" style="margin-top:16px">
+    <button type="submit" class="btn btn-primary" data-confirm="{{ form.cleaned_data.tenant }} moves into {{ form.cleaned_data.unit }} owing KES {owed}." data-confirm-title="Save tenant?" data-confirm-ok="Save">Save tenant</button>
+    <a class="btn btn-ghost" href="{% url 'rentals:lease_create' %}">Start again</a>
+  </div>
+</form>
+<script src="{% static 'js/arrears.js' %}" defer></script>
+{% endblock %}
