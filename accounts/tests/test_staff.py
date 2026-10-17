@@ -148,19 +148,19 @@ class StaffTests(TestCase):
     # --- Repairs -------------------------------------------------------------------------
 
     def test_log_and_update_a_repair(self):
-        self.client.post(reverse('staff:repair_create'), {'unit': self.owes.unit.pk, 'title': 'Leaking tap',
+        self.client.post(reverse('staff:repair_create'), {'where': f'u{self.owes.unit.pk}', 'title': 'Leaking tap',
                                                           'priority': 'medium'})
         repair = MaintenanceRequest.objects.get()
         self.assertContains(self.client.get(reverse('staff:repairs')), 'Leaking tap')
         self.client.post(reverse('staff:repair_update', args=[repair.pk]), {
-            'unit': self.owes.unit.pk, 'title': 'Leaking tap', 'priority': 'medium', 'status': 'resolved',
+            'where': f'u{self.owes.unit.pk}', 'title': 'Leaking tap', 'priority': 'medium', 'status': 'resolved',
             'assigned_to': 'Fundi Joe', 'cost': '800'})
         repair.refresh_from_db()
         self.assertEqual((repair.status, repair.cost), ('resolved', D('800')))
         self.assertEqual(AuditEntry.objects.filter(action__startswith='repair.').count(), 2)
 
     def test_cannot_log_repairs_for_other_landlords(self):
-        resp = self.client.post(reverse('staff:repair_create'), {'unit': self.stranger.unit.pk, 'title': 'x',
+        resp = self.client.post(reverse('staff:repair_create'), {'where': f'u{self.stranger.unit.pk}', 'title': 'x',
                                                                  'priority': 'low'})
         self.assertEqual(resp.status_code, 200)  # form error: not one of their units
         self.assertFalse(MaintenanceRequest.objects.exists())

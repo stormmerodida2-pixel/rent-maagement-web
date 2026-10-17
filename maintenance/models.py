@@ -1,8 +1,10 @@
+import builtins
+
 from django.db import models
 from django.utils import timezone
 from django.utils.translation import gettext_lazy as _
 
-from rentals.models import Tenant, Unit
+from rentals.models import Property, Tenant, Unit
 
 
 class MaintenanceRequest(models.Model):
@@ -18,7 +20,9 @@ class MaintenanceRequest(models.Model):
         RESOLVED = 'resolved', _('Resolved')
         CANCELLED = 'cancelled', _('Cancelled')
 
-    unit = models.ForeignKey(Unit, on_delete=models.CASCADE, related_name='maintenance_requests')
+    property = models.ForeignKey(Property, on_delete=models.CASCADE, related_name='maintenance_requests')
+    unit = models.ForeignKey(Unit, on_delete=models.CASCADE, null=True, blank=True, related_name='maintenance_requests',
+                             help_text='Leave blank for general maintenance affecting the whole property.')
     reported_by = models.ForeignKey(
         Tenant, on_delete=models.SET_NULL, null=True, blank=True, related_name='maintenance_requests'
     )
@@ -35,9 +39,20 @@ class MaintenanceRequest(models.Model):
         ordering = ['-created_at']
 
     def __str__(self):
-        return f'{self.title} ({self.unit})'
+        return f'{self.title} ({self.where})'
+
+    @builtins.property  # the `property` field shadows the builtin
+    def is_general(self):
+        return self.unit_id is None
+
+    @builtins.property
+    def where(self):
+        """The house, or "Riverside · General" for the whole property."""
+        return str(self.unit) if self.unit_id else f'{self.property.name} · General'
 
     def save(self, *args, **kwargs):
+        if self.unit_id:
+            self.property_id = self.unit.property_id
         if self.status == self.Status.RESOLVED and self.resolved_at is None:
             self.resolved_at = timezone.now()
         elif self.status != self.Status.RESOLVED:

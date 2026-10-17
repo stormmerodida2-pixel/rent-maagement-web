@@ -517,11 +517,10 @@ def expense_create(request):
     initial = {}
     repair = None
     if request.GET.get('repair', '').isdigit():
-        repair = MaintenanceRequest.objects.filter(pk=request.GET['repair'], unit__property__owner=request.user) \
-            .select_related('unit').first()
+        repair = MaintenanceRequest.objects.filter(pk=request.GET['repair'], property__owner=request.user).first()
         if repair:
             initial = {'category': Expense.Category.REPAIRS, 'description': repair.title, 'amount': repair.cost,
-                       'unit': repair.unit_id, 'property': repair.unit.property_id}
+                       'unit': repair.unit_id, 'property': repair.property_id}
     form = ExpenseForm(request.POST or None, request.FILES or None, owner=request.user, initial=initial)
     if request.method == 'POST' and form.is_valid():
         try:

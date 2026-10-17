@@ -5,7 +5,7 @@ msgid ""
 msgstr ""
 "Project-Id-Version: Rentipay\n"
 "Report-Msgid-Bugs-To: \n"
-"POT-Creation-Date: 2026-10-17 12:03+0300\n"
+"POT-Creation-Date: 2026-10-17 13:38+0300\n"
 "PO-Revision-Date: YEAR-MO-DA HO:MI+ZONE\n"
 "Last-Translator: FULL NAME <EMAIL@ADDRESS>\n"
 "Language-Team: Kiswahili\n"
@@ -410,6 +410,16 @@ msgstr "Hakuna mkataba unaoendelea"
 msgid "Contact your landlord if this looks wrong."
 msgstr "Wasiliana na mwenye nyumba ikiwa hili si sahihi."
 
+msgid "Being fixed in your building"
+msgstr "Kinachorekebishwa kwenye jengo lako"
+
+#, python-format
+msgid "Reported %(date)s"
+msgstr "Iliripotiwa %(date)s"
+
+msgid "Your landlord already knows about these: no need to report them again."
+msgstr "Mwenye nyumba tayari anajua kuhusu haya: hakuna haja ya kuyaripoti tena."
+
 msgid "Report a problem"
 msgstr "Ripoti tatizo"
 
@@ -427,10 +437,6 @@ msgstr "Jumbe"
 
 msgid "My requests"
 msgstr "Maombi yangu"
-
-#, python-format
-msgid "Reported %(date)s"
-msgstr "Iliripotiwa %(date)s"
 
 #, python-format
 msgid "fixed %(date)s"

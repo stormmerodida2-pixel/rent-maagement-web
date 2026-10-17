@@ -78,7 +78,7 @@ def month_summary(user, month):
         'units': units,
         'occupied': len(leases),
         'vacant': units - len(leases),
-        'open_repairs': MaintenanceRequest.objects.filter(unit__property__owner=user).exclude(
+        'open_repairs': MaintenanceRequest.objects.filter(property__owner=user).exclude(
             status__in=[MaintenanceRequest.Status.RESOLVED, MaintenanceRequest.Status.CANCELLED]).count(),
         'had_activity': bool(billed or collected),
     }

@@ -314,7 +314,7 @@ def branding(request):
         from payments.models import C2BPayment, MpesaAccount
 
         context['nav_open_requests'] = MaintenanceRequest.objects.filter(
-            unit__property__owner=user,
+            property__owner=user,
         ).exclude(
             status__in=[MaintenanceRequest.Status.RESOLVED, MaintenanceRequest.Status.CANCELLED],
         ).count()

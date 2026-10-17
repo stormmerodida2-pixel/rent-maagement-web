@@ -17,12 +17,12 @@ PRIORITY_ORDER = Case(
 
 class MaintenanceList(OwnedMixin, ListView):
     model = MaintenanceRequest
-    owner_path = 'unit__property__owner'
+    owner_path = 'property__owner'
     template_name = 'maintenance/maintenance_list.html'
     paginate_by = 50
 
     def get_queryset(self):
-        qs = super().get_queryset().select_related('unit__property', 'reported_by')
+        qs = super().get_queryset().select_related('property', 'unit__property', 'reported_by')
         status = self.request.GET.get('status', 'open')
         if status == 'open':
             return qs.filter(status__in=OPEN_STATUSES).order_by(PRIORITY_ORDER, '-created_at')
@@ -37,7 +37,7 @@ class MaintenanceList(OwnedMixin, ListView):
 class MaintenanceCreate(OwnedMixin, FormPageMixin, CreateView):
     model = MaintenanceRequest
     form_class = MaintenanceForm
-    owner_path = 'unit__property__owner'
+    owner_path = 'property__owner'
     audit_action = 'repair.logged'
     page_title = 'Log a repair'
     submit_label = 'Log repair'
@@ -49,7 +49,7 @@ class MaintenanceCreate(OwnedMixin, FormPageMixin, CreateView):
 class MaintenanceUpdate(OwnedMixin, FormPageMixin, UpdateView):
     model = MaintenanceRequest
     form_class = MaintenanceForm
-    owner_path = 'unit__property__owner'
+    owner_path = 'property__owner'
     audit_action = 'repair.updated'
     page_title = 'Update repair'
     cancel_url = reverse_lazy('maintenance:list')

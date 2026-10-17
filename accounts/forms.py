@@ -8,6 +8,7 @@ from django.utils import timezone
 from django.utils.functional import lazy
 from django.utils.html import format_html
 
+from maintenance.forms import WhereMixin
 from maintenance.models import MaintenanceRequest
 from rentals.models import Property
 from rentals.utils import normalize_phone
@@ -323,17 +324,17 @@ class CashForm(forms.Form):
         return when
 
 
-class RepairForm(forms.ModelForm):
+class RepairForm(WhereMixin, forms.ModelForm):
     class Meta:
         model = MaintenanceRequest
-        fields = ['unit', 'title', 'description', 'priority', 'status', 'assigned_to', 'cost']
+        fields = ['title', 'description', 'priority', 'status', 'assigned_to', 'cost']
         labels = {'title': 'What needs fixing?', 'assigned_to': 'Who is fixing it (optional)',
                   'cost': 'Cost (KES, optional)'}
         widgets = {'description': forms.Textarea(attrs={'rows': 3})}
 
     def __init__(self, *args, member, **kwargs):
         super().__init__(*args, **kwargs)
-        self.fields['unit'].queryset = member.units().select_related('property')
+        self.add_where(member.looked_after())
         if not self.instance.pk:
             del self.fields['status']
 

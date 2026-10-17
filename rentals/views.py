@@ -59,9 +59,9 @@ def dashboard_numbers(user):
         or 0
     )
     open_requests = (
-        MaintenanceRequest.objects.filter(unit__property__owner=user)
+        MaintenanceRequest.objects.filter(property__owner=user)
         .exclude(status__in=[MaintenanceRequest.Status.RESOLVED, MaintenanceRequest.Status.CANCELLED])
-        .select_related('unit__property')
+        .select_related('property', 'unit__property')
         .order_by('-created_at')
     )
     rate = min(100, round(collected * 100 / billed)) if billed else None
@@ -483,6 +483,10 @@ def tenant_portal(request, token):
                        for lease, balance in ((lease, lease.balance) for lease in leases)],
         'payments': Payment.objects.filter(lease__tenant=tenant).select_related('lease__unit')[:10],
         'requests': tenant.maintenance_requests.select_related('unit')[:10],
+        # Problems affecting the whole building, so tenants don't all report the same thing.
+        'general_issues': MaintenanceRequest.objects.filter(
+            property__in={lease.unit.property_id for lease in leases}, unit__isnull=True,
+            status__in=[MaintenanceRequest.Status.OPEN, MaintenanceRequest.Status.IN_PROGRESS]),
         'open_complaints': tenant.complaints.exclude(status='resolved').count(),
         'notices': current_notices(tenant),
         'maintenance_form': maintenance_form,
