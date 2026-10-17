@@ -335,6 +335,7 @@ class RepairForm(WhereMixin, forms.ModelForm):
     def __init__(self, *args, member, **kwargs):
         super().__init__(*args, **kwargs)
         self.add_where(member.looked_after())
+        self.add_notify()
         if not self.instance.pk:
             del self.fields['status']
 

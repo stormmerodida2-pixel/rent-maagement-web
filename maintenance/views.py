@@ -1,3 +1,4 @@
+from django.contrib import messages
 from django.db.models import Case, IntegerField, Value, When
 from django.urls import reverse_lazy
 from django.views.generic import CreateView, ListView, UpdateView
@@ -7,6 +8,7 @@ from rentals.utils import OwnedMixin
 
 from .forms import MaintenanceForm
 from .models import MaintenanceRequest
+from .utils import notify_tenants
 
 OPEN_STATUSES = [MaintenanceRequest.Status.OPEN, MaintenanceRequest.Status.IN_PROGRESS]
 PRIORITY_ORDER = Case(
@@ -34,7 +36,20 @@ class MaintenanceList(OwnedMixin, ListView):
         return super().get_context_data(status=self.request.GET.get('status', 'open'), **kwargs)
 
 
-class MaintenanceCreate(OwnedMixin, FormPageMixin, CreateView):
+class NotifyTenantsMixin:
+    """After saving, text the tenants if the "Let the tenant know by SMS" box was ticked."""
+
+    def form_valid(self, form):
+        created = form.instance.pk is None
+        response = super().form_valid(form)
+        if form.cleaned_data.get('notify_tenants'):
+            sent = notify_tenants(self.object, created)
+            messages.info(self.request, f'Texted {sent} tenant{"s" if sent != 1 else ""} about it.' if sent else
+                          'No tenant to text: nobody with a phone number lives there, or the repair was cancelled.')
+        return response
+
+
+class MaintenanceCreate(NotifyTenantsMixin, OwnedMixin, FormPageMixin, CreateView):
     model = MaintenanceRequest
     form_class = MaintenanceForm
     owner_path = 'property__owner'
@@ -46,7 +61,7 @@ class MaintenanceCreate(OwnedMixin, FormPageMixin, CreateView):
     success_message = 'Logged "{obj.title}".'
 
 
-class MaintenanceUpdate(OwnedMixin, FormPageMixin, UpdateView):
+class MaintenanceUpdate(NotifyTenantsMixin, OwnedMixin, FormPageMixin, UpdateView):
     model = MaintenanceRequest
     form_class = MaintenanceForm
     owner_path = 'property__owner'
