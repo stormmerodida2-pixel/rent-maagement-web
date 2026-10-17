@@ -8,6 +8,7 @@ app_name = 'rentals'
 urlpatterns = [
     path('', views.home, name='home'),
     path('dashboard/', views.dashboard, name='dashboard'),
+    path('dashboard/up-to-date/', views.records_confirmed, name='records_confirmed'),
     path('live/', views.live, name='live'),
     path('leases/<int:pk>/', views.lease_detail, name='lease_detail'),
     path('leases/<int:pk>/remind/', views.send_reminder, name='send_reminder'),

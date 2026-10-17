@@ -12,6 +12,7 @@ from django.core.mail import EmailMultiAlternatives, send_mail
 from django.db import IntegrityError
 from django.template.loader import render_to_string
 from django.urls import reverse
+from django.utils import timezone
 from django.utils.formats import date_format
 from django.utils.translation import gettext as _
 
@@ -539,7 +540,6 @@ def summary_phone(owner, prefs):
 
 def send_payment_summaries(day=None):
     """Send each landlord who was paid on `day` (default today) their summary, once. Returns counts."""
-    from django.utils import timezone
 
     from billing.utils import locked_owner_ids
     from .models import WhatsAppSettings
@@ -587,3 +587,75 @@ def check_sms_account(cfg):
     reason = data.get('errorMessage') or resp.text[:200] or f'HTTP {resp.status_code}'
     return False, f"Africa's Talking said: {reason}"
 
+
+
+# --- Records not updated for a month ------------------------------------------------------------------------------
+
+STALE_AFTER = datetime.timedelta(days=30)
+STALE_REMIND_EVERY = datetime.timedelta(days=7)
+
+
+def last_update(owner):
+    """When the landlord's records were last brought up to date: anything recorded by a person (the landlord, a
+    caretaker or someone they gave access to), an M-Pesa statement upload, or "Everything's up to date"."""
+    from audit.models import AuditEntry
+    from payments.models import MpesaAccount
+
+    times = [
+        AuditEntry.objects.filter(owner=owner, actor__isnull=False).order_by('-created_at')
+        .values_list('created_at', flat=True).first(),
+        MpesaAccount.objects.filter(owner=owner).values_list('statement_imported_at', flat=True).first(),
+        owner.date_joined,
+    ]
+    return max(t for t in times if t is not None)
+
+
+def is_stale(owner, now=None):
+    """Days since the last update, if it's been longer than STALE_AFTER; otherwise None."""
+    days = ((now or timezone.now()) - last_update(owner)).days
+    return days if days >= STALE_AFTER.days else None
+
+
+def send_stale_reminders(now=None):
+    """Remind landlords with tenants whose records haven't been updated for a month; weekly until they do.
+    Returns how many were reminded."""
+    now = now or timezone.now()
+    owners = (get_user_model().objects.filter(is_active=True, properties__units__leases__is_active=True)
+              .distinct())
+    sent = 0
+    for owner in owners:
+        days = is_stale(owner, now)
+        if days is None:
+            continue
+        prefs = LandlordPreferences.for_user(owner)
+        if prefs.stale_reminded_at and now - prefs.stale_reminded_at < STALE_REMIND_EVERY:
+            continue
+        url = settings.SITE_URL.rstrip('/') + reverse('rentals:dashboard')
+        delivered = False
+        if owner.email and is_verified(owner):
+            try:
+                send_mail(
+                    subject=f'Your {settings.APP_NAME} records need updating',
+                    message=(f'Hi {owner.first_name or "there"},\n\nNothing has been recorded in your '
+                             f'{settings.APP_NAME} account for {days} days. Your records should be updated at least '
+                             'once a month, or tenants\' balances, reminders and your reports will be wrong.\n\n'
+                             'Please log in and:\n'
+                             '- record any cash or bank payments you received\n'
+                             '- upload your M-Pesa statement, if you use one\n'
+                             '- record your expenses and any tenants who moved in or out\n\n'
+                             f'If nothing has changed, tap "Everything\'s up to date" on your dashboard:\n{url}\n\n'
+                             f'{settings.APP_NAME}'),
+                    from_email=None, recipient_list=[owner.email],
+                )
+                delivered = True
+            except Exception:
+                logger.exception('Could not email stale-records reminder to %s', owner.pk)
+        phone = summary_phone(owner, prefs)
+        if phone:
+            msg = send_sms(phone, f'{settings.APP_NAME}: nothing recorded for {days} days. Please update your '
+                                  f'payments and tenants, or confirm all is up to date: {url}')
+            delivered = delivered or msg.status != SmsMessage.Status.FAILED
+        prefs.stale_reminded_at = now  # weekly, even if nothing could be delivered
+        prefs.save(update_fields=['stale_reminded_at'])
+        sent += delivered
+    return sent
