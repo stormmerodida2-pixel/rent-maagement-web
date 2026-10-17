@@ -44,7 +44,7 @@
   </section>
   {% endif %}
 
-  {% for lease, balance, plan_row in lease_rows %}
+  {% for lease, balance, plan_row, unpaid in lease_rows %}
   <section class="card">
     <div class="card-header">
       <h2>{{ lease.unit }}</h2>
@@ -58,6 +58,19 @@
         <div class="value">{% if balance < 0 %}{{ balance|kes|cut:"-" }}{% else %}{{ balance|kes }}{% endif %}</div>
         <div class="muted small">{% blocktranslate with rent=lease.monthly_rent|kes day=lease.due_day %}Rent {{ rent }} a month, due on day {{ day }}{% endblocktranslate %}</div>
       </div>
+      {% if unpaid %}
+      <div class="owe-box">
+        <strong>{% translate "What you owe" %}</strong>
+        <table class="table unpaid-table"><tbody>
+          {% for charge, owed in unpaid %}
+          <tr><td>{{ charge.label }}{% if owed != charge.amount %} <span class="muted small">{% blocktranslate with total=charge.amount|kes %}(of {{ total }}){% endblocktranslate %}</span>{% endif %}</td>
+            <td class="num nowrap">{{ owed|kes }}</td></tr>
+          {% endfor %}
+          {% if unpaid|length > 1 %}<tr class="unpaid-total"><td><strong>{% translate "Total" %}</strong></td><td class="num"><strong>{{ balance|kes }}</strong></td></tr>{% endif %}
+        </tbody></table>
+        <p class="muted small" style="margin:6px 0 0">{% translate "Payments count towards the oldest first." %}</p>
+      </div>
+      {% endif %}
       {% with change=lease.pending_rent_change %}{% if change %}<div class="alert alert-info small">{% icon 'calendar' 16 %}<span>{% blocktranslate with new=change.new_rent|kes date=change.starts_on|date:"j F Y" %}Your rent changes to {{ new }} a month from {{ date }}.{% endblocktranslate %}</span></div>{% endif %}{% endwith %}
       {% if plan_row %}{% with plan=plan_row.plan p=plan_row.progress %}
       <div class="plan-box">

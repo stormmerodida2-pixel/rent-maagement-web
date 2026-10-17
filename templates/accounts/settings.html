@@ -66,6 +66,12 @@
     {% icon 'arrow-right' %}
   </a>
 
+  <a class="card settings-item" href="{% url 'accounts:viewers' %}">
+    <span class="settings-icon">{% icon 'users' %}</span>
+    <span class="settings-text"><strong>People with access</strong><span class="muted small">Let a co-owner or accountant see your account, read-only.</span></span>
+    {% icon 'arrow-right' %}
+  </a>
+
   {% if BILLING_ENABLED and not user.is_superuser %}
   <a class="card settings-item" href="{% url 'billing:billing' %}">
     <span class="settings-icon">{% icon 'wallet' %}</span>

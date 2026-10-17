@@ -98,6 +98,7 @@ MIDDLEWARE = [
     'django.contrib.messages.middleware.MessageMiddleware',
     'billing.utils.ReadOnlyWhenUnpaidMiddleware',  # landlords with an unpaid bill can look but not change
     'accounts.utils.UpdatedTermsMiddleware',  # landlords accept changed terms before going on
+    'accounts.utils.ReadOnlyViewerMiddleware',  # co-owners and accountants see the landlord's account, read-only
     'django.middleware.clickjacking.XFrameOptionsMiddleware',
 ]
 

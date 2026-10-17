@@ -282,6 +282,14 @@ Cash and bank payments record who entered them. A caretaker is **holding** the c
 - The evening WhatsApp summary adds *"Peter is holding KES 12,000 cash."*
 - Balances count cash recorded from when payments started recording who took them; voided payments don't count.
 
+### Read-only access (co-owners, accountants)
+
+**Settings → People with access**: the landlord adds someone (name, email or phone to log in, a password, and an optional label like "Accountant"). They log in with their own details and see the landlord's account exactly as the landlord does (dashboard, tenants, payments, expenses, reports), including downloads (statements, receipts, CSVs), with a banner saying it's read-only.
+
+- Anything that would change data is refused (`ReadOnlyViewerMiddleware`: only GET requests pass), and the landlord's settings, M-Pesa, billing, staff and admin pages are off-limits.
+- Their own password and two-step login stay theirs (`/settings/password/`, `/settings/two-step/`), separate from the landlord's.
+- The landlord unticks *Can log in* to stop someone. Their access and logins show in Activity.
+
 ### Caretaker tools
 
 Three extra tools for caretakers, each a tickbox per caretaker in **Settings → Staff** (all on by default):
@@ -423,6 +431,8 @@ When a tenant has fallen behind, open their page and choose **Set up payment pla
 - While a tenant keeps to their plan, the usual balance reminders are paused, and **Remind everyone who owes** leaves them unticked.
 - **Tenants → Payment plans** (and a dashboard card) shows who's on track, who's missed payments, and progress. Plans finish by themselves once cleared; cancel one to return to normal reminders.
 - Tenants see their plan's progress and next payment on their rent page.
+
+Tenants also see **What you owe** on their rent page whenever they owe: the same oldest-first list of unpaid months and charges as the landlord's *What's unpaid*, in English or Kiswahili.
 
 ### Search engines
 

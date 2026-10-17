@@ -376,6 +376,17 @@ class ChangePasswordView(auth_views.PasswordChangeView):
         'cancel_url': reverse_lazy('accounts:settings'),
     }
 
+    def get_success_url(self):
+        if getattr(self.request, 'viewer', None):  # read-only access: Settings is the landlord's
+            return reverse('rentals:dashboard')
+        return super().get_success_url()
+
+    def get_context_data(self, **kwargs):
+        ctx = super().get_context_data(**kwargs)
+        if getattr(self.request, 'viewer', None):
+            ctx['cancel_url'] = reverse('rentals:dashboard')
+        return ctx
+
     def post(self, request, *args, **kwargs):
         if ratelimit.hit('password-change', request.user.pk, 60 * 60) > PASSWORD_CHANGES_PER_HOUR:
             messages.error(request, 'Too many attempts. Please try again in an hour.')
@@ -897,3 +908,44 @@ def verify_phone(request):
                             else 'rentals:dashboard')
         form.add_error('code', "That code isn't right, or it has expired. Use the newest one, or send a new code.")
     return render(request, 'accounts/verify_phone.html', {'form': form, 'phone': f'0{profile.phone[3:]}'})
+
+
+# --- Read-only access (Settings → People with access) -----------------------------------------------------
+
+@landlord_required
+def viewer_list(request):
+    from .models import ViewerAccess
+
+    viewers = ViewerAccess.objects.filter(owner=request.user).select_related('user', 'user__profile')
+    return render(request, 'accounts/viewers.html', {'viewers': viewers})
+
+
+@landlord_required
+def viewer_edit(request, pk=None):
+    from .forms import ViewerForm
+    from .models import ViewerAccess
+
+    access = get_object_or_404(ViewerAccess, pk=pk, owner=request.user) if pk else None
+    form = ViewerForm(request.POST or None, owner=request.user, access=access)
+    if request.method == 'POST' and form.is_valid():
+        access = form.save()
+        who = f'{access.name} ({login_label(access.user)})'
+        if pk:
+            audit.record(owner=request.user, actor=request.user, action='access.updated',
+                         summary=f'Updated read-only access for {who}'
+                                 + ('' if access.user.is_active else ': can no longer log in') + '.')
+            messages.success(request, f'Saved {access.name}.')
+        else:
+            audit.record(owner=request.user, actor=request.user, action='access.added',
+                         summary=f'Gave {who} read-only access to the account.')
+            messages.success(request, f'{access.name} can now log in with {login_label(access.user)} and the '
+                                      'password you set, and see your account without changing anything.')
+        return redirect('accounts:viewers')
+    return render(request, 'form_page.html', {
+        'form': form, 'page_title': f'Edit {access.name}' if access else 'Give someone read-only access',
+        'intro': None if access else 'A co-owner, family member or accountant. They see your dashboard, tenants, '
+                                     'payments, expenses and reports, and can download statements and CSVs, '
+                                     "but can't change anything or see your settings.",
+        'submit_label': 'Save' if access else 'Give access', 'cancel_url': reverse('accounts:viewers'),
+    })
+

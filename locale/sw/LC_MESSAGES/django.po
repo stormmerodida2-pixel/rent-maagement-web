@@ -5,7 +5,7 @@ msgid ""
 msgstr ""
 "Project-Id-Version: Rentipay\n"
 "Report-Msgid-Bugs-To: \n"
-"POT-Creation-Date: 2026-10-17 09:25+0300\n"
+"POT-Creation-Date: 2026-10-17 12:03+0300\n"
 "PO-Revision-Date: YEAR-MO-DA HO:MI+ZONE\n"
 "Last-Translator: FULL NAME <EMAIL@ADDRESS>\n"
 "Language-Team: Kiswahili\n"
@@ -339,6 +339,19 @@ msgstr "Salio"
 #, python-format
 msgid "Rent %(rent)s a month, due on day %(day)s"
 msgstr "Kodi %(rent)s kwa mwezi, hulipwa kila tarehe %(day)s"
+
+msgid "What you owe"
+msgstr "Unachodaiwa"
+
+#, python-format
+msgid "(of %(total)s)"
+msgstr "(kati ya %(total)s)"
+
+msgid "Total"
+msgstr "Jumla"
+
+msgid "Payments count towards the oldest first."
+msgstr "Malipo hulipa deni la zamani zaidi kwanza."
 
 #, python-format
 msgid "Your rent changes to %(new)s a month from %(date)s."
