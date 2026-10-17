@@ -194,7 +194,7 @@ msgstr "Kodi ambayo haijalipwa %(start)s – %(end)s"
 
 #, python-format
 msgid "(KES %(paid)s of %(total)s paid)"
-msgstr "(KES %(paid)s kati ya %(total)s zimelipwa)"
+msgstr "(zimelipwa KES %(paid)s kati ya %(total)s)"
 
 #, python-format
 msgid "Rent %(start)s – %(end)s"
@@ -351,7 +351,7 @@ msgid "Total"
 msgstr "Jumla"
 
 msgid "Payments count towards the oldest first."
-msgstr "Malipo hulipa deni la zamani zaidi kwanza."
+msgstr "Malipo yako hulipia deni la zamani zaidi kwanza."
 
 #, python-format
 msgid "Your rent changes to %(new)s a month from %(date)s."
@@ -411,7 +411,7 @@ msgid "Contact your landlord if this looks wrong."
 msgstr "Wasiliana na mwenye nyumba ikiwa hili si sahihi."
 
 msgid "Being fixed in your building"
-msgstr "Kinachorekebishwa kwenye jengo lako"
+msgstr "Yanayorekebishwa katika jengo lako"
 
 #, python-format
 msgid "Reported %(date)s"
