@@ -3,26 +3,37 @@
 {% block page_title %}People with access{% endblock %}
 {% block content %}
 <div class="page-header">
-  <div><h1>People with access</h1><p class="sub">People who can see your account but not change it: a spouse or co-owner abroad, your accountant. They log in with their own email or phone number.</p></div>
-  <div class="actions"><a class="btn btn-primary" href="{% url 'accounts:viewer_add' %}">{% icon 'plus' %}Give access</a></div>
+  <div><h1>People with access</h1><p class="sub">A spouse or co-owner, your accountant: they see your account with their own login, and you choose whether they can also make changes.</p></div>
+  <div class="actions"><a class="btn btn-primary" href="{% url 'accounts:viewer_add' %}">{% icon 'plus' %}Invite someone</a></div>
 </div>
 <section class="card">
   {% if viewers %}
   <div class="table-wrap"><table class="table">
-    <thead><tr><th>Name</th><th>Logs in with</th><th>Last login</th><th></th></tr></thead>
+    <thead><tr><th>Name</th><th>Logs in with</th><th>Can</th><th>Last login</th><th></th></tr></thead>
     <tbody>
     {% for v in viewers %}
     <tr>
       <td><strong>{{ v.name }}</strong>{% if v.role %}<div class="muted small">{{ v.role }}</div>{% endif %}</td>
       <td>{{ v.user|login_label }}{% if not v.user.is_active %} <span class="badge">Can't log in</span>{% endif %}</td>
-      <td class="nowrap">{{ v.user.last_login|date:"d M Y, H:i"|default:"Never" }}</td>
+      <td>{% if v.can_edit %}<span class="badge badge-info">View &amp; change</span>{% else %}<span class="badge">View only</span>{% endif %}</td>
+      <td class="nowrap">{% if v.invite_link %}<span class="badge badge-warn">Invited</span>{% if v.invited_at %}<div class="muted small">{{ v.invited_at|date:"d M" }}</div>{% endif %}{% else %}{{ v.user.last_login|date:"d M Y, H:i"|default:"Never" }}{% endif %}</td>
       <td class="num"><a class="btn btn-sm btn-ghost" href="{% url 'accounts:viewer_edit' v.pk %}">Edit</a></td>
     </tr>
+    {% if v.invite_link and v.user.is_active %}
+    <tr><td colspan="5">
+      <div class="row" style="gap:8px;flex-wrap:wrap">
+        <span class="muted small">Invite link (works for 3 days):</span>
+        <input id="invite-{{ v.pk }}" value="{{ v.invite_link }}" readonly style="flex:1;min-width:200px" aria-label="Invite link for {{ v.name }}">
+        <button type="button" class="btn btn-sm" data-copy="#invite-{{ v.pk }}">{% icon 'file' %}<span data-copy-label>Copy</span></button>
+        <form method="post" action="{% url 'accounts:viewer_resend' v.pk %}">{% csrf_token %}<button class="btn btn-sm btn-ghost">Send again</button></form>
+      </div>
+    </td></tr>
+    {% endif %}
     {% endfor %}
     </tbody>
   </table></div>
   {% else %}
-  <div class="empty"><strong>Nobody yet</strong>Give a co-owner or accountant read-only access, so they can follow the rent without asking you.</div>
+  <div class="empty"><strong>Nobody yet</strong>Invite a co-owner or accountant so they can follow the rent without asking you.</div>
   {% endif %}
 </section>
 <p class="muted small" style="margin-top:14px">They see your tenants' details too, so only give access to people you trust; you're responsible for who sees your tenants' data. To stop someone, edit them and untick <em>Can log in</em>.</p>

@@ -45,7 +45,7 @@ from .utils import (
 )
 from .utils import (
     canonical_login, check_phone_code, find_user, is_verified, login_label, mark_verified,
-    send_phone_code, send_verification_email, user_from_token,
+    send_invite, send_phone_code, send_verification_email, user_from_token,
 )
 
 logger = logging.getLogger(__name__)
@@ -910,14 +910,24 @@ def verify_phone(request):
     return render(request, 'accounts/verify_phone.html', {'form': form, 'phone': f'0{profile.phone[3:]}'})
 
 
-# --- Read-only access (Settings → People with access) -----------------------------------------------------
+# --- People with access (Settings → People with access) ----------------------------------------------------
 
 @landlord_required
 def viewer_list(request):
     from .models import ViewerAccess
+    from .utils import invite_url
 
-    viewers = ViewerAccess.objects.filter(owner=request.user).select_related('user', 'user__profile')
+    viewers = list(ViewerAccess.objects.filter(owner=request.user).select_related('user', 'user__profile'))
+    for v in viewers:
+        v.invite_link = None if v.joined else invite_url(v)  # to copy into WhatsApp if the SMS/email doesn't arrive
     return render(request, 'accounts/viewers.html', {'viewers': viewers})
+
+
+def _invite_message(access, sent):
+    how = {'email': f'emailed {access.user.email}', 'sms': 'sent by SMS'}.get(sent)
+    if how:
+        return f'Invite {how}. {access.name} chooses a password from the link, then logs in.'
+    return f"We couldn't send {access.name}'s invite: copy their invite link below and send it on WhatsApp."
 
 
 @landlord_required
@@ -930,22 +940,68 @@ def viewer_edit(request, pk=None):
     if request.method == 'POST' and form.is_valid():
         access = form.save()
         who = f'{access.name} ({login_label(access.user)})'
+        level = access.level.lower()
         if pk:
             audit.record(owner=request.user, actor=request.user, action='access.updated',
-                         summary=f'Updated read-only access for {who}'
-                                 + ('' if access.user.is_active else ': can no longer log in') + '.')
+                         summary=f'Updated access for {who}: {level}'
+                                 + ('' if access.user.is_active else ', can no longer log in') + '.')
             messages.success(request, f'Saved {access.name}.')
         else:
             audit.record(owner=request.user, actor=request.user, action='access.added',
-                         summary=f'Gave {who} read-only access to the account.')
-            messages.success(request, f'{access.name} can now log in with {login_label(access.user)} and the '
-                                      'password you set, and see your account without changing anything.')
+                         summary=f'Gave {who} access to the account ({level}).')
+            if access.joined:
+                messages.success(request, f'{access.name} can now log in with {login_label(access.user)} and the '
+                                          'password you set.')
+            else:
+                sent = send_invite(access)
+                (messages.success if sent else messages.warning)(request, _invite_message(access, sent))
         return redirect('accounts:viewers')
     return render(request, 'form_page.html', {
-        'form': form, 'page_title': f'Edit {access.name}' if access else 'Give someone read-only access',
+        'form': form, 'page_title': f'Edit {access.name}' if access else 'Invite someone to your account',
         'intro': None if access else 'A co-owner, family member or accountant. They see your dashboard, tenants, '
-                                     'payments, expenses and reports, and can download statements and CSVs, '
-                                     "but can't change anything or see your settings.",
-        'submit_label': 'Save' if access else 'Give access', 'cancel_url': reverse('accounts:viewers'),
+                                     'payments, expenses and reports, and can download statements and CSVs. '
+                                     'Choose whether they can also make changes.',
+        'submit_label': 'Save' if access else 'Send invite', 'cancel_url': reverse('accounts:viewers'),
     })
+
+
+@landlord_required
+@require_POST
+def viewer_resend(request, pk):
+    from .models import ViewerAccess
+
+    access = get_object_or_404(ViewerAccess, pk=pk, owner=request.user)
+    if access.joined:
+        messages.info(request, f'{access.name} has already joined.')
+    else:
+        sent = send_invite(access)
+        (messages.success if sent else messages.warning)(request, _invite_message(access, sent))
+    return redirect('accounts:viewers')
+
+
+def invite_accept(request, uidb64, token):
+    """The invited person chooses their password, then they're logged straight in."""
+    from django.utils.encoding import force_str
+    from django.utils.http import urlsafe_base64_decode
+
+    from .models import viewer_for
+    from .utils import invite_tokens
+
+    try:
+        user = get_user_model().objects.get(pk=force_str(urlsafe_base64_decode(uidb64)), is_active=True)
+    except (ValueError, TypeError, OverflowError, get_user_model().DoesNotExist):
+        user = None
+    access = viewer_for(user) if user else None
+    if access is None or not invite_tokens.check_token(user, token):
+        return render(request, 'accounts/invite.html', {'invalid': True}, status=400)
+    form = SetPasswordForm(user, request.POST or None)
+    if request.method == 'POST' and form.is_valid():
+        form.save()
+        login(request, user, backend='accounts.utils.EmailOrPhoneBackend')
+        audit.record(owner=access.owner, actor=user, action='access.joined',
+                     summary=f'{access.name} accepted the invite and logged in.')
+        messages.success(request, f"Welcome, {user.first_name or 'there'}! Log in next time with "
+                                  f'{login_label(user)} and your new password.')
+        return redirect('rentals:dashboard')
+    return render(request, 'accounts/invite.html', {'form': form, 'access': access})
 

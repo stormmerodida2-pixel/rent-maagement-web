@@ -391,22 +391,29 @@ class TenantNoteForm(forms.Form):
 
 
 class ViewerForm(forms.Form):
-    """A landlord gives someone read-only access (and sets their password), or edits it."""
+    """A landlord invites someone into their account (or sets their password for them), or edits their access."""
+
+    LEVELS = [('view', 'Can view only'),
+              ('edit', 'Can view and make changes')]
 
     name = forms.CharField(max_length=150, label='Their name')
     contact = forms.CharField(label='Their email or phone number', max_length=254,
                               help_text='They log in with this.')
     role = forms.CharField(max_length=60, required=False, label='Who they are',
                            widget=forms.TextInput(attrs={'placeholder': 'e.g. Co-owner, Accountant'}))
-    password = forms.CharField(strip=False, required=False, widget=forms.PasswordInput(attrs={'autocomplete': 'new-password'}),
-                               help_text='At least 8 characters. Give it to them privately; they can change it.')
+    level = forms.ChoiceField(choices=LEVELS, initial='view', widget=forms.RadioSelect, label='What they can do',
+                              help_text='Making changes means recording payments, tenants, repairs and expenses. '
+                                        'Nobody but you can open your settings, M-Pesa, billing or staff.')
+    password = forms.CharField(strip=False, required=False, label='Or set a password for them',
+                               widget=forms.PasswordInput(attrs={'autocomplete': 'new-password'}),
+                               help_text='Leave blank and we send them a link to choose their own. Set one only if '
+                                         "they can't get the link; give it to them privately.")
     active = forms.BooleanField(required=False, initial=True, label='Can log in')
 
     def __init__(self, *args, owner, access=None, **kwargs):
         super().__init__(*args, **kwargs)
         self.owner, self.access = owner, access
         if access is None:
-            self.fields['password'].required = True
             del self.fields['active']
         else:
             from .utils import login_label
@@ -414,7 +421,7 @@ class ViewerForm(forms.Form):
             self.fields['password'].label = 'New password (optional)'
             self.fields['password'].help_text = 'Leave blank to keep their current password.'
             self.initial.update(name=access.name, contact=login_label(access.user), role=access.role,
-                                active=access.user.is_active)
+                                active=access.user.is_active, level='edit' if access.can_edit else 'view')
 
     def clean_contact(self):
         self.contact_kind, value = clean_login_contact(self.cleaned_data['contact'],
@@ -435,10 +442,13 @@ class ViewerForm(forms.Form):
         data = self.cleaned_data
         email = data['contact'] if self.contact_kind == 'email' else ''
         phone = data['contact'] if self.contact_kind == 'phone' else None
+        can_edit = data['level'] == 'edit'
         if self.access is None:
-            user = get_user_model().objects.create_user(new_username(), email=email, password=data['password'],
+            # Without a password they get an invite link and choose their own (create_user(password=None) makes
+            # the password unusable until then).
+            user = get_user_model().objects.create_user(new_username(), email=email, password=data['password'] or None,
                                                         first_name=data['name'])
-            access = ViewerAccess.objects.create(owner=self.owner, user=user, role=data['role'])
+            access = ViewerAccess.objects.create(owner=self.owner, user=user, role=data['role'], can_edit=can_edit)
         else:
             access, user = self.access, self.access.user
             user.first_name, user.is_active = data['name'], data['active']
@@ -447,8 +457,8 @@ class ViewerForm(forms.Form):
             if data['password']:
                 user.set_password(data['password'])
             user.save()
-            access.role = data['role']
-            access.save(update_fields=['role'])
+            access.role, access.can_edit = data['role'], can_edit
+            access.save(update_fields=['role', 'can_edit'])
         # The landlord vouches for the email or number, so it counts as confirmed.
         now = timezone.now()
         verified = {'phone': phone, 'phone_verified_at': now} if phone else {'email_verified_at': now}

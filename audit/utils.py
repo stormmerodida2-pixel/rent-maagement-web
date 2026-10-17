@@ -1,6 +1,12 @@
 """Record audit entries. Call from views and jobs right after the change is saved."""
 
+from contextvars import ContextVar
+
 from .models import AuditEntry
+
+# Set while someone the landlord let in (Settings → People with access) makes a change in the landlord's account,
+# so the activity log names them rather than the landlord.
+acting_user = ContextVar('acting_user', default=None)
 
 
 # --- Recording ---------------------------------------------------------------------------------------
@@ -14,6 +20,9 @@ def _plain(value):
 
 
 def record(*, owner, action, summary, actor=None, lease=None, changes=None):
+    real = acting_user.get()
+    if real is not None and actor is not None and actor.pk == owner.pk:
+        actor = real
     return AuditEntry.objects.create(
         owner=owner,
         actor=actor if actor is not None and actor.is_authenticated else None,
