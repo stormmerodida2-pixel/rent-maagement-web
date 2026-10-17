@@ -239,6 +239,12 @@ def private_file(request, kind, pk):
         field = item.photo if item else None
         allowed = item and (item.unit.property.owner_id == request.user.pk or
                             (staff and item.recorded_by_id == request.user.pk))
+    elif kind == 'expense':
+        from payments.models import Expense
+
+        item = Expense.all_objects.filter(pk=pk, owner=request.user).first()
+        field = item.receipt if item else None
+        allowed = item is not None
     else:
         raise Http404
     if not allowed or not field:

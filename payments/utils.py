@@ -406,8 +406,64 @@ def decide_expense(expense, approve, actor, reason=''):
     expense.reject_reason = '' if approve else reason[:200]
     expense.decided_at, expense.decided_by = timezone.now(), actor
     expense.save(update_fields=['status', 'reject_reason', 'decided_at', 'decided_by'])
+    if approve:
+        expense_from_staff_spending(expense, actor)
     audit.record(owner=expense.owner, actor=actor, action='cash.spending_approved' if approve else 'cash.spending_rejected',
                  summary=f'{"Approved" if approve else "Did not approve"} KES {expense.amount:,.0f} spent by '
                          f'{expense.staff.name} on "{expense.description}"{"" if approve else ": " + reason}.')
     return expense
 
+
+
+# --- Expenses and profit ------------------------------------------------------------------------------
+
+def _same_day_next_month(day, anchor_day):
+    import calendar
+
+    year, month = (day.year + 1, 1) if day.month == 12 else (day.year, day.month + 1)
+    return day.replace(year=year, month=month, day=min(anchor_day, calendar.monthrange(year, month)[1]))
+
+
+def create_recurring_expenses(today=None):
+    """Add this month's copy of every expense set to repeat monthly (and catch up missed months). Returns count."""
+    from .models import Expense
+
+    today = today or timezone.localdate()
+    made = 0
+    for original in Expense.objects.filter(repeats_monthly=True, repeat_of__isnull=True):
+        # Voided copies count too, so a month the landlord cancelled isn't added again.
+        copies = Expense.all_objects.filter(repeat_of=original).values_list('paid_on', flat=True)
+        latest = max([original.paid_on, *copies])
+        due = _same_day_next_month(latest, original.paid_on.day)
+        while due <= today:
+            Expense.objects.create(owner_id=original.owner_id, property_id=original.property_id,
+                                   unit_id=original.unit_id, category=original.category,
+                                   description=original.description, amount=original.amount, paid_on=due,
+                                   method=original.method, repeat_of=original)
+            made += 1
+            due = _same_day_next_month(due, original.paid_on.day)
+    return made
+
+
+def expense_from_staff_spending(staff_expense, actor):
+    """Approved caretaker spending is an expense too (paid from the rent cash they held)."""
+    from .models import Expense
+
+    unit = staff_expense.unit
+    expense, _ = Expense.objects.get_or_create(staff_expense=staff_expense, defaults={
+        'owner_id': staff_expense.owner_id, 'unit': unit, 'property_id': unit.property_id if unit else None,
+        'category': Expense.Category.REPAIRS, 'description': f'{staff_expense.description} ({staff_expense.staff.name})',
+        'amount': staff_expense.amount, 'paid_on': staff_expense.spent_on, 'method': Expense.Method.STAFF_CASH,
+        'recorded_by': actor,
+    })
+    return expense
+
+
+def expenses_by_property(owner, start, end):
+    """{property id (None = shared costs): total spent} between start (inclusive) and end (exclusive)."""
+    from django.db.models import Sum
+
+    from .models import Expense
+
+    return dict(Expense.objects.filter(owner=owner, paid_on__gte=start, paid_on__lt=end)
+                .values_list('property').annotate(total=Sum('amount')))

@@ -13,7 +13,8 @@ from django.shortcuts import get_object_or_404, render
 from django.urls import reverse
 from django.utils import timezone
 
-from payments.models import MpesaAccount, Payment
+from payments.models import Expense, MpesaAccount, Payment
+from payments.utils import expenses_by_property
 from rentals.utils import tenant_language
 from rentals.models import Lease, Property, RentCharge, Tenant
 from rentals.views import statement
@@ -42,15 +43,20 @@ def overview(request):
         occupied[lease.unit.property_id] += 1
         arrears[lease.unit.property_id] += max(lease.balance, Decimal('0'))
 
+    spent = expenses_by_property(user, month, next_month)
     rows = []
     for prop in properties:
         b, c = billed.get(prop.pk) or Decimal('0'), collected.get(prop.pk) or Decimal('0')
+        s = spent.get(prop.pk) or Decimal('0')
         rows.append({
             'property': prop, 'units': len(prop.units.all()), 'occupied': occupied[prop.pk],
-            'billed': b, 'collected': c, 'arrears': arrears[prop.pk],
+            'billed': b, 'collected': c, 'arrears': arrears[prop.pk], 'spent': s, 'net': c - s,
             'rate': min(100, round(c * 100 / b)) if b else None,
         })
-    totals = {k: sum(r[k] for r in rows) for k in ('units', 'occupied', 'billed', 'collected', 'arrears')}
+    shared = spent.get(None) or Decimal('0')  # costs for all properties together
+    totals = {k: sum(r[k] for r in rows) for k in ('units', 'occupied', 'billed', 'collected', 'arrears', 'spent')}
+    totals['spent'] += shared
+    totals['net'] = totals['collected'] - totals['spent']
     totals['rate'] = min(100, round(totals['collected'] * 100 / totals['billed'])) if totals['billed'] else None
 
     # Twelve-month trend ending at the selected month.
@@ -65,19 +71,27 @@ def overview(request):
             lease__unit__property__owner=user, paid_at__date__gte=start, paid_at__date__lt=next_month,
         ).annotate(m=TruncMonth('paid_at')).values_list('m').annotate(total=Sum('amount'))
     }
+    spent_by_month = {
+        timezone.localdate(m) if isinstance(m, datetime.datetime) else m: t
+        for m, t in Expense.objects.filter(owner=user, paid_on__gte=start, paid_on__lt=next_month)
+        .annotate(m=TruncMonth('paid_on')).values_list('m').annotate(total=Sum('amount'))
+    }
     trend = []
     for i in range(12):
         m = _add_months(start, i)
-        trend.append({'month': m, 'billed': billed_by_month.get(m) or 0, 'collected': collected_by_month.get(m) or 0})
-    peak = max([max(t['billed'], t['collected']) for t in trend] + [1])
+        c, s = collected_by_month.get(m) or 0, spent_by_month.get(m) or 0
+        trend.append({'month': m, 'billed': billed_by_month.get(m) or 0, 'collected': c, 'spent': s, 'net': c - s})
+    peak = max([max(t['billed'], t['collected'], t['spent']) for t in trend] + [1])
     for t in trend:
         t['billed_pct'] = round(t['billed'] * 100 / peak)
         t['collected_pct'] = round(t['collected'] * 100 / peak)
+        t['spent_pct'] = round(t['spent'] * 100 / peak)
 
     return render(request, 'reports/overview.html', {
         'month': month, 'prev_month': _add_months(month, -1),
         'next_month': next_month if next_month <= datetime.date.today() else None,
-        'rows': rows, 'totals': totals, 'trend': trend,
+        'rows': rows, 'totals': totals, 'trend': trend, 'shared': shared,
+        'year_net': sum(t['net'] for t in trend),
     })
 
 

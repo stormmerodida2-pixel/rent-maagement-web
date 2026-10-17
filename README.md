@@ -266,6 +266,15 @@ docker compose exec web python manage.py check --deploy
 - **Monitoring:** point an uptime monitor at `/healthz/`. It returns 503 if the database or cache is down.
 - After a few days of confirmed HTTPS, raise `DJANGO_HSTS_SECONDS` to `31536000`.
 
+### Expenses and profit
+
+**Money → Expenses** records what landlords spend: category (repairs, caretaker pay, water, electricity, security, cleaning, land rates, insurance, agent fees, other), amount, date, property (or *all properties* for shared costs), optional unit, how it was paid, a reference and an optional receipt photo (private, like caretaker receipts). Expenses are voided, never deleted.
+
+- **Every month:** tick *Repeat every month* (e.g. the caretaker's salary) and the daily `create_recurring_expenses` job (06:15) adds it again on the same day each month, catching up missed months, until *Stop* is pressed. A voided month isn't added back.
+- **Caretaker spending** the landlord approves becomes an expense automatically (paid "from caretaker's rent cash").
+- **Repairs** with a cost have *Record as expense*, which fills in the form.
+- **Reports** now show **Spent** and **You made** (collected − spent) for the month, per property (shared costs on their own row), and a 12-month table of collected, spent and made, with spending on the chart.
+
 ### Cash with staff
 
 Cash and bank payments record who entered them. A caretaker is **holding** the cash they recorded until the landlord confirms receiving it.

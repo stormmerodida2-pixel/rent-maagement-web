@@ -28,7 +28,7 @@
         <td>{% badge r.priority r.get_priority_display %}</td>
         <td>{% badge r.status r.get_status_display %}</td>
         <td>{{ r.assigned_to|default:"—" }}</td>
-        <td class="num">{% if r.cost is not None %}{{ r.cost|kes }}{% endif %}</td>
+        <td class="num">{% if r.cost is not None %}{{ r.cost|kes }}<div><a class="small" href="{% url 'payments:expense_create' %}?repair={{ r.pk }}">Record as expense</a></div>{% endif %}</td>
       </tr>
       {% endfor %}
       </tbody>
