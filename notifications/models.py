@@ -50,6 +50,7 @@ class LandlordPreferences(models.Model):
         help_text="At 8pm on days you received payments: how much, how, and who still owes. Nothing on days with "
                   'no payments. Sent to your phone number above.')
     summary_sent_on = models.DateField(null=True, blank=True, editable=False)
+    stale_reminded_at = models.DateTimeField(null=True, blank=True, editable=False)
 
     def __str__(self):
         return f'Preferences of {self.user}'

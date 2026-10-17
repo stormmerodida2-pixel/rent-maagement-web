@@ -21,7 +21,9 @@ from audit import utils as audit
 from maintenance.forms import TenantMaintenanceForm
 from maintenance.models import MaintenanceRequest
 from notifications.models import SmsMessage
-from notifications.utils import plan_agreed_text, reminder_text, send_personal_sms, send_rent_reminder, send_sms
+from notifications.utils import (
+    is_stale, last_update, plan_agreed_text, reminder_text, send_personal_sms, send_rent_reminder, send_sms,
+)
 from payments import mpesa
 from payments.forms import StkPushForm
 from payments.models import C2BPayment, CashHandover, MpesaAccount, Payment, StaffExpense
@@ -116,6 +118,7 @@ def dashboard(request):
         'handovers_to_confirm': CashHandover.objects.filter(owner=user, status=CashHandover.Status.PENDING)
         .select_related('staff__user'),
         'spending_to_approve': StaffExpense.objects.filter(owner=user, status=StaffExpense.Status.PENDING).count(),
+        'stale_days': is_stale(user) if numbers['occupied_count'] else None,
         'mpesa_account': account,
         'statement_due': statement_due(account),
         'setup_incomplete': not all(step['done'] for step in steps),
@@ -128,6 +131,17 @@ def dashboard(request):
                   PaymentPlan.objects.filter(lease__unit__property__owner=user, status=PaymentPlan.Status.ACTIVE)
                   .select_related('lease__tenant', 'lease__unit').order_by('started_at')[:8]],
     })
+
+
+@login_required
+@require_POST
+def records_confirmed(request):
+    """The landlord checked and nothing needs recording: counts as this month's update."""
+    since = last_update(request.user)
+    audit.record(owner=request.user, actor=request.user, action='records.confirmed',
+                 summary=f'Confirmed the records are up to date (last change {since:%d %b %Y}).')
+    messages.success(request, "Thanks: we'll check in again in a month.")
+    return redirect('rentals:dashboard')
 
 
 def latest_payment_id(user):

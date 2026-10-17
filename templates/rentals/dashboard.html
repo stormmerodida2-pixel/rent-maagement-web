@@ -40,6 +40,14 @@
 </div>
 {% endif %}
 
+{% if stale_days %}
+<div class="alert alert-warning" style="margin-bottom:20px">
+  {% icon 'bell' 18 %}
+  <span><strong>Nothing has been recorded for {{ stale_days }} days.</strong> Update your records at least once a month: cash and bank payments, your M-Pesa statement, expenses, and tenants moving in or out. Otherwise balances, reminders and reports go wrong.</span>
+  <span class="spacer"></span>
+  <form method="post" action="{% url 'rentals:records_confirmed' %}">{% csrf_token %}<button class="btn btn-sm" data-confirm="No payments, expenses or tenant changes to record since your last update?" data-confirm-title="Everything up to date?" data-confirm-ok="Yes, all up to date">Everything's up to date</button></form>
+</div>
+{% endif %}
 {% if spending_to_approve %}
 <div class="alert alert-info" style="margin-bottom:20px">
   {% icon 'file' 18 %}

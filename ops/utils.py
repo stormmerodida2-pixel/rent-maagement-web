@@ -136,6 +136,7 @@ JOBS = [
     Job('send_move_out_reminders', 'send_move_out_reminders', daily_at=datetime.time(8, 0)),
     Job('send_rent_reminders', 'send_rent_reminders', daily_at=datetime.time(9, 0)),
     Job('send_plan_reminders', 'send_plan_reminders', daily_at=datetime.time(9, 30)),
+    Job('send_stale_reminders', 'send_stale_reminders', daily_at=datetime.time(10, 0)),
     Job('send_payment_summaries', 'send_payment_summaries', daily_at=datetime.time(20, 0)),
 ]
 
