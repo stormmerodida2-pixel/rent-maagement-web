@@ -263,3 +263,4 @@ details.daraja[open] > summary h2::before { transform: rotate(90deg); }
 /* --- Expenses on the trend chart --------------------------------------------------------------------- */
 .sw-spent, .bar.spent { background: var(--warn); }
 .trend .bar { width: 26%; }
+.owe-box { border: 1px solid var(--border); border-radius: 10px; padding: 12px 14px; display: grid; gap: 6px; }

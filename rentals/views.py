@@ -479,7 +479,8 @@ def tenant_portal(request, token):
 
     return render(request, 'rentals/tenant_portal.html', {
         'tenant': tenant,
-        'lease_rows': [(lease, lease.balance, _portal_plan(lease)) for lease in leases],
+        'lease_rows': [(lease, balance, _portal_plan(lease), unpaid_items(lease) if balance > 0 else [])
+                       for lease, balance in ((lease, lease.balance) for lease in leases)],
         'payments': Payment.objects.filter(lease__tenant=tenant).select_related('lease__unit')[:10],
         'requests': tenant.maintenance_requests.select_related('unit')[:10],
         'open_complaints': tenant.complaints.exclude(status='resolved').count(),

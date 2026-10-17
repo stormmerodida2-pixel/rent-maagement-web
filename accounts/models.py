@@ -109,3 +109,34 @@ def staff_for(user):
         return user.staff_membership
     except StaffMember.DoesNotExist:
         return None
+
+
+class ViewerAccess(models.Model):
+    """Someone the landlord lets see their account without changing anything: a spouse or co-owner, an
+    accountant. They log in with their own email or phone and password and see the landlord's account."""
+
+    owner = models.ForeignKey(settings.AUTH_USER_MODEL, on_delete=models.CASCADE, related_name='viewers')
+    user = models.OneToOneField(settings.AUTH_USER_MODEL, on_delete=models.CASCADE, related_name='viewer_access')
+    role = models.CharField('who they are', max_length=60, blank=True,
+                            help_text='e.g. "Co-owner", "Accountant". Shown on your list only.')
+    created_at = models.DateTimeField(auto_now_add=True)
+
+    class Meta:
+        ordering = ['user__first_name']
+
+    def __str__(self):
+        return f'{self.user.get_full_name() or self.user} (read-only for {self.owner})'
+
+    @property
+    def name(self):
+        return self.user.get_full_name() or self.user.get_username()
+
+
+def viewer_for(user):
+    """The ViewerAccess for a signed-in user, or None for everyone else."""
+    if not user.is_authenticated:
+        return None
+    try:
+        return user.viewer_access
+    except ViewerAccess.DoesNotExist:
+        return None

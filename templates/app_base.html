@@ -43,13 +43,22 @@
     {# Pinned above the account row, so it's visible however long the menu gets. #}
     <nav class="nav nav-bottom" aria-label="Settings">
       <a href="{% url 'help' %}">{% icon 'message' %}Help</a>
+      {% if request.viewer %}
+      <a href="{% url 'accounts:password_change' %}" class="{% if url_name == 'password_change' %}active{% endif %}">{% icon 'settings' %}My password</a>
+      {% else %}
       <a href="{% url 'accounts:settings' %}" class="{% if url_name == 'settings' or url_name == 'mpesa_settings' or url_name == 'preferences' or url_name == 'contact' or url_name == 'profile' or url_name == 'password_change' or request.resolver_match.app_name == 'staff' or request.resolver_match.app_name == 'billing' or url_name == 'business_details' %}active{% endif %}">{% icon 'settings' %}Settings{% if nav_mpesa_missing %}<span class="count" title="M-Pesa isn't connected">!</span>{% endif %}</a>
+      {% endif %}
     </nav>
 
     <div class="sidebar-footer">
       <div class="who">
+        {% if request.viewer %}
+        <span class="avatar">{{ request.viewer.name|initials }}</span>
+        <div><div class="name small">{{ request.viewer.name }}</div><div class="meta">Read-only{% if request.viewer.role %} · {{ request.viewer.role }}{% endif %}</div></div>
+        {% else %}
         <span class="avatar">{{ user.get_full_name|default:user.username|initials }}</span>
         <div><div class="name small">{{ user.get_full_name|default:user.username }}</div><div class="meta">{% if user.is_superuser %}Administrator{% else %}Landlord{% endif %}</div></div>
+        {% endif %}
       </div>
       <form method="post" action="{% url 'logout' %}">{% csrf_token %}
         <button class="btn btn-ghost btn-sm" title="Log out">{% icon 'logout' %}<span class="logout-label">Log out</span></button>
@@ -60,6 +69,11 @@
 
   <main class="main">
     <div class="container">
+      {% if request.viewer %}
+      <div class="alert alert-info viewer-banner" style="margin-bottom:16px">
+        {% icon 'users' 18 %}<span>You're viewing <strong>{{ request.viewer.owner.get_full_name|default:"the landlord" }}</strong>'s account, read-only. You can look and download, but not change anything.</span>
+      </div>
+      {% endif %}
       {% if verify_prompt == 'phone' %}
       <div class="alert alert-info" style="margin-bottom:16px">
         {% icon 'phone' 18 %}

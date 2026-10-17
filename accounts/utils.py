@@ -359,3 +359,53 @@ class UpdatedTermsMiddleware:
                 request.session[TERMS_SESSION_KEY] = current
         return self.get_response(request)
 
+
+
+# --- Read-only access (co-owners, accountants) ------------------------------------------------------------
+
+# Their own login: password, two-step login and getting in and out stay theirs, not the landlord's.
+VIEWER_OWN_PATHS = ('/settings/password/', '/settings/two-step/', '/login/', '/logout/', '/terms/accept/',
+                    '/static/', '/sw.js', '/manifest.webmanifest', '/offline/', '/help/', '/privacy/', '/terms/')
+# Never for read-only viewers: the landlord's settings, billing, M-Pesa keys, staff, the admin.
+VIEWER_BLOCKED_PATHS = ('/settings/', '/payments/settings/', '/billing/', '/admin/', '/staff/', '/messages/settings/',
+                        '/messages/whatsapp/', '/messages/sms-settings/', '/verify-phone/', '/welcome/')
+
+
+class ReadOnlyViewerMiddleware:
+    """Someone with read-only access sees the landlord's account as the landlord does, but can't change it.
+
+    For their requests, request.user becomes the landlord (so every page shows the landlord's records) and
+    request.viewer holds their own access; anything but looking is refused. Their own password and two-step
+    pages keep them as themselves.
+    """
+
+    def __init__(self, get_response):
+        self.get_response = get_response
+
+    def __call__(self, request):
+        from .models import viewer_for
+
+        access = viewer_for(request.user)
+        request.viewer = None
+        if access is None or request.path.startswith(VIEWER_OWN_PATHS):
+            if access is not None:
+                request.viewer = access
+            return self.get_response(request)
+        if not access.owner.is_active:
+            return redirect('logout')
+        if request.path.startswith(VIEWER_BLOCKED_PATHS):
+            from django.contrib import messages
+
+            messages.info(request, "That page is only for the account owner.")
+            return redirect('rentals:dashboard')
+        if request.method not in ('GET', 'HEAD', 'OPTIONS'):
+            from django.contrib import messages
+
+            from django.utils.http import url_has_allowed_host_and_scheme
+
+            messages.error(request, "You have read-only access, so you can't make changes.")
+            back = request.META.get('HTTP_REFERER', '')
+            safe = url_has_allowed_host_and_scheme(back, {request.get_host()}, request.is_secure())
+            return redirect(back if safe and back else 'rentals:dashboard')
+        request.viewer, request.real_user, request.user = access, request.user, access.owner
+        return self.get_response(request)

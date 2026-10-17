@@ -1,0 +1,29 @@
+{% extends 'app_base.html' %}
+{% load ui %}
+{% block page_title %}People with access{% endblock %}
+{% block content %}
+<div class="page-header">
+  <div><h1>People with access</h1><p class="sub">People who can see your account but not change it: a spouse or co-owner abroad, your accountant. They log in with their own email or phone number.</p></div>
+  <div class="actions"><a class="btn btn-primary" href="{% url 'accounts:viewer_add' %}">{% icon 'plus' %}Give access</a></div>
+</div>
+<section class="card">
+  {% if viewers %}
+  <div class="table-wrap"><table class="table">
+    <thead><tr><th>Name</th><th>Logs in with</th><th>Last login</th><th></th></tr></thead>
+    <tbody>
+    {% for v in viewers %}
+    <tr>
+      <td><strong>{{ v.name }}</strong>{% if v.role %}<div class="muted small">{{ v.role }}</div>{% endif %}</td>
+      <td>{{ v.user|login_label }}{% if not v.user.is_active %} <span class="badge">Can't log in</span>{% endif %}</td>
+      <td class="nowrap">{{ v.user.last_login|date:"d M Y, H:i"|default:"Never" }}</td>
+      <td class="num"><a class="btn btn-sm btn-ghost" href="{% url 'accounts:viewer_edit' v.pk %}">Edit</a></td>
+    </tr>
+    {% endfor %}
+    </tbody>
+  </table></div>
+  {% else %}
+  <div class="empty"><strong>Nobody yet</strong>Give a co-owner or accountant read-only access, so they can follow the rent without asking you.</div>
+  {% endif %}
+</section>
+<p class="muted small" style="margin-top:14px">They see your tenants' details too, so only give access to people you trust; you're responsible for who sees your tenants' data. To stop someone, edit them and untick <em>Can log in</em>.</p>
+{% endblock %}

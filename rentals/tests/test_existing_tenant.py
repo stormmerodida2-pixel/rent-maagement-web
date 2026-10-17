@@ -146,3 +146,20 @@ class UnpaidBreakdownTests(TestCase):
         self.assertEqual(items[0][0], charges[1])
         self.assertEqual(items[0][1], charges[1].amount - D('5000'))
         self.assertEqual(sum(owed for _, owed in items), lease.balance)
+
+
+class TenantSeesWhatTheyOweTests(TestCase):
+    def test_rent_page_lists_unpaid_months_in_their_language(self):
+        owner = get_user_model().objects.create_user('landlord')
+        prop = Property.objects.create(owner=owner, name='Riverside')
+        unit = Unit.objects.create(property=prop, label='A1', default_rent=10000)
+        tenant = Tenant.objects.create(owner=owner, full_name='Jane', phone='254712345678', language='sw')
+        lease = Lease.objects.create(unit=unit, tenant=tenant, start_date=TODAY - datetime.timedelta(days=90),
+                                     monthly_rent=10000, due_day=5)
+        from ..utils import bring_forward, rent_months
+
+        months = rent_months(lease)
+        bring_forward(lease, D('0'), D('0'), owner, unpaid_months=[(months[0], D('10000')), (months[1], D('4000'))])
+        page = self.client.get(reverse('rentals:tenant_portal', args=[tenant.portal_token]))
+        self.assertContains(page, 'Kodi ambayo haijalipwa')
+        self.assertContains(page, 'KES 14,000')

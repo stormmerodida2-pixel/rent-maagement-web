@@ -388,3 +388,69 @@ class TenantNoteForm(forms.Form):
             self.add_error('promised_by', 'When did they promise to pay by?')
         return cleaned
 
+
+class ViewerForm(forms.Form):
+    """A landlord gives someone read-only access (and sets their password), or edits it."""
+
+    name = forms.CharField(max_length=150, label='Their name')
+    contact = forms.CharField(label='Their email or phone number', max_length=254,
+                              help_text='They log in with this.')
+    role = forms.CharField(max_length=60, required=False, label='Who they are',
+                           widget=forms.TextInput(attrs={'placeholder': 'e.g. Co-owner, Accountant'}))
+    password = forms.CharField(strip=False, required=False, widget=forms.PasswordInput(attrs={'autocomplete': 'new-password'}),
+                               help_text='At least 8 characters. Give it to them privately; they can change it.')
+    active = forms.BooleanField(required=False, initial=True, label='Can log in')
+
+    def __init__(self, *args, owner, access=None, **kwargs):
+        super().__init__(*args, **kwargs)
+        self.owner, self.access = owner, access
+        if access is None:
+            self.fields['password'].required = True
+            del self.fields['active']
+        else:
+            from .utils import login_label
+
+            self.fields['password'].label = 'New password (optional)'
+            self.fields['password'].help_text = 'Leave blank to keep their current password.'
+            self.initial.update(name=access.name, contact=login_label(access.user), role=access.role,
+                                active=access.user.is_active)
+
+    def clean_contact(self):
+        self.contact_kind, value = clean_login_contact(self.cleaned_data['contact'],
+                                                       exclude_user=self.access.user if self.access else None)
+        return value
+
+    def clean_password(self):
+        password = self.cleaned_data['password']
+        if password:
+            user = self.access.user if self.access else get_user_model()(first_name=self.cleaned_data.get('name', ''))
+            password_validation.validate_password(password, user)
+        return password
+
+    def save(self):
+        from .models import Profile, ViewerAccess
+        from .utils import new_username
+
+        data = self.cleaned_data
+        email = data['contact'] if self.contact_kind == 'email' else ''
+        phone = data['contact'] if self.contact_kind == 'phone' else None
+        if self.access is None:
+            user = get_user_model().objects.create_user(new_username(), email=email, password=data['password'],
+                                                        first_name=data['name'])
+            access = ViewerAccess.objects.create(owner=self.owner, user=user, role=data['role'])
+        else:
+            access, user = self.access, self.access.user
+            user.first_name, user.is_active = data['name'], data['active']
+            if self.contact_kind == 'email':
+                user.email = email
+            if data['password']:
+                user.set_password(data['password'])
+            user.save()
+            access.role = data['role']
+            access.save(update_fields=['role'])
+        # The landlord vouches for the email or number, so it counts as confirmed.
+        now = timezone.now()
+        verified = {'phone': phone, 'phone_verified_at': now} if phone else {'email_verified_at': now}
+        Profile.objects.update_or_create(user=user, defaults=verified)
+        return access
+
