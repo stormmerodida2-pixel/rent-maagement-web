@@ -50,6 +50,12 @@ class WhereMixin:
         elif len(properties) == 1 and not properties[0].units.exists():
             self.initial['where'] = f'p{properties[0].pk}'
 
+    def add_notify(self):
+        self.fields['notify_tenants'] = forms.BooleanField(
+            required=False, label='Let the tenant know by SMS',
+            help_text='For "General", every tenant in the property gets it. They hear when it\'s logged, when '
+                      'work starts and when it\'s done, in their own language.')
+
     def clean_where(self):
         self.instance.property, self.instance.unit = self._places[self.cleaned_data['where']]
         return self.cleaned_data['where']
@@ -67,6 +73,7 @@ class MaintenanceForm(WhereMixin, forms.ModelForm):
     def __init__(self, *args, owner, **kwargs):
         super().__init__(*args, **kwargs)
         self.add_where(Property.objects.filter(owner=owner))
+        self.add_notify()
         self.fields['reported_by'].queryset = Tenant.objects.filter(owner=owner)
         if not self.instance.pk:
             del self.fields['status']

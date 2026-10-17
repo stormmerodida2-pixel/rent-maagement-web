@@ -758,6 +758,12 @@ def repair_form(request, pk=None):
     if request.method == 'POST' and form.is_valid():
         repair = form.save()
         verb = 'updated' if instance else 'logged'
+        if form.cleaned_data.get('notify_tenants'):
+            from maintenance.utils import notify_tenants
+
+            sent = notify_tenants(repair, created=instance is None)
+            if sent:
+                messages.info(request, f'Texted {sent} tenant{"s" if sent != 1 else ""} about it.')
         _record(request, f'repair.{verb}', f'{request.staff.name} (staff) {verb} repair "{repair.title}" '
                                            f'({repair.where}).')
         messages.success(request, f'Repair {verb}.')

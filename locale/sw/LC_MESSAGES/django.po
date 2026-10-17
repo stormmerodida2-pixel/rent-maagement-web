@@ -5,7 +5,7 @@ msgid ""
 msgstr ""
 "Project-Id-Version: Rentipay\n"
 "Report-Msgid-Bugs-To: \n"
-"POT-Creation-Date: 2026-10-17 13:38+0300\n"
+"POT-Creation-Date: 2026-10-17 23:28+0300\n"
 "PO-Revision-Date: YEAR-MO-DA HO:MI+ZONE\n"
 "Last-Translator: FULL NAME <EMAIL@ADDRESS>\n"
 "Language-Team: Kiswahili\n"
@@ -60,6 +60,22 @@ msgstr "Imetatuliwa"
 
 msgid "Cancelled"
 msgstr "Imeghairiwa"
+
+#, python-format
+msgid "Hi %(name)s, this repair is done: %(title)s. Thank you for your patience."
+msgstr "Habari %(name)s, marekebisho haya yamekamilika: %(title)s. Asante kwa uvumilivu wako."
+
+#, python-format
+msgid "Hi %(name)s, work has started on this repair: %(title)s."
+msgstr "Habari %(name)s, kazi ya marekebisho haya imeanza: %(title)s."
+
+#, python-format
+msgid "Hi %(name)s, your landlord knows about this and will fix it: %(title)s. We'll let you know when it is done."
+msgstr "Habari %(name)s, mwenye nyumba anafahamu tatizo hili na atalirekebisha: %(title)s. Tutakujulisha likikamilika."
+
+#, python-format
+msgid "Hi %(name)s, update on this repair: %(title)s. It will be fixed soon."
+msgstr "Habari %(name)s, taarifa kuhusu marekebisho haya: %(title)s. Litarekebishwa hivi karibuni."
 
 msgid "Pay online"
 msgstr "Lipa mtandaoni"
@@ -435,15 +451,15 @@ msgstr "Malalamiko au maswali kuhusu kodi, majirani, usalama au huduma."
 msgid "Messages"
 msgstr "Jumbe"
 
-msgid "My requests"
-msgstr "Maombi yangu"
+msgid "Repairs to your house"
+msgstr "Marekebisho ya nyumba yako"
 
 #, python-format
 msgid "fixed %(date)s"
 msgstr "ilirekebishwa %(date)s"
 
-msgid "You haven't reported anything."
-msgstr "Hujaripoti chochote."
+msgid "No repairs yet."
+msgstr "Bado hakuna marekebisho."
 
 msgid "Recent payments"
 msgstr "Malipo ya hivi karibuni"
@@ -565,3 +581,9 @@ msgstr "Tuma ujumbe"
 
 msgid "My messages"
 msgstr "Jumbe zangu"
+
+#~ msgid "My requests"
+#~ msgstr "Maombi yangu"
+
+#~ msgid "You haven't reported anything."
+#~ msgstr "Hujaripoti chochote."

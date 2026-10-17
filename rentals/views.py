@@ -454,6 +454,17 @@ def _portal_plan(lease):
     return None if progress['done'] else {'plan': plan, 'progress': progress}
 
 
+def _tenant_repairs(tenant, leases):
+    """Repairs to the tenant's house since they moved in, whoever logged them, and anything they reported."""
+    from django.db.models import Q
+
+    house = Q()
+    for lease in leases:
+        house |= Q(unit=lease.unit, created_at__date__gte=lease.start_date)
+    return (MaintenanceRequest.objects.filter(Q(reported_by=tenant) | house).select_related('unit')
+            .order_by('-created_at')[:10]) if leases else tenant.maintenance_requests.select_related('unit')[:10]
+
+
 @tenant_page
 def tenant_portal(request, token):
     """Public self-service page for one tenant, reached via the secret link sent by SMS."""
@@ -496,7 +507,7 @@ def tenant_portal(request, token):
         'lease_rows': [(lease, balance, _portal_plan(lease), unpaid_items(lease) if balance > 0 else [])
                        for lease, balance in ((lease, lease.balance) for lease in leases)],
         'payments': Payment.objects.filter(lease__tenant=tenant).select_related('lease__unit')[:10],
-        'requests': tenant.maintenance_requests.select_related('unit')[:10],
+        'requests': _tenant_repairs(tenant, leases),
         # Problems affecting the whole building, so tenants don't all report the same thing.
         'general_issues': MaintenanceRequest.objects.filter(
             property__in={lease.unit.property_id for lease in leases}, unit__isnull=True,
