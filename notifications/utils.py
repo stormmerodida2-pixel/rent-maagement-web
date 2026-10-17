@@ -37,8 +37,23 @@ AT_URLS = {
 AT_SUCCESS_CODES = {100, 101, 102}  # Processed, Sent, Queued
 
 
-def _send_africastalking(msg):
-    cfg = settings.SMS
+def sms_config():
+    """How SMS are sent: from Settings → SMS once an administrator has saved it, else the server's settings."""
+    from django.db import OperationalError, ProgrammingError
+
+    from .models import SmsSettings
+
+    try:
+        row = SmsSettings.load()
+    except (OperationalError, ProgrammingError):  # the table doesn't exist yet (first migrate)
+        row = None
+    if row is None or not row.saved():
+        return settings.SMS
+    return {**settings.SMS, 'BACKEND': 'africastalking' if row.live else 'console', 'AT_USERNAME': row.username,
+            'AT_API_KEY': row.api_key, 'AT_SENDER_ID': row.sender_id}
+
+
+def _send_africastalking(msg, cfg):
     url = AT_URLS['sandbox' if cfg['AT_USERNAME'] == 'sandbox' else 'live']
     data = {'username': cfg['AT_USERNAME'], 'to': f'+{msg.phone}', 'message': msg.body}
     if cfg['AT_SENDER_ID']:
@@ -58,17 +73,18 @@ def _send_africastalking(msg):
     msg.status = SmsMessage.Status.SENT
 
 
-def _deliver(msg):
-    """Send one unsaved SmsMessage and record the outcome on it. No database access, so it's thread-safe."""
+def _deliver(msg, cfg=None):
+    """Send one unsaved SmsMessage and record the outcome on it. Given `cfg`, no database access (thread-safe)."""
+    cfg = cfg or sms_config()
     phone = msg.phone
     try:
         msg.phone = normalize_phone(phone)
-        backend = settings.SMS['BACKEND']
+        backend = cfg['BACKEND']
         if backend == 'console':
             logger.info('SMS to %s: %s', msg.phone, msg.body)
             msg.status = SmsMessage.Status.LOGGED
         elif backend == 'africastalking':
-            _send_africastalking(msg)
+            _send_africastalking(msg, cfg)
         else:
             raise ValueError(f'Unknown SMS_BACKEND {backend!r}')
     except (requests.RequestException, ValueError, KeyError) as exc:
@@ -94,8 +110,9 @@ def send_personal_sms(items, kind=SmsMessage.Kind.OTHER):
     """
     msgs = [SmsMessage(lease=lease, phone=phone, body=body, kind=kind, status=SmsMessage.Status.FAILED)
             for lease, phone, body in items]
+    cfg = sms_config()  # read once here: the threads don't touch the database
     with ThreadPoolExecutor(max_workers=PARALLEL_SENDS) as pool:
-        list(pool.map(_deliver, msgs))
+        list(pool.map(lambda m: _deliver(m, cfg), msgs))
     return SmsMessage.objects.bulk_create(msgs)
 
 
@@ -118,14 +135,15 @@ def send_bulk_sms(recipients, body, kind=SmsMessage.Kind.OTHER):
         messages.append(msg)
     valid = [m for m in messages if not m.error]
 
-    backend = settings.SMS['BACKEND']
+    cfg = sms_config()
+    backend = cfg['BACKEND']
     if backend == 'console':
         for msg in valid:
             logger.info('SMS to %s: %s', msg.phone, body)
             msg.status = SmsMessage.Status.LOGGED
     elif backend == 'africastalking':
         for start in range(0, len(valid), BULK_BATCH):
-            _send_africastalking_bulk(valid[start:start + BULK_BATCH], body)
+            _send_africastalking_bulk(valid[start:start + BULK_BATCH], body, cfg)
     else:
         for msg in valid:
             msg.error = f'Unknown SMS_BACKEND {backend!r}'
@@ -133,8 +151,7 @@ def send_bulk_sms(recipients, body, kind=SmsMessage.Kind.OTHER):
     return messages
 
 
-def _send_africastalking_bulk(batch, body):
-    cfg = settings.SMS
+def _send_africastalking_bulk(batch, body, cfg):
     url = AT_URLS['sandbox' if cfg['AT_USERNAME'] == 'sandbox' else 'live']
     data = {'username': cfg['AT_USERNAME'], 'to': ','.join(f'+{m.phone}' for m in batch), 'message': body}
     if cfg['AT_SENDER_ID']:
@@ -554,3 +571,19 @@ def send_payment_summaries(day=None):
             counts['failed'] += 1
         LandlordPreferences.objects.filter(pk=prefs.pk).update(summary_sent_on=day)
     return counts
+
+
+def check_sms_account(cfg):
+    """Ask Africa's Talking for the account balance: proves the username and key work, without sending."""
+    host = 'api.sandbox.africastalking.com' if cfg['AT_USERNAME'] == 'sandbox' else 'api.africastalking.com'
+    try:
+        resp = requests.get(f'https://{host}/version1/user', params={'username': cfg['AT_USERNAME']}, timeout=20,
+                            headers={'apiKey': cfg['AT_API_KEY'], 'Accept': 'application/json'})
+        data = resp.json() if resp.headers.get('content-type', '').startswith('application/json') else {}
+    except (requests.RequestException, ValueError) as exc:
+        return False, f"Couldn't reach Africa's Talking: {exc}"
+    if resp.status_code == 200 and 'UserData' in data:
+        return True, f"Connected. Balance: {data['UserData'].get('balance', 'unknown')}."
+    reason = data.get('errorMessage') or resp.text[:200] or f'HTTP {resp.status_code}'
+    return False, f"Africa's Talking said: {reason}"
+

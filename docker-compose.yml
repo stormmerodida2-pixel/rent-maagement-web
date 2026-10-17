@@ -36,6 +36,8 @@ services:
     command: python manage.py run_scheduler
     volumes:
       - backups:/backups
+      - media:/app/media:ro  # read-only: the nightly backup also archives uploaded photos
+      - private_media:/app/private_media:ro
     depends_on:
       web:
         condition: service_healthy  # web runs the migrations first

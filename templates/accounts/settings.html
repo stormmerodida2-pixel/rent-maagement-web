@@ -74,6 +74,11 @@
   </a>
   {% endif %}
   {% if user.is_superuser %}
+  <a class="card settings-item" href="{% url 'notifications:sms_settings' %}">
+    <span class="settings-icon">{% icon 'phone' %}</span>
+    <span class="settings-text"><strong>SMS</strong><span class="muted small">Rentipay's Africa's Talking account: reminders, receipts and codes.</span></span>
+    {% icon 'arrow-right' %}
+  </a>
   <a class="card settings-item" href="{% url 'notifications:whatsapp' %}">
     <span class="settings-icon">{% icon 'message' %}</span>
     <span class="settings-text"><strong>WhatsApp</strong><span class="muted small">Rentipay's WhatsApp Business number, for landlords' payment summaries.</span></span>

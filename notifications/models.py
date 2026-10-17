@@ -100,3 +100,36 @@ class WhatsAppSettings(models.Model):
     def ready(self):
         return bool(self.phone_number_id and self.access_token and self.template_name)
 
+
+
+class SmsSettings(models.Model):
+    """Rentipay's Africa's Talking account, set by an administrator in Settings → SMS. One row.
+
+    Until it's saved, the server's SMS_BACKEND / AT_* settings apply.
+    """
+
+    live = models.BooleanField('send real SMS', default=False,
+                               help_text='Off: messages are only written to the log, nothing is sent.')
+    username = models.CharField("Africa's Talking username", max_length=100, blank=True,
+                                help_text="Your app's username (top of its dashboard). \"sandbox\" only reaches the simulator.")
+    api_key = EncryptedTextField('API key', blank=True)
+    sender_id = models.CharField('sender ID', max_length=11, blank=True,
+                                 help_text='Once Africa\'s Talking approves one, e.g. RENTIPAY. Empty: their shared number.')
+    updated_at = models.DateTimeField(auto_now=True)
+
+    class Meta:
+        verbose_name = verbose_name_plural = 'SMS settings'
+
+    def __str__(self):
+        return 'SMS settings'
+
+    def save(self, *args, **kwargs):
+        self.pk = 1
+        super().save(*args, **kwargs)
+
+    @classmethod
+    def load(cls):
+        return cls.objects.get_or_create(pk=1)[0]
+
+    def saved(self):
+        return bool(self.username and self.api_key)

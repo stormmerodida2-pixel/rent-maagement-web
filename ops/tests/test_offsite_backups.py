@@ -36,8 +36,10 @@ def fake_dump():
 
 class OffsiteCopyTests(TestCase):
     def backup(self, tmp, **settings):
+        empty = tempfile.mkdtemp()  # no uploaded files: just the database
         options = {'BACKUP_DIR': Path(tmp), 'BACKUP_ENCRYPTION_KEY': KEY, 'BACKUP_S3_BUCKET': 'rentipay-backups',
-                   'BACKUP_S3_REGION': 'eu-west-1', 'BACKUP_S3_PREFIX': 'backups/', **settings}
+                   'BACKUP_S3_REGION': 'eu-west-1', 'BACKUP_S3_PREFIX': 'backups/', 'MEDIA_ROOT': Path(empty),
+                   'PRIVATE_MEDIA_ROOT': Path(empty) / 'private', **settings}
         out = StringIO()
         with override_settings(**options), fake_dump():
             call_command('backup_db', stdout=out, stderr=StringIO())
@@ -102,3 +104,57 @@ class BackupStatusTests(TestCase):
             resp = self.client.get(reverse('healthz'))
             self.assertEqual(resp.status_code, 200)  # the site itself is fine
             self.assertEqual(resp.json()['backups'], 'failed')
+
+
+class FileBackupTests(TestCase):
+    """Uploaded files (listing photos, receipts, meter photos) are archived and encrypted with the database."""
+
+    def setUp(self):
+        self.tmp = Path(tempfile.mkdtemp())
+        self.media, self.private, self.backups = self.tmp / 'media', self.tmp / 'private_media', self.tmp / 'backups'
+        (self.media / 'listings').mkdir(parents=True)
+        (self.private / 'receipts').mkdir(parents=True)
+        (self.media / 'listings' / 'house.jpg').write_bytes(b'photo')
+        (self.private / 'receipts' / 'tap.jpg').write_bytes(b'receipt')
+
+    def tearDown(self):
+        import shutil
+
+        shutil.rmtree(self.tmp, ignore_errors=True)
+
+    def run_backup(self, **extra):
+        with override_settings(BACKUP_DIR=self.backups, BACKUP_ENCRYPTION_KEY=KEY, MEDIA_ROOT=self.media,
+                               PRIVATE_MEDIA_ROOT=self.private, **extra), fake_dump():
+            call_command('backup_db', stdout=StringIO(), stderr=StringIO())
+
+    def test_files_are_archived_encrypted_and_restorable(self):
+        import tarfile
+
+        from ..utils import decrypt_file
+
+        self.run_backup(BACKUP_S3_BUCKET='')
+        archive = next(self.backups.glob('rentals-files-*.tar.gz.enc'))
+        self.assertNotIn(b'receipt', archive.read_bytes())  # encrypted
+        restored = self.tmp / 'restored.tar.gz'
+        decrypt_file(archive, restored, KEY)
+        with tarfile.open(restored) as tar:
+            names = tar.getnames()
+            self.assertIn('media/listings/house.jpg', names)
+            self.assertIn('private_media/receipts/tap.jpg', names)
+            self.assertEqual(tar.extractfile('private_media/receipts/tap.jpg').read(), b'receipt')
+
+    @mock.patch('boto3.client')
+    def test_files_go_off_site_too(self, client):
+        self.run_backup(BACKUP_S3_BUCKET='rentipay-backups', BACKUP_S3_REGION='eu-west-1', BACKUP_S3_PREFIX='backups/')
+        keys = [c.kwargs['Key'] for c in client.return_value.put_object.call_args_list]
+        self.assertEqual(len(keys), 2)
+        self.assertTrue(any(k.startswith('backups/rentals-files-') and k.endswith('.tar.gz.enc') for k in keys))
+
+    def test_nothing_uploaded_yet_no_file_archive(self):
+        import shutil
+
+        shutil.rmtree(self.media)
+        shutil.rmtree(self.private)
+        self.run_backup(BACKUP_S3_BUCKET='')
+        self.assertEqual(list(self.backups.glob('rentals-files-*')), [])
+

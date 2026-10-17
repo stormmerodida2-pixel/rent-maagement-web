@@ -1,0 +1,57 @@
+{% extends 'app_base.html' %}
+{% load ui %}
+{% block page_title %}SMS{% endblock %}
+{% block content %}
+<div class="page-header"><div><h1>SMS</h1>
+  <p class="sub">{{ APP_NAME }}'s Africa's Talking account sends tenants' reminders, receipts, rent-page links and sign-up codes.</p></div></div>
+
+<section class="card" style="margin-bottom:16px">
+  <div class="card-body row">
+    <span class="switch-dot {% if live %}on{% endif %}" aria-hidden="true"></span>
+    <div style="flex:1;min-width:220px">
+      <strong>{% if live %}Sending real SMS{% else %}Not sending: SMS are only written to the log{% endif %}</strong>
+      <div class="muted small">{% if username %}Username {{ username }}{% endif %}{% if has_key %} · API key saved{% else %} · no API key yet{% endif %}{% if from_server %} · using the server's settings until you save this page{% endif %}</div>
+    </div>
+    <form method="post">{% csrf_token %}<input type="hidden" name="action" value="check"><button class="btn" {% if not has_key %}disabled{% endif %}>Check connection</button></form>
+  </div>
+</section>
+
+<div class="grid-2">
+  <section class="card">
+    <div class="card-header"><h2>Account</h2></div>
+    <div class="card-body">
+      <form method="post" autocomplete="off" novalidate>
+        {% csrf_token %}
+        {% include 'includes/form_fields.html' %}
+        <div class="form-actions"><button class="btn btn-primary">Save</button></div>
+      </form>
+    </div>
+  </section>
+  <div class="stack">
+    <section class="card">
+      <div class="card-header"><h2>Send yourself a test</h2></div>
+      <div class="card-body">
+        <form method="post" class="row" style="gap:8px;align-items:flex-end">
+          {% csrf_token %}<input type="hidden" name="action" value="test">
+          <div class="field" style="flex:1;min-width:180px;margin:0"><label for="id_test_phone">Your phone number</label>
+            <input id="id_test_phone" name="test_phone" inputmode="tel" value="{{ my_phone }}" placeholder="0712 345 678"></div>
+          <button class="btn">Send test SMS</button>
+        </form>
+      </div>
+    </section>
+    <section class="card">
+      <div class="card-header"><h2>Where to find these</h2></div>
+      <div class="card-body small" style="color:var(--text-2)">
+        <ol class="setup-steps">
+          <li>Log in at <a href="https://account.africastalking.com" target="_blank" rel="noopener">account.africastalking.com</a> and open your app (not the sandbox).</li>
+          <li><strong>Username</strong> is shown at the top of the app's dashboard.</li>
+          <li><strong>API key:</strong> the app's Settings → API Key → Generate. Paste it here straight away; it's stored encrypted and never shown again.</li>
+          <li><strong>Sender ID</strong> (optional): request one under SMS → Sender IDs. Until it's approved, messages come from Africa's Talking's shared number.</li>
+          <li>Tick <strong>Send real SMS</strong>, save, then <strong>Check connection</strong> (shows your balance, sends nothing) and <strong>Send test SMS</strong>.</li>
+        </ol>
+        <p style="margin:10px 0 0">If the check says the authentication is invalid, the account may not be activated for live messages yet: Africa's Talking support can confirm.</p>
+      </div>
+    </section>
+  </div>
+</div>
+{% endblock %}
