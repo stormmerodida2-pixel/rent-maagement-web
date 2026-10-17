@@ -264,3 +264,27 @@ details.daraja[open] > summary h2::before { transform: rotate(90deg); }
 .sw-spent, .bar.spent { background: var(--warn); }
 .trend .bar { width: 26%; }
 .owe-box { border: 1px solid var(--border); border-radius: 10px; padding: 12px 14px; display: grid; gap: 6px; }
+
+/* --- Dashboard highlights: celebrations, scorecard, suggestions, year in review ------------------------------- */
+.celebrate { font-weight: 600; font-size: 1.02rem; }
+.score-big { font-size: 2.4rem; font-weight: 700; line-height: 1; letter-spacing: -0.02em; }
+.streak { margin-top: 10px; font-weight: 600; }
+.score-bars { display: flex; align-items: flex-end; gap: 8px; height: 90px; margin-top: 16px; }
+.score-bar { flex: 1; height: 100%; display: flex; flex-direction: column; justify-content: flex-end; align-items: center; gap: 4px; }
+.score-bar span { display: block; width: 100%; min-height: 2px; border-radius: 4px 4px 0 0; background: color-mix(in srgb, var(--brand) 35%, transparent); }
+.score-bar.now span { background: var(--brand); }
+.score-bar small { color: var(--muted); font-size: 0.72rem; }
+.nudges { list-style: none; margin: 0; padding: 0; }
+.nudges li { display: flex; gap: 12px; align-items: center; justify-content: space-between; flex-wrap: wrap; padding: 12px 16px; border-top: 1px solid var(--border); }
+.nudges li:first-child { border-top: 0; }
+.nudge-actions { display: flex; gap: 6px; align-items: center; }
+.year-card { max-width: 560px; margin: 0 auto; border-radius: 18px; padding: 28px 24px; color: #fff;
+  background: linear-gradient(140deg, var(--brand), color-mix(in srgb, var(--brand) 55%, #0b1f33)); }
+.year-card h1 { color: #fff; font-size: 1.6rem; margin: 0 0 4px; }
+.year-card .big { font-size: 2.6rem; font-weight: 800; letter-spacing: -0.02em; line-height: 1.1; }
+.year-card .muted-light { color: rgba(255, 255, 255, 0.78); }
+.year-stats { display: grid; grid-template-columns: repeat(2, minmax(0, 1fr)); gap: 12px; margin-top: 22px; }
+.year-stats div { background: rgba(255, 255, 255, 0.12); border-radius: 12px; padding: 12px; }
+.year-stats strong { display: block; font-size: 1.15rem; }
+.year-stats span { color: rgba(255, 255, 255, 0.8); font-size: 0.85rem; }
+.year-brand { margin-top: 20px; font-size: 0.8rem; color: rgba(255, 255, 255, 0.7); }

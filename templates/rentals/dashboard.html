@@ -13,6 +13,18 @@
   </div>
 </div>
 
+{% for text in celebrations %}
+<div class="alert alert-success celebrate" style="margin-bottom:12px"><span class="celebrate-text">{{ text }}</span></div>
+{% endfor %}
+{% if review_year %}
+<div class="alert alert-info" style="margin-bottom:20px">
+  {% icon 'chart' 18 %}
+  <span><strong>Your {{ review_year }} in review is ready.</strong> What you collected, your best month, your most reliable tenant.</span>
+  <span class="spacer"></span>
+  <a class="btn btn-primary btn-sm" href="{% url 'reports:year' review_year %}">See your year</a>
+</div>
+{% endif %}
+
 {% if setup_incomplete %}
 <section class="card" style="margin-bottom:20px">
   <div class="card-body row">
@@ -75,6 +87,46 @@
 {% endif %}
 
 <div id="live-kpis">{% include 'rentals/dashboard/_kpis.html' %}</div>
+
+{% if scorecard or nudges %}
+<div class="grid-2" style="margin-bottom:20px">
+  {% if scorecard %}
+  <section class="card scorecard">
+    <div class="card-header"><h2>Collection</h2><span class="spacer"></span><a class="small" href="{% url 'reports:overview' %}">Reports</a></div>
+    <div class="card-body">
+      {% if scorecard.rate is not None %}
+      <div class="score-big">{{ scorecard.rate }}%</div>
+      <div class="muted small">of {{ scorecard.month|date:"F" }}'s rent collected so far{% if scorecard.best_since == 'year' %}: <strong class="text-success">your best in a year</strong>{% elif scorecard.best_since %}: <strong class="text-success">your best since {{ scorecard.best_since|date:"F" }}</strong>{% endif %}</div>
+      {% endif %}
+      {% if scorecard.streak >= 2 %}<div class="streak">🔥 {{ scorecard.streak }} months in a row above {{ scorecard.streak_rate }}%</div>{% endif %}
+      <div class="score-bars" aria-label="Rent collected, last 6 months">
+        {% for b in scorecard.bars %}
+        <div class="score-bar{% if forloop.last %} now{% endif %}" title="{{ b.month|date:'F' }}: {% if b.none %}nothing billed{% else %}{{ b.rate }}%{% endif %}">
+          <span style="height:{{ b.rate }}%"></span><small>{{ b.month|date:"M" }}</small>
+        </div>
+        {% endfor %}
+      </div>
+    </div>
+  </section>
+  {% endif %}
+  {% if nudges %}
+  <section class="card">
+    <div class="card-header"><h2>Suggestions</h2></div>
+    <ul class="nudges">
+      {% for n in nudges %}
+      <li>
+        <span>{{ n.text }}</span>
+        <span class="nudge-actions">
+          <a class="btn btn-sm btn-primary" href="{{ n.url }}">{{ n.action }}</a>
+          <form method="post" action="{% url 'reports:nudge_dismiss' %}">{% csrf_token %}<input type="hidden" name="key" value="{{ n.key }}"><button class="btn btn-sm btn-ghost" title="Hide for 30 days">Not now</button></form>
+        </span>
+      </li>
+      {% endfor %}
+    </ul>
+  </section>
+  {% endif %}
+</div>
+{% endif %}
 
 <div class="grid-2">
   <div class="stack">
