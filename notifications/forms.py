@@ -3,7 +3,7 @@ from django.core.exceptions import ValidationError
 
 from rentals.utils import normalize_phone
 
-from .models import LandlordPreferences, WhatsAppSettings
+from .models import LandlordPreferences, SmsSettings, WhatsAppSettings
 
 
 class PreferencesForm(forms.ModelForm):
@@ -51,3 +51,35 @@ class WhatsAppSettingsForm(forms.ModelForm):
 
     def clean_access_token(self):
         return self.cleaned_data['access_token'].strip() or self.saved_token
+
+
+class SmsSettingsForm(forms.ModelForm):
+    """The API key is never shown again; blank keeps the saved one (or the one on the server, the first time)."""
+
+    class Meta:
+        model = SmsSettings
+        fields = ['live', 'username', 'api_key', 'sender_id']
+        widgets = {'api_key': forms.PasswordInput(render_value=False)}
+
+    def __init__(self, *args, **kwargs):
+        from django.conf import settings
+
+        super().__init__(*args, **kwargs)
+        self.fallback_key = self.instance.api_key or settings.SMS.get('AT_API_KEY', '')
+        if not self.instance.saved():  # first time: start from what's on the server
+            self.initial.setdefault('username', '' if settings.SMS['AT_USERNAME'] == 'sandbox' else settings.SMS['AT_USERNAME'])
+            self.initial.setdefault('sender_id', settings.SMS.get('AT_SENDER_ID', ''))
+            self.initial.setdefault('live', settings.SMS['BACKEND'] == 'africastalking')
+        if self.fallback_key:
+            self.fields['api_key'].widget.attrs['placeholder'] = '•••••••• saved. Leave blank to keep.'
+        self.fields['username'].required = self.fields['api_key'].required = False
+
+    def clean_api_key(self):
+        return self.cleaned_data['api_key'].strip() or self.fallback_key
+
+    def clean(self):
+        cleaned = super().clean()
+        if cleaned.get('live') and not (cleaned.get('username') and cleaned.get('api_key')):
+            raise forms.ValidationError('To send real SMS, enter the username and API key.')
+        return cleaned
+

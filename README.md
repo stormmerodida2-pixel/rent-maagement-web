@@ -188,11 +188,9 @@ All webhooks are idempotent. Safaricom retries don't create duplicates, and a re
 
 ## SMS (Africa's Talking)
 
-By default `SMS_BACKEND=console`: messages are only logged and stored, and appear as "Logged only" in the SMS log. To send for real:
+Set up in the app by an administrator: **Settings → SMS**. Enter the Africa's Talking app's **username**, **API key** (stored encrypted, never shown again) and optional **sender ID**, tick **Send real SMS** and save. **Check connection** asks Africa's Talking for the account balance (proves the username and key work; sends nothing), and **Send test SMS** sends one to your phone. With *Send real SMS* off, messages are only logged and appear as "Logged only" in the SMS log.
 
-1. Create an account at https://africastalking.com.
-2. Set `SMS_BACKEND=africastalking`, `AT_USERNAME` (use `sandbox` for the simulator) and `AT_API_KEY`. `AT_SENDER_ID` is optional.
-3. Set `SITE_URL` to the public URL so portal links in the SMS work.
+Until that page is saved, the server's `SMS_BACKEND` (`console` or `africastalking`), `AT_USERNAME`, `AT_API_KEY` and `AT_SENDER_ID` apply; leaving the key blank on the first save keeps the one already on the server. `SITE_URL` must be the public URL so links in the SMS work.
 
 Reminders name the landlord's own Paybill/account or Till. If a landlord hasn't connected M-Pesa, reminders only include the portal link.
 
@@ -312,7 +310,7 @@ Landlords pay Rentipay monthly. Everything is set in the app by an administrator
 
 ### Off-site backups
 
-Each night's encrypted backup is also copied to an S3 bucket in a different AWS region from the server, so losing the server (or its region) doesn't lose the data.
+Each night's encrypted backups (the database, and an archive of uploaded files: listing photos, receipts and meter photos) are also copied to an S3 bucket in a different AWS region from the server, so losing the server (or its region) doesn't lose the data.
 
 - **Upload only.** The server's IAM role can only add files under `backups/`. It can't list, read or delete them, so someone who breaks into the server can't wipe the copies. S3 deletes copies after 90 days (bucket lifecycle rule), and the bucket is private, encrypted, versioned and HTTPS-only.
 - **Only encrypted files leave the server.** Without `BACKUP_ENCRYPTION_KEY` the upload is refused. Keep that key in a password manager, off the server; it's what lets you read a copy after losing the server.
@@ -330,7 +328,7 @@ aws s3 ls s3://rentipay-backups-<account>/backups/
 aws s3 cp s3://rentipay-backups-<account>/backups/rentals-YYYYMMDD-HHMMSS.dump.enc .
 BACKUP_ENCRYPTION_KEY=... python manage.py decrypt_backup rentals-YYYYMMDD-HHMMSS.dump.enc
 ```
-Then load the `.dump` with `pg_restore` as above.
+Then load the `.dump` with `pg_restore` as above. Uploaded files come back the same way from `rentals-files-…tar.gz.enc`: decrypt it, then `tar -xzf rentals-files-….tar.gz` gives `media/` (listing photos) and `private_media/` (receipts, meter photos) to copy into the `media` and `private_media` volumes.
 
 ### Live payments, monthly report cards, install on phones
 

@@ -1,3 +1,4 @@
+from django.conf import settings
 from django.contrib import messages
 from django.contrib.auth.decorators import login_required
 from django.http import Http404
@@ -78,6 +79,52 @@ def whatsapp_settings(request):
         return redirect('notifications:whatsapp')
     return render(request, 'notifications/whatsapp_settings.html', {
         'form': form, 'ready': conf.ready(), 'sample_text': summary_text(sample),
+        'my_phone': LandlordPreferences.for_user(request.user).phone,
+    })
+
+
+@login_required
+def sms_settings(request):
+    """Settings → SMS (administrators): the Africa's Talking account, a connection check and a test message."""
+    from audit import utils as audit
+
+    from .forms import SmsSettingsForm
+    from .models import SmsSettings
+    from .utils import check_sms_account, send_sms, sms_config
+
+    if not request.user.is_superuser:
+        raise Http404
+    row = SmsSettings.load()
+    form = SmsSettingsForm(request.POST or None, instance=row)
+    action = request.POST.get('action')
+    if request.method == 'POST' and action == 'check':
+        ok, text = check_sms_account(sms_config())
+        (messages.success if ok else messages.error)(request, text)
+        return redirect('notifications:sms_settings')
+    if request.method == 'POST' and action == 'test':
+        try:
+            to = normalize_phone(request.POST.get('test_phone', ''))
+        except ValueError as exc:
+            messages.error(request, str(exc))
+        else:
+            msg = send_sms(to, f'Test from {settings.APP_NAME}: SMS is working.')
+            if msg.status == 'sent':
+                messages.success(request, f'Sent to {to}. It should arrive within a minute.')
+            elif msg.status == 'logged':
+                messages.info(request, 'Sending real SMS is off, so the message was only written to the log.')
+            else:
+                messages.error(request, f"Not sent: {msg.error or 'unknown error'}")
+        return redirect('notifications:sms_settings')
+    if request.method == 'POST' and form.is_valid():
+        form.save()
+        audit.record(owner=request.user, actor=request.user, action='sms.settings_changed',
+                     summary='Changed SMS settings: ' + ', '.join(form.changed_data or ['nothing']) + '.')
+        messages.success(request, 'SMS settings saved. Check the connection, then send yourself a test.')
+        return redirect('notifications:sms_settings')
+    cfg = sms_config()
+    return render(request, 'notifications/sms_settings.html', {
+        'form': form, 'live': cfg['BACKEND'] == 'africastalking', 'username': cfg['AT_USERNAME'],
+        'has_key': bool(cfg['AT_API_KEY']), 'from_server': not row.saved(),
         'my_phone': LandlordPreferences.for_user(request.user).phone,
     })
 
