@@ -326,15 +326,20 @@ BACKUP_S3_PREFIX = os.environ.get('BACKUP_S3_PREFIX', 'backups/')
 # --- Logging & error alerts ---------------------------------------------------------------------
 
 LOG_LEVEL = os.environ.get('LOG_LEVEL', 'INFO')
+# Errors (a page crashing, a scheduled job failing) also go to the site owner: a phone push to this ntfy topic
+# (the server's ~/.config/liskodi/alerts.env has the same one) and an email with the details. See ops/alerts.py.
+ALERT_NTFY_URL = os.environ.get('ALERT_NTFY_URL', '')
+ALERT_EMAIL = os.environ.get('ALERT_EMAIL', '')
 LOGGING = {
     'version': 1,
     'disable_existing_loggers': False,
     'formatters': {'plain': {'format': '%(asctime)s %(levelname)s %(name)s: %(message)s'}},
-    'handlers': {'console': {'class': 'logging.StreamHandler', 'formatter': 'plain'}},
-    'root': {'handlers': ['console'], 'level': 'WARNING'},
+    'handlers': {'console': {'class': 'logging.StreamHandler', 'formatter': 'plain'},
+                 'alerts': {'class': 'ops.alerts.ErrorAlertHandler', 'level': 'ERROR'}},
+    'root': {'handlers': ['console', 'alerts'], 'level': 'WARNING'},
     'loggers': {
-        'django': {'handlers': ['console'], 'level': 'WARNING', 'propagate': False},
-        **{app: {'handlers': ['console'], 'level': LOG_LEVEL, 'propagate': False}
+        'django': {'handlers': ['console', 'alerts'], 'level': 'WARNING', 'propagate': False},
+        **{app: {'handlers': ['console', 'alerts'], 'level': LOG_LEVEL, 'propagate': False}
            for app in ('payments', 'notifications', 'accounts', 'support', 'ops', 'billing')},
     },
 }

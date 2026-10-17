@@ -260,7 +260,7 @@ docker compose exec web python manage.py check --deploy
   docker compose --env-file .env_prod exec -T scheduler cat /backups/rentals-YYYYMMDD-HHMMSS.dump \
     | docker compose --env-file .env_prod exec -T db pg_restore --clean --no-owner -U rentals -d rentals
   ```
-- **Error alerts:** set `SENTRY_DSN` (free at sentry.io) to be notified of every server error. Tenants' personal data isn't sent.
+- **Error alerts:** set `ALERT_NTFY_URL` (phone push) and `ALERT_EMAIL` in `.env_prod` to hear about every server error and failed job (see Alerts). `SENTRY_DSN` is optional on top.
 - **Monitoring:** point an uptime monitor at `/healthz/`. It returns 503 if the database or cache is down.
 - After a few days of confirmed HTTPS, raise `DJANGO_HSTS_SECONDS` to `31536000`.
 
@@ -336,7 +336,9 @@ aws s3 ls s3://rentipay-backups-<account>/backups/
 aws s3 cp s3://rentipay-backups-<account>/backups/rentals-YYYYMMDD-HHMMSS.dump.enc .
 BACKUP_ENCRYPTION_KEY=... python manage.py decrypt_backup rentals-YYYYMMDD-HHMMSS.dump.enc
 ```
-Then load the `.dump` with `pg_restore` as above. Uploaded files come back the same way from `rentals-files-…tar.gz.enc`: decrypt it, then `tar -xzf rentals-files-….tar.gz` gives `media/` (listing photos) and `private_media/` (receipts, meter photos) to copy into the `media` and `private_media` volumes.
+Then load the `.dump` with `pg_restore` as above.
+
+**Restore test (do it monthly):** `deploy/restore_test.sh` downloads the newest off-site backups to the server through short-lived links, decrypts them there (the key never leaves the server), restores the database into a throwaway Postgres and compares row counts with the live database, checks the files archive opens, then deletes everything it made. It ends with `RESTORE TEST PASSED` or `FAILED`. Nothing live is touched. Uploaded files come back the same way from `rentals-files-…tar.gz.enc`: decrypt it, then `tar -xzf rentals-files-….tar.gz` gives `media/` (listing photos) and `private_media/` (receipts, meter photos) to copy into the `media` and `private_media` volumes.
 
 ### Live payments, monthly report cards, install on phones
 
@@ -492,7 +494,7 @@ Three layers, so you hear about problems quickly:
 
    Each problem is reported once when it starts and once when it's fixed. To install on a new server, copy `deploy/liskodi-healthcheck.*` to `/etc/systemd/system/` and `systemctl enable --now liskodi-healthcheck.timer`, as for auto-deploy.
 2. **From outside:** `.github/workflows/uptime.yml` checks `/healthz/` every 15 minutes from GitHub. If the whole server is down, the run fails and **GitHub emails you**. Set `SITE_URL` in that file when you move to your own domain. GitHub pauses scheduled workflows after 60 days without commits; re-enable them under Actions if that happens.
-3. **Code errors (Sentry):** set `SENTRY_DSN` in `.env_prod` (free account at sentry.io, Django project) to get an email with the exact error for any page that crashes or scheduled job that fails.
+3. **Code errors:** any page that crashes or scheduled job that fails sends a phone push to `ALERT_NTFY_URL` and an email with the traceback to `ALERT_EMAIL` (both in `.env_prod`; `ops/alerts.py`). The same error at the same place alerts at most once an hour. The push never includes names or numbers. Optionally also set `SENTRY_DSN` (free at sentry.io) for an error dashboard.
 
 Run the same checks locally:
 ```bash
