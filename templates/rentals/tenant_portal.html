@@ -121,6 +121,23 @@
   <section class="card"><div class="empty"><strong>{% translate "No active lease" %}</strong>{% translate "Contact your landlord if this looks wrong." %}</div></section>
   {% endfor %}
 
+  {% if general_issues %}
+  <section class="card">
+    <div class="card-header"><h2>{% translate "Being fixed in your building" %}</h2></div>
+    <table class="table">
+      <tbody>
+      {% for r in general_issues %}
+      <tr>
+        <td><strong>{{ r.title }}</strong><div class="muted small">{% blocktranslate with date=r.created_at|date:"d M Y" %}Reported {{ date }}{% endblocktranslate %}</div></td>
+        <td class="num">{% badge r.status r.get_status_display %}</td>
+      </tr>
+      {% endfor %}
+      </tbody>
+    </table>
+    <div class="card-body muted small">{% translate "Your landlord already knows about these: no need to report them again." %}</div>
+  </section>
+  {% endif %}
+
   {% if lease_rows %}
   <section class="card" id="report">
     <div class="card-header"><h2>{% translate "Report a problem" %}</h2></div>

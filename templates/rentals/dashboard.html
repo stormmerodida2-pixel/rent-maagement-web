@@ -120,7 +120,7 @@
         <tr>
           <td>
             <a href="{% url 'maintenance:update' r.pk %}"><strong>{{ r.title }}</strong></a>
-            <div class="muted small">{{ r.unit }} · {{ r.created_at|timesince }} ago</div>
+            <div class="muted small">{{ r.where }} · {{ r.created_at|timesince }} ago</div>
           </td>
           <td class="num">
             {% badge r.priority r.get_priority_display %}

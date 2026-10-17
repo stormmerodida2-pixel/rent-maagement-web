@@ -93,6 +93,14 @@ class StaffMember(models.Model):
         ids = self.property_ids()
         return qs.filter(unit__property__in=ids) if ids else qs
 
+    def looked_after(self):
+        """The properties this person looks after."""
+        from rentals.models import Property
+
+        qs = Property.objects.filter(owner=self.owner)
+        ids = self.property_ids()
+        return qs.filter(pk__in=ids) if ids else qs
+
     def units(self):
         from rentals.models import Unit
 

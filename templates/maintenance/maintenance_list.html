@@ -3,7 +3,7 @@
 {% block page_title %}Maintenance{% endblock %}
 {% block content %}
 <div class="page-header">
-  <div><h1>Maintenance</h1><p class="sub">Repairs reported by tenants or logged by you.</p></div>
+  <div><h1>Maintenance</h1><p class="sub">Repairs reported by tenants or logged by you, for one house or (General) the whole property.</p></div>
   <div class="actions"><a class="btn btn-primary" href="{% url 'maintenance:create' %}">{% icon 'plus' %}Log repair</a></div>
 </div>
 <section class="card">
@@ -18,13 +18,13 @@
   {% if object_list %}
   <div class="table-wrap">
     <table class="table">
-      <thead><tr><th>Issue</th><th>Unit</th><th>Priority</th><th>Status</th><th>Assigned to</th><th class="num">Cost</th></tr></thead>
+      <thead><tr><th>Issue</th><th>Where</th><th>Priority</th><th>Status</th><th>Assigned to</th><th class="num">Cost</th></tr></thead>
       <tbody>
       {% for r in object_list %}
       <tr>
         <td><a href="{% url 'maintenance:update' r.pk %}"><strong>{{ r.title }}</strong></a>
           <div class="muted small">{{ r.created_at|date:"d M Y" }}{% if r.reported_by %} · by {{ r.reported_by }}{% endif %}</div></td>
-        <td>{{ r.unit }}</td>
+        <td>{% if r.is_general %}{{ r.property.name }} <span class="badge badge-info">General</span>{% else %}{{ r.unit }}{% endif %}</td>
         <td>{% badge r.priority r.get_priority_display %}</td>
         <td>{% badge r.status r.get_status_display %}</td>
         <td>{{ r.assigned_to|default:"—" }}</td>

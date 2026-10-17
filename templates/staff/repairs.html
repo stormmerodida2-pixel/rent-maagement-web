@@ -9,7 +9,7 @@
   <a class="card staff-card staff-card-link" href="{% url 'staff:repair_update' r.pk %}">
     <div class="staff-card-head">
       <div class="staff-card-who"><strong>{{ r.title }}</strong>
-        <span class="muted small">{{ r.unit }} · {{ r.created_at|date:"d M" }}{% if r.reported_by %} · reported by {{ r.reported_by }}{% endif %}</span></div>
+        <span class="muted small">{{ r.where }} · {{ r.created_at|date:"d M" }}{% if r.reported_by %} · reported by {{ r.reported_by }}{% endif %}</span></div>
       {% badge r.priority r.get_priority_display %}
     </div>
     <div class="row small">{% badge r.status r.get_status_display %}{% if r.assigned_to %}<span class="muted">· {{ r.assigned_to }}</span>{% endif %}</div>

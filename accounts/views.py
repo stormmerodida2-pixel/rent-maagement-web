@@ -515,7 +515,7 @@ def staff_home(request):
     return render(request, 'staff/home.html', {
         'rows': rows, 'show_all': show_all, 'q': q, 'cash': staff_cash(staff),
         'mpesa_ready': account is not None and account.is_complete(),
-        'open_repairs': MaintenanceRequest.objects.filter(unit__in=staff.units(), status__in=OPEN_REPAIRS).count(),
+        'open_repairs': MaintenanceRequest.objects.filter(property__in=staff.looked_after(), status__in=OPEN_REPAIRS).count(),
     })
 
 
@@ -744,8 +744,8 @@ def staff_note(request, pk):
 
 @staff_required
 def repairs(request):
-    items = (MaintenanceRequest.objects.filter(unit__in=request.staff.units(), status__in=OPEN_REPAIRS)
-             .select_related('unit__property', 'reported_by').order_by('-created_at'))
+    items = (MaintenanceRequest.objects.filter(property__in=request.staff.looked_after(), status__in=OPEN_REPAIRS)
+             .select_related('property', 'unit__property', 'reported_by').order_by('-created_at'))
     return render(request, 'staff/repairs.html', {'repairs': items})
 
 
@@ -753,13 +753,13 @@ def repairs(request):
 def repair_form(request, pk=None):
     instance = None
     if pk is not None:
-        instance = get_object_or_404(MaintenanceRequest, pk=pk, unit__in=request.staff.units())
+        instance = get_object_or_404(MaintenanceRequest, pk=pk, property__in=request.staff.looked_after())
     form = RepairForm(request.POST or None, instance=instance, member=request.staff)
     if request.method == 'POST' and form.is_valid():
         repair = form.save()
         verb = 'updated' if instance else 'logged'
         _record(request, f'repair.{verb}', f'{request.staff.name} (staff) {verb} repair "{repair.title}" '
-                                           f'({repair.unit}).')
+                                           f'({repair.where}).')
         messages.success(request, f'Repair {verb}.')
         return redirect('staff:repairs')
     return render(request, 'staff/form.html', {
