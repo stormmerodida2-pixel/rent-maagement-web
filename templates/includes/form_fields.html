@@ -2,13 +2,13 @@
 {% for field in form.hidden_fields %}{{ field }}{% endfor %}
 {% for field in form.visible_fields %}
   {% if field.widget_type == 'checkbox' %}
-  <div class="field field-check">
+  <div class="field field-check"{% if field.field.show_when %} data-show-when="{{ field.field.show_when }}"{% endif %}>
     {{ field }}<label for="{{ field.id_for_label }}">{{ field.label }}</label>
     {% if field.help_text %}<span class="helptext">{{ field.help_text }}</span>{% endif %}
     {{ field.errors }}
   </div>
   {% else %}
-  <div class="field{% if field.errors %} has-error{% endif %}" data-field="{{ field.name }}">
+  <div class="field{% if field.errors %} has-error{% endif %}" data-field="{{ field.name }}"{% if field.field.show_when %} data-show-when="{{ field.field.show_when }}"{% endif %}>
     <label for="{{ field.id_for_label }}">{{ field.label }}{% if not field.field.required %} <span class="muted" style="font-weight:400">({% translate "optional" %})</span>{% endif %}</label>
     {% if field.widget_type == 'checkboxselectmultiple' %}<div class="checkbox-list">{{ field }}</div>{% else %}{{ field }}{% endif %}
     {% if field.help_text %}<span class="helptext">{{ field.help_text }}</span>{% endif %}

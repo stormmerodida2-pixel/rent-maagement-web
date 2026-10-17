@@ -98,6 +98,20 @@ class TenantForm(OwnedForm):
 
 
 class LeaseForm(OwnedForm):
+    # Moving someone in today, or recording a tenant who already lived there before Rentipay.
+    tenancy = forms.ChoiceField(
+        label='New or existing tenant?', initial='new', required=False,  # missing means a new tenant
+        choices=[('new', 'Moving in now'), ('existing', 'Already living here (before Rentipay)')],
+    )
+    balance_now = forms.DecimalField(
+        required=False, max_digits=10, decimal_places=2, label='Balance owed now (KES)',
+        help_text="Everything they owe today, including this month's rent if it was already due. "
+                  'Use a minus for credit, e.g. -2000 if they paid ahead. Shown as "Balance brought forward".',
+    )
+    deposit_paid = forms.DecimalField(
+        required=False, min_value=0, max_digits=10, decimal_places=2, label='Deposit they already paid (KES)',
+        help_text='Held for when they move out. It is not added to what they owe.',
+    )
     bill_now = forms.BooleanField(
         required=False, initial=True, label="Bill this month's rent now",
         help_text='Otherwise it is billed by the next monthly run.',
@@ -137,10 +151,17 @@ class LeaseForm(OwnedForm):
         for name in self.OPTIONAL_WITH_DEFAULT:
             self.fields[name].required = False
         if self.instance.pk:
-            del self.fields['bill_now']
-            del self.fields['bill_deposit']
+            for name in ('bill_now', 'bill_deposit', 'tenancy', 'balance_now', 'deposit_paid'):
+                del self.fields[name]
         else:
             self.initial.setdefault('start_date', datetime.date.today())
+            for name in ('balance_now', 'deposit_paid'):
+                self.fields[name].show_when = 'id_tenancy=existing'
+            for name in ('bill_now', 'bill_deposit', 'deposit'):
+                self.fields[name].show_when = 'id_tenancy=new'  # existing tenants give the deposit already paid
+            self.fields['start_date'].label = 'Move-in date'
+            self.fields['start_date'].help_text = 'For an existing tenant, the day they first moved in.'
+            self.order_fields(['tenancy', 'unit', 'tenant', 'start_date', 'balance_now', 'deposit_paid'])
 
     # Blank means "use the model default" (no service charge, no late fee, 3-day grace).
     OPTIONAL_WITH_DEFAULT = ['deposit', 'service_charge', 'late_fee', 'late_fee_grace_days']
@@ -154,14 +175,30 @@ class LeaseForm(OwnedForm):
         if unit and cleaned.get('monthly_rent') is None:
             cleaned['monthly_rent'] = unit.default_rent
             self.instance.monthly_rent = unit.default_rent
+        if self.existing:
+            if cleaned.get('start_date') and cleaned['start_date'] > datetime.date.today():
+                self.add_error('start_date', 'They already live there, so this is the day they moved in: in the past.')
+            if not cleaned.get('deposit') and cleaned.get('deposit_paid'):
+                cleaned['deposit'] = cleaned['deposit_paid']
+                self.instance.deposit = cleaned['deposit_paid']
         if cleaned.get('due_day') is None and 'due_day' not in self.errors and cleaned.get('start_date'):
             # Rent day = move-in day: moved in on the 12th, each month runs 12th to 11th.
             cleaned['due_day'] = cleaned['start_date'].day
             self.instance.due_day = cleaned['due_day']
         return cleaned
 
+    @property
+    def existing(self):
+        return getattr(self, 'cleaned_data', {}).get('tenancy') == 'existing'
+
     def save(self, commit=True):
         lease = super().save(commit)
+        if commit and self.existing:
+            from .utils import bring_forward
+
+            bring_forward(lease, self.cleaned_data.get('balance_now') or Decimal('0'),
+                          self.cleaned_data.get('deposit_paid') or Decimal('0'), self.owner)
+            return lease
         if commit and self.cleaned_data.get('bill_deposit'):
             lease.bill_deposit()
         if commit and self.cleaned_data.get('bill_now') and lease.start_date <= datetime.date.today():

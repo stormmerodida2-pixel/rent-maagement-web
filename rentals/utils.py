@@ -540,11 +540,37 @@ def check_import(rows, owner, prop):
     return checked
 
 
+def bring_forward(lease, balance, deposit_paid, actor, today=None):
+    """Start Rentipay for a tenant who already lives there.
+
+    `balance` is everything they owe today, including this month's rent if it was already due (negative =
+    in credit); it becomes a "Balance brought forward" line, which reports don't count as new income.
+    `deposit_paid` is a deposit they already paid: held for move-out without adding to what they owe.
+    This month's rent, if already due, is part of `balance`, so it isn't billed again.
+    """
+    today = today or datetime.date.today()
+    before = (today.replace(day=1) - datetime.timedelta(days=1)).replace(day=1)  # dated before Rentipay
+    if balance:
+        RentCharge.objects.create(lease=lease, kind=RentCharge.Kind.OPENING, period=before, amount=balance,
+                                  due_date=today, description='Balance brought forward' if balance > 0
+                                  else 'Credit brought forward')
+    if deposit_paid:
+        RentCharge.objects.create(lease=lease, kind=RentCharge.Kind.DEPOSIT, period=before, amount=deposit_paid,
+                                  due_date=lease.start_date, description='Deposit')
+        RentCharge.objects.create(lease=lease, kind=RentCharge.Kind.OPENING, period=before, amount=-deposit_paid,
+                                  due_date=lease.start_date, description='Deposit paid before Rentipay')
+    if lease.start_date <= today and lease.cycle_start(today) <= today:
+        RentCharge.all_objects.get_or_create(
+            lease=lease, kind=RentCharge.Kind.RENT, period=today.replace(day=1),
+            defaults={'amount': lease.monthly_rent, 'due_date': lease.cycle_start(today), 'voided_at': timezone.now(),
+                      'voided_by': actor, 'void_reason': 'Included in the balance brought forward'},
+        )
+
+
 @transaction.atomic
 def apply_import(checked, owner, prop, actor):
     """Create the units, tenants and tenancies for rows without errors. Returns (units, tenancies) counts."""
     today = datetime.date.today()
-    before = (today.replace(day=1) - datetime.timedelta(days=1)).replace(day=1)  # dated before Rentipay
     units = tenancies = 0
     for row in checked:
         if row['errors']:
@@ -562,24 +588,7 @@ def apply_import(checked, owner, prop, actor):
         lease = Lease.objects.create(unit=unit, tenant=tenant, start_date=start, monthly_rent=row['rent'],
                                      deposit=row['deposit'] or 0, due_day=row['rent_day'] or start.day)
         tenancies += 1
-        balance, deposit = row['balance'] or Decimal('0'), row['deposit'] or Decimal('0')
-        if balance:
-            RentCharge.objects.create(lease=lease, kind=RentCharge.Kind.OPENING, period=before, amount=balance,
-                                      due_date=today, description='Balance brought forward' if balance > 0
-                                      else 'Credit brought forward')
-        if deposit:
-            # Paid before Rentipay: held for move-out, without adding to what they owe.
-            RentCharge.objects.create(lease=lease, kind=RentCharge.Kind.DEPOSIT, period=before, amount=deposit,
-                                      due_date=start, description='Deposit')
-            RentCharge.objects.create(lease=lease, kind=RentCharge.Kind.OPENING, period=before, amount=-deposit,
-                                      due_date=start, description='Deposit paid before Rentipay')
-        if lease.cycle_start(today) <= today:
-            # This month's rent was already due, so it's part of "balance owed now": don't bill it again.
-            RentCharge.all_objects.create(
-                lease=lease, kind=RentCharge.Kind.RENT, period=today.replace(day=1), amount=row['rent'],
-                due_date=lease.cycle_start(today), voided_at=timezone.now(), voided_by=actor,
-                void_reason='Included in the balance brought forward at import',
-            )
+        bring_forward(lease, row['balance'] or Decimal('0'), row['deposit'] or Decimal('0'), actor, today)
     audit.record(owner=owner, actor=actor, action='property.imported',
                  summary=f'Imported {units} unit(s) and {tenancies} tenant(s) into {prop} from a spreadsheet.')
     return units, tenancies

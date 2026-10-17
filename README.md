@@ -399,6 +399,10 @@ Use a Gmail account's **app password**: Google account → Security → 2-Step V
 - Carried-over amounts don't count as a month's billing in reports.
 - Rows with problems (bad phone, missing rent, duplicate unit, unit already occupied) are shown in the preview and skipped. Nothing is saved until you confirm, and the import goes into Activity.
 
+### Tenants who were there before Rentipay
+
+**Move a tenant in** asks *New or existing tenant?* Choosing **Already living here** replaces the "bill now" options with **Balance owed now** (everything owed today, including this month's rent if already due; negative for credit) and **Deposit they already paid**. This works exactly like the Excel import (both use `bring_forward`): a "Balance brought forward" line (not counted as income in reports), the deposit held without being billed, and this month's rent not billed again. The move-in date must be in the past, and the rent day defaults to that day of the month.
+
 ### Payment plans for arrears
 
 When a tenant has fallen behind, open their page and choose **Set up payment plan**, e.g. KES 45,000 as KES 10,000 every Friday. Preview the payments, then agree; the tenant can be sent the plan by SMS.
