@@ -5,6 +5,7 @@ from decimal import Decimal
 
 from django.contrib import messages
 from django.contrib.auth.decorators import login_required
+from django.core.exceptions import ValidationError
 from django.db import transaction
 from django.db.models import Sum
 from django.http import JsonResponse
@@ -24,10 +25,10 @@ from rentals.models import Lease
 
 from . import mpesa
 from .forms import (
-    AssignC2BForm, HandoverForm, ManualPaymentForm, MovePaymentForm, MpesaAccountForm, StatementUploadForm,
-    StkPushForm, VoidForm,
+    AssignC2BForm, ExpenseForm, HandoverForm, ManualPaymentForm, MovePaymentForm, MpesaAccountForm,
+    StatementUploadForm, StkPushForm, VoidForm,
 )
-from .models import C2BPayment, CashHandover, MpesaAccount, MpesaTransaction, Payment, StaffExpense
+from .models import C2BPayment, CashHandover, Expense, MpesaAccount, MpesaTransaction, Payment, StaffExpense
 from .utils import (
     STATEMENT_MAX_BYTES, StatementError, apply_statement, check_statement, decide_expense, decide_handover,
     read_statement, record_handover, staff_cash_for,
@@ -467,4 +468,109 @@ def expense_decide(request, pk):
     messages.success(request, f'Approved KES {expense.amount:,.0f} spent by {expense.staff.name}.' if approve else
                      f'Not approved. KES {expense.amount:,.0f} still counts as cash {expense.staff.name} is holding.')
     return redirect('payments:cash_with_staff')
+
+
+# --- Expenses -------------------------------------------------------------------------------------------
+
+def _month_param(value):
+    try:
+        return datetime.datetime.strptime(value or '', '%Y-%m').date().replace(day=1)
+    except ValueError:
+        return timezone.localdate().replace(day=1)
+
+
+def _next_month(month):
+    return (month + datetime.timedelta(days=32)).replace(day=1)
+
+
+@login_required
+def expense_list(request):
+    """What the landlord spent in a month, by category, plus the costs that repeat every month."""
+    from django.db.models import Sum
+
+    from rentals.models import Property
+
+    month = _month_param(request.GET.get('month'))
+    expenses = (Expense.objects.filter(owner=request.user, paid_on__gte=month, paid_on__lt=_next_month(month))
+                .select_related('property', 'unit'))
+    prop = request.GET.get('property', '')
+    if prop.isdigit():
+        expenses = expenses.filter(property_id=prop)
+    by_category = {k: v for k, v in expenses.values_list('category').annotate(t=Sum('amount')).order_by('-t')}
+    labels = dict(Expense.Category.choices)
+    previous = (month - datetime.timedelta(days=1)).replace(day=1)
+    return render(request, 'payments/expense_list.html', {
+        'expenses': expenses, 'month': month, 'prev_month': previous,
+        'next_month': _next_month(month) if _next_month(month) <= timezone.localdate() else None,
+        'total': sum(e.amount for e in expenses),
+        'categories': [(labels[k], v) for k, v in by_category.items()],
+        'properties': Property.objects.filter(owner=request.user), 'selected_property': prop,
+        'repeating': Expense.objects.filter(owner=request.user, repeats_monthly=True, repeat_of__isnull=True)
+        .select_related('property'),
+    })
+
+
+@login_required
+def expense_create(request):
+    from maintenance.models import MaintenanceRequest
+
+    initial = {}
+    repair = None
+    if request.GET.get('repair', '').isdigit():
+        repair = MaintenanceRequest.objects.filter(pk=request.GET['repair'], unit__property__owner=request.user) \
+            .select_related('unit').first()
+        if repair:
+            initial = {'category': Expense.Category.REPAIRS, 'description': repair.title, 'amount': repair.cost,
+                       'unit': repair.unit_id, 'property': repair.unit.property_id}
+    form = ExpenseForm(request.POST or None, request.FILES or None, owner=request.user, initial=initial)
+    if request.method == 'POST' and form.is_valid():
+        try:
+            expense = form.save(commit=False)
+        except ValidationError as exc:
+            form.add_error('receipt_photo', exc)
+        else:
+            expense.recorded_by, expense.repair = request.user, repair
+            expense.save()
+            audit.record(owner=request.user, actor=request.user, action='expense.recorded',
+                         summary=f'Recorded an expense: KES {expense.amount:,.0f} for "{expense.description}" '
+                                 f'({expense.get_category_display()}).'
+                                 + (' Repeats every month.' if expense.repeats_monthly else ''))
+            messages.success(request, f'Recorded KES {expense.amount:,.0f}.'
+                             + (' It will be added again every month.' if expense.repeats_monthly else ''))
+            return redirect(f"{reverse('payments:expense_list')}?month={expense.paid_on:%Y-%m}")
+    return render(request, 'form_page.html', {
+        'form': form, 'page_title': 'Add an expense', 'submit_label': 'Save expense', 'multipart': True,
+        'cancel_url': reverse('payments:expense_list'),
+        'intro': 'Anything you paid for your properties. It comes off the rent you collected in Reports, '
+                 'so you see what you actually made.',
+    })
+
+
+@login_required
+def expense_void(request, pk):
+    expense = get_object_or_404(Expense, pk=pk, owner=request.user)
+    form = VoidForm(request.POST or None)
+    back = f"{reverse('payments:expense_list')}?month={expense.paid_on:%Y-%m}"
+    if request.method == 'POST' and form.is_valid():
+        expense.void(request.user, form.cleaned_data['reason'])
+        audit.record(owner=request.user, actor=request.user, action='expense.voided',
+                     summary=f'Voided an expense of KES {expense.amount:,.0f} ("{expense.description}"): '
+                             f'{form.cleaned_data["reason"]}')
+        messages.success(request, 'Expense voided. It stays in the records but no longer counts.')
+        return redirect(back)
+    return render(request, 'form_page.html', {
+        'form': form, 'page_title': 'Void expense', 'submit_label': 'Void expense', 'cancel_url': back,
+        'confirm': 'It will no longer count against your profit. It stays in the records.',
+        'intro': f'KES {expense.amount:,.0f} for "{expense.description}" on {expense.paid_on:%d %b %Y}.',
+    })
+
+
+@login_required
+@require_POST
+def expense_stop_repeat(request, pk):
+    expense = get_object_or_404(Expense, pk=pk, owner=request.user, repeats_monthly=True)
+    expense.repeats_monthly = False
+    expense.save(update_fields=['repeats_monthly'])
+    messages.success(request, f'"{expense.description}" won\'t be added again. Past months stay recorded.')
+    return redirect('payments:expense_list')
 

@@ -1,9 +1,11 @@
+import datetime
+
 from django import forms
 from django.utils import timezone
 
 from rentals.models import Lease
 
-from .models import MpesaAccount, Payment
+from .models import Expense, MpesaAccount, Payment
 
 # Safaricom's published sandbox test credentials for Lipa Na M-Pesa Online.
 SANDBOX_SHORTCODE = '174379'
@@ -180,3 +182,65 @@ class HandoverForm(forms.Form):
         if cleaned.get('method') in ('banked', 'mpesa') and not cleaned.get('reference'):
             self.add_error('reference', 'Add the bank slip number or M-Pesa code, so it can be checked.')
         return cleaned
+
+
+class ExpenseForm(forms.ModelForm):
+    """Something the landlord paid for. A receipt photo is optional and stays private."""
+
+    receipt_photo = forms.ImageField(label='Receipt photo (optional)', required=False,
+                                     widget=forms.ClearableFileInput(attrs={'accept': 'image/*'}))
+
+    class Meta:
+        model = Expense
+        fields = ['category', 'description', 'amount', 'paid_on', 'property', 'unit', 'method', 'reference',
+                  'repeats_monthly']
+        labels = {'amount': 'Amount (KES)', 'paid_on': 'Date paid', 'property': 'Property', 'unit': 'Unit (optional)'}
+        widgets = {'paid_on': forms.DateInput(attrs={'type': 'date'}),
+                   'amount': forms.NumberInput(attrs={'inputmode': 'decimal', 'step': '1'}),
+                   'description': forms.TextInput(attrs={'placeholder': "e.g. Peter's salary, KPLC tokens, roof repair"})}
+        help_texts = {'repeats_monthly': "For costs you pay every month, like the caretaker's salary: it's added "
+                                         'again on the same day each month until you stop it.'}
+
+    def __init__(self, *args, owner, **kwargs):
+        from rentals.models import Property, Unit
+
+        super().__init__(*args, **kwargs)
+        self.owner = owner
+        self.fields['property'].queryset = Property.objects.filter(owner=owner)
+        self.fields['property'].empty_label = 'All properties (shared cost)'
+        self.fields['unit'].queryset = Unit.objects.filter(property__owner=owner).select_related('property')
+        self.fields['unit'].empty_label = 'Not for one unit'
+        self.fields['method'].choices = [c for c in Expense.Method.choices if c[0] != Expense.Method.STAFF_CASH]
+        if self.instance.pk:
+            del self.fields['repeats_monthly']
+
+    def clean_amount(self):
+        amount = self.cleaned_data['amount']
+        if amount <= 0:
+            raise forms.ValidationError('Enter the amount you paid.')
+        return amount
+
+    def clean(self):
+        cleaned = super().clean()
+        unit, prop = cleaned.get('unit'), cleaned.get('property')
+        if unit and prop and unit.property_id != prop.pk:
+            self.add_error('unit', f'{unit.label} is not at {prop}.')
+        if unit and not prop:
+            cleaned['property'] = unit.property  # a unit's cost belongs to its property
+            self.instance.property = unit.property
+        if cleaned.get('paid_on') and cleaned['paid_on'] > timezone.localdate() + datetime.timedelta(days=31):
+            self.add_error('paid_on', 'That date is too far ahead.')
+        return cleaned
+
+    def save(self, commit=True):
+        from listings.utils import prepare_photo
+
+        expense = super().save(commit=False)
+        expense.owner = self.owner
+        upload = self.cleaned_data.get('receipt_photo')
+        if upload:
+            content = prepare_photo(upload)  # resized, location data removed
+            expense.receipt.save(content.name, content, save=False)
+        if commit:
+            expense.save()
+        return expense

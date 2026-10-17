@@ -267,3 +267,56 @@ class StaffExpense(models.Model):
     def __str__(self):
         return f'KES {self.amount:,.0f}: {self.description}'
 
+
+
+class Expense(Voidable):
+    """Money a landlord spent on their properties: repairs, caretaker pay, water, rates…
+
+    Rent collected minus expenses is what the landlord made (Reports). Monthly costs can repeat by themselves;
+    approved caretaker spending becomes an expense automatically.
+    """
+
+    class Category(models.TextChoices):
+        REPAIRS = 'repairs', 'Repairs & maintenance'
+        STAFF = 'staff', 'Caretaker & staff pay'
+        WATER = 'water', 'Water bill'
+        ELECTRICITY = 'electricity', 'Electricity'
+        SECURITY = 'security', 'Security'
+        CLEANING = 'cleaning', 'Cleaning & garbage'
+        RATES = 'rates', 'Land rates & licences'
+        INSURANCE = 'insurance', 'Insurance'
+        AGENT = 'agent', 'Agent & management fees'
+        OTHER = 'other', 'Other'
+
+    class Method(models.TextChoices):
+        CASH = 'cash', 'Cash'
+        MPESA = 'mpesa', 'M-Pesa'
+        BANK = 'bank', 'Bank'
+        STAFF_CASH = 'staff_cash', "From caretaker's rent cash"
+
+    owner = models.ForeignKey(settings.AUTH_USER_MODEL, on_delete=models.CASCADE, related_name='expenses')
+    property = models.ForeignKey('rentals.Property', on_delete=models.PROTECT, null=True, blank=True,
+                                 related_name='expenses', help_text='Leave empty for costs shared by all properties.')
+    unit = models.ForeignKey('rentals.Unit', on_delete=models.SET_NULL, null=True, blank=True, related_name='+')
+    category = models.CharField(max_length=20, choices=Category.choices, default=Category.REPAIRS)
+    description = models.CharField('what for', max_length=200)
+    amount = models.DecimalField(max_digits=12, decimal_places=2)
+    paid_on = models.DateField(default=timezone.localdate)
+    method = models.CharField('paid by', max_length=12, choices=Method.choices, default=Method.MPESA)
+    reference = models.CharField(max_length=50, blank=True, help_text='M-Pesa code, cheque or invoice number.')
+    receipt = models.ImageField(upload_to='expenses/%Y/%m/', storage=private_storage, blank=True)
+    repeats_monthly = models.BooleanField('repeat every month', default=False)
+    repeat_of = models.ForeignKey('self', on_delete=models.SET_NULL, null=True, blank=True, related_name='repeats')
+    repair = models.ForeignKey('maintenance.MaintenanceRequest', on_delete=models.SET_NULL, null=True, blank=True,
+                               related_name='expenses')
+    staff_expense = models.OneToOneField(StaffExpense, on_delete=models.SET_NULL, null=True, blank=True,
+                                         related_name='expense')
+    recorded_by = models.ForeignKey(settings.AUTH_USER_MODEL, on_delete=models.SET_NULL, null=True, blank=True,
+                                    related_name='+')
+    created_at = models.DateTimeField(auto_now_add=True)
+
+    class Meta:
+        ordering = ['-paid_on', '-created_at']
+
+    def __str__(self):
+        return f'KES {self.amount:,.0f}: {self.description}'

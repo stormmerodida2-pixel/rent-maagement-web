@@ -259,3 +259,7 @@ details.daraja[open] > summary h2::before { transform: rotate(90deg); }
 .unpaid-table td { padding-top: 6px; padding-bottom: 6px; }
 .unpaid-table tr.overdue td:first-child { border-left: 3px solid var(--danger); padding-left: 8px; }
 .unpaid-table tr.unpaid-total td { border-top: 2px solid var(--border); }
+
+/* --- Expenses on the trend chart --------------------------------------------------------------------- */
+.sw-spent, .bar.spent { background: var(--warn); }
+.trend .bar { width: 26%; }
