@@ -96,6 +96,7 @@ MIDDLEWARE = [
     'django.contrib.auth.middleware.AuthenticationMiddleware',
     'accounts.utils.StaffAreaMiddleware',  # staff accounts only reach /staff/
     'django.contrib.messages.middleware.MessageMiddleware',
+    'accounts.impersonation.ImpersonationMiddleware',  # superadmins viewing as a landlord, for support
     'billing.utils.ReadOnlyWhenUnpaidMiddleware',  # landlords with an unpaid bill can look but not change
     'accounts.utils.UpdatedTermsMiddleware',  # landlords accept changed terms before going on
     'accounts.utils.ReadOnlyViewerMiddleware',  # co-owners and accountants see the landlord's account, read-only

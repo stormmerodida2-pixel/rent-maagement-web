@@ -41,6 +41,7 @@
     </nav>
     {# Pinned above the account row, so it's visible however long the menu gets. #}
     <nav class="nav nav-bottom" aria-label="Settings">
+      {% if user.is_superuser %}<a href="{% url 'impersonate' %}" class="{% if url_name == 'impersonate' %}active{% endif %}">{% icon 'shield' %}View as a landlord</a>{% endif %}
       <a href="{% url 'help' %}">{% icon 'message' %}Help</a>
       {% if request.viewer %}
       <a href="{% url 'accounts:password_change' %}" class="{% if url_name == 'password_change' %}active{% endif %}">{% icon 'settings' %}My password</a>
@@ -68,6 +69,13 @@
 
   <main class="main">
     <div class="container">
+      {% if request.impersonator %}
+      <div class="alert alert-warning viewer-banner" style="margin-bottom:16px">
+        {% icon 'shield' 18 %}<span><strong>Support:</strong> you're viewing <strong>{{ user.get_full_name|default:user.username }}</strong>'s account{% if request.impersonation.changes %}, with changes allowed. Anything you change is logged under your name.{% else %}, view only.{% endif %} Reason: {{ request.impersonation.reason }}</span>
+        <span class="spacer"></span>
+        <form method="post" action="{% url 'impersonate_stop' %}">{% csrf_token %}<button class="btn btn-sm">Stop</button></form>
+      </div>
+      {% endif %}
       {% if request.viewer %}
       <div class="alert alert-info viewer-banner" style="margin-bottom:16px">
         {% icon 'users' 18 %}<span>You're viewing <strong>{{ request.viewer.owner.get_full_name|default:"the landlord" }}</strong>'s account{% if request.viewer.can_edit %}. Changes you make are recorded under your name.{% else %}, read-only. You can look and download, but not change anything.{% endif %}</span>
