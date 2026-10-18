@@ -88,7 +88,7 @@ PRIVATE_PATHS = [
     '/admin/', '/t/', '/dashboard/', '/welcome/', '/properties/', '/units/', '/tenants/', '/leases/',
     '/charges/', '/readings/', '/payments/', '/maintenance/', '/complaints/', '/messages/', '/reports/',
     '/activity/', '/announcements/', '/verify-email/', '/password-reset/', '/logout/', '/healthz/',
-    '/vacancies/', '/staff/', '/settings/', '/private/', '/billing/',
+    '/vacancies/', '/staff/', '/settings/', '/private/', '/billing/', '/support/',
 ]
 
 

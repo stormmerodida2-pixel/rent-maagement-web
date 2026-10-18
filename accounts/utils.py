@@ -355,7 +355,8 @@ class UpdatedTermsMiddleware:
     def __call__(self, request):
         user = request.user
         if user.is_authenticated and not user.is_superuser and getattr(request, 'staff', None) is None \
-                and not request.path.startswith(TERMS_OPEN_PATHS):
+                and getattr(request, 'impersonator', None) is None \
+                and not request.path.startswith(TERMS_OPEN_PATHS):  # support never accepts terms for a landlord
             current = settings.LEGAL['TERMS_VERSION']
             if request.session.get(TERMS_SESSION_KEY) != current:
                 accepted = profile_for(user).terms_version

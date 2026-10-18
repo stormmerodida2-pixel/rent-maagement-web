@@ -180,3 +180,21 @@ class Referral(models.Model):
 
     class Meta:
         ordering = ['-created_at']
+
+
+class SupportSession(models.Model):
+    """A superadmin viewing the app as a landlord. Private: only superadmins see these (in the admin), never the
+    landlord, but every session is kept so access can be accounted for."""
+
+    superadmin = models.ForeignKey(settings.AUTH_USER_MODEL, on_delete=models.PROTECT, related_name='+')
+    landlord = models.ForeignKey(settings.AUTH_USER_MODEL, on_delete=models.CASCADE, related_name='+')
+    reason = models.CharField(max_length=150)
+    allow_changes = models.BooleanField(default=False)
+    started_at = models.DateTimeField(auto_now_add=True)
+    ended_at = models.DateTimeField(null=True, blank=True)
+
+    class Meta:
+        ordering = ['-started_at']
+
+    def __str__(self):
+        return f'{self.superadmin} as {self.landlord} ({self.started_at:%d %b %Y %H:%M})'

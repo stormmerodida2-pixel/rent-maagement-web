@@ -5,6 +5,7 @@ from django.contrib.auth.views import redirect_to_login
 from django.contrib.sitemaps.views import sitemap
 from django.urls import include, path, reverse
 
+from accounts import impersonation
 from accounts import views as account_views
 from accounts.urls import staff_patterns
 from ops.views import business_details, healthz
@@ -52,6 +53,9 @@ urlpatterns = [
     path('reports/', include('reports.urls')),
     path('activity/', include('audit.urls')),
     path('announcements/', include('announcements.urls')),
+    path('support/impersonate/', impersonation.choose, name='impersonate'),
+    path('support/impersonate/<int:pk>/start/', impersonation.start, name='impersonate_start'),
+    path('support/impersonate/stop/', impersonation.stop, name='impersonate_stop'),
     path('', include('support.urls')),
     path('', include('billing.urls')),
     path('settings/business/', business_details, name='business_details'),
