@@ -1,0 +1,60 @@
+{% extends 'app_base.html' %}
+{% load static ui %}
+{% block page_title %}Months before Rentipay · {{ lease.tenant }}{% endblock %}
+{% block content %}
+<div class="page-header">
+  <div><h1>Which months did {{ lease.tenant }} pay?</h1>
+    <p class="sub">{{ lease.unit }} · moved in {{ lease.start_date|date:"d M Y" }} · on {{ APP_NAME }} since {{ setup|date:"d M Y" }}. Change any month marked wrongly and save: their balance updates by itself. The old lines stay in the history as voided.</p></div>
+  <div class="actions"><a class="btn" href="{% url 'rentals:lease_detail' lease.pk %}">← Back</a></div>
+</div>
+
+{% if one_total %}<div class="alert alert-info" style="margin-bottom:14px">{% icon 'file' 18 %}<span>When you added {{ lease.tenant.full_name.split.0 }} you entered one total of <strong>{{ one_total|kes }}</strong> instead of month by month. Saving here replaces that total with the months below.</span></div>{% endif %}
+{% if errors %}<div class="alert alert-error" style="margin-bottom:14px">{{ errors|join:" " }}</div>{% endif %}
+
+<form method="post" novalidate data-arrears>
+  {% csrf_token %}
+  <section class="card" style="margin-bottom:16px">
+    <div class="card-body row">
+      <div style="flex:1;min-width:220px">
+        <div class="muted small">{{ months|length }} month{{ months|length|pluralize }} before {{ APP_NAME }}</div>
+        <div style="font-size:22px;font-weight:700">Owed from then: KES <span data-owed-total>{{ owed_total|floatformat:0 }}</span></div>
+        <div class="muted small">Payments, and rent billed since, are added on top as usual.</div>
+      </div>
+      <div class="row" style="gap:6px">
+        <button type="button" class="btn btn-sm" data-set-all="paid">All paid</button>
+        <button type="button" class="btn btn-sm" data-set-all="unpaid">None paid</button>
+      </div>
+    </div>
+  </section>
+
+  <section class="card">
+    <div class="table-wrap"><table class="table">
+      <thead><tr><th>Month</th><th class="num">Rent</th><th>Paid?</th></tr></thead>
+      <tbody>
+      {% for m in months %}
+      <tr data-month data-amount="{{ m.amount|floatformat:2 }}">
+        <td class="nowrap">{{ m.start|date:"j M" }} – {{ m.end|date:"j M Y" }}</td>
+        <td class="num">{{ m.amount|kes }}</td>
+        <td>
+          <div class="row" style="gap:6px;flex-wrap:wrap">
+            <select name="month_{{ m.index }}" id="month_{{ m.index }}" aria-label="Paid for {{ m.start|date:'j M Y' }}?">
+              <option value="paid"{% if m.status == 'paid' %} selected{% endif %}>Paid</option>
+              <option value="unpaid"{% if m.status == 'unpaid' %} selected{% endif %}>Not paid</option>
+              <option value="part"{% if m.status == 'part' %} selected{% endif %}>Part paid</option>
+            </select>
+            <span data-show-when="month_{{ m.index }}=part"><input name="month_{{ m.index }}_paid" value="{{ m.paid_text }}" inputmode="numeric" placeholder="KES paid" class="input-narrow" aria-label="How much they paid for {{ m.start|date:'j M Y' }}"></span>
+          </div>
+        </td>
+      </tr>
+      {% endfor %}
+      </tbody>
+    </table></div>
+  </section>
+
+  <div class="form-actions" style="margin-top:16px">
+    <button type="submit" class="btn btn-primary" data-confirm="{{ lease.tenant }} will owe KES {owed} from before {{ APP_NAME }}." data-confirm-title="Save these months?" data-confirm-ok="Save">Save months</button>
+    <a class="btn btn-ghost" href="{% url 'rentals:lease_detail' lease.pk %}">Cancel</a>
+  </div>
+</form>
+<script src="{% static 'js/arrears.js' %}" defer></script>
+{% endblock %}

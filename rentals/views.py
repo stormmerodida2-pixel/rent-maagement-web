@@ -274,6 +274,7 @@ def lease_detail(request, pk):
             key=lambda r: r.voided_at, reverse=True,
         ),
         'history': lease.audit_entries.select_related('actor')[:15],
+        'has_opening': lease.charges.filter(kind=RentCharge.Kind.OPENING).exists(),
         'inspections': {i.kind: i for i in lease.inspections.prefetch_related('photos')},
         'documents': lease.tenant.documents.all(),
         'document_kinds': TenantDocument.Kind.choices,
@@ -298,6 +299,41 @@ def tenant_history(request, pk):
         'lease': lease, 'tenant': lease.tenant, 'events': tenant_timeline(lease.tenant, kinds), 'kinds': KINDS,
         'show': kind if kinds else '', 'record': tenant_record(lease.tenant), 'balance': lease.balance,
     })
+
+
+@login_required
+def edit_opening_months(request, pk):
+    """Fix which months were paid before Rentipay (e.g. one marked "Not paid" by mistake). The balance follows."""
+    from .utils import opening_months, parse_month_choices, replace_opening_months
+
+    lease = get_object_or_404(Lease.objects.select_related('tenant', 'unit__property'), pk=pk,
+                              unit__property__owner=request.user)
+    found = opening_months(lease)
+    if found is None:
+        messages.info(request, f'{lease.tenant} started on {settings.APP_NAME} as a new tenant, so there are no months '
+                               'from before to fix. To correct a month since, record the payment or void the charge.')
+        return redirect('rentals:lease_detail', pk=lease.pk)
+    months, errors = found['months'], []
+    if request.method == 'POST':
+        choices, errors = parse_month_choices(request.POST, months)
+        months = [{**m, **choices[m['index']]} for m in months]
+        if not errors:
+            unpaid = [(m, m['owed']) for m in months]
+            before, after = replace_opening_months(lease, unpaid, request.user)
+            audit.record(owner=request.user, actor=request.user, lease=lease, action='opening.corrected',
+                         summary=f'Corrected the months {lease.tenant} paid before Rentipay: owed KES {before:,.0f} '
+                                 f'then, now KES {after:,.0f}.',
+                         changes={'Owed from before Rentipay': (f'{before:,.0f}', f'{after:,.0f}')})
+            balance = lease.balance
+            messages.success(request, f'Saved. {lease.tenant} now ' + (
+                f'owes KES {balance:,.0f} in total.' if balance > 0 else
+                f'is KES {-balance:,.0f} in credit.' if balance < 0 else 'owes nothing.'))
+            return redirect('rentals:lease_detail', pk=lease.pk)
+    return render(request, 'rentals/lease_months_edit.html', {
+        'lease': lease, 'months': months, 'errors': errors, 'setup': found['setup'],
+        'one_total': found['one_total'], 'owed_total': sum(m['owed'] for m in months),
+    })
+
 
 
 @login_required

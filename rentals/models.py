@@ -489,7 +489,8 @@ class RentCharge(Voidable):
         DEDUCTION = 'deduction', _('Move-out deduction')
         REFUND = 'refund', _('Refund paid to tenant')
         OPENING = 'opening', _('Balance brought forward')  # owed (or in credit) before using Rentipay
-        REWARD = 'reward', _('On-time reward')  # a credit (negative) for paying on time several months running
+        REWARD = 'reward', _('On-time reward')
+        ADJUSTMENT = 'adjustment', _('Balance adjustment')  # the landlord set what the tenant owes, with a reason  # a credit (negative) for paying on time several months running
         OTHER = 'other', _('Other')
 
     # Kinds billed at most once per lease per month.

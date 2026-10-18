@@ -5,7 +5,7 @@ import csv
 import datetime
 import io
 import re
-from decimal import Decimal, ROUND_HALF_UP
+from decimal import Decimal, InvalidOperation, ROUND_HALF_UP
 from functools import wraps
 
 from django.conf import settings
@@ -569,13 +569,7 @@ def bring_forward(lease, balance, deposit_paid, actor, today=None, unpaid_months
     """
     today = today or datetime.date.today()
     before = (today.replace(day=1) - datetime.timedelta(days=1)).replace(day=1)  # dated before Rentipay
-    # Month by month: each unpaid (or part-paid) month is its own line, e.g. "Unpaid rent 5 Aug – 4 Sep 2026".
-    for month, owed in unpaid_months or []:
-        if owed > 0:
-            paid = month['amount'] - owed
-            RentCharge.objects.create(lease=lease, kind=RentCharge.Kind.OPENING, period=month['period'],
-                                      amount=owed, due_date=month['start'],
-                                      description=f"Part paid: KES {paid:,.0f} of {month['amount']:,.0f}" if paid > 0 else '')
+    _month_lines(lease, unpaid_months)
     if balance:
         RentCharge.objects.create(lease=lease, kind=RentCharge.Kind.OPENING, period=before, amount=balance,
                                   due_date=today, description='Balance brought forward' if balance > 0
@@ -591,6 +585,82 @@ def bring_forward(lease, balance, deposit_paid, actor, today=None, unpaid_months
             defaults={'amount': lease.monthly_rent, 'due_date': lease.cycle_start(today), 'voided_at': timezone.now(),
                       'voided_by': actor, 'void_reason': 'Included in the balance brought forward'},
         )
+
+
+def _month_lines(lease, unpaid_months):
+    """Month by month: each unpaid (or part-paid) month is its own line, e.g. "Unpaid rent 5 Aug – 4 Sep 2026"."""
+    for month, owed in unpaid_months or []:
+        if owed > 0:
+            paid = month['amount'] - owed
+            RentCharge.objects.create(lease=lease, kind=RentCharge.Kind.OPENING, period=month['period'],
+                                      amount=owed, due_date=month['start'],
+                                      description=f"Part paid: KES {paid:,.0f} of {month['amount']:,.0f}" if paid > 0 else '')
+
+
+def parse_month_choices(data, months):
+    """What the landlord picked for each month (paid / not paid / part paid) in `data` (the POST), and anything
+    wrong with it: ({index: {'status', 'paid_text', 'owed'}}, [errors])."""
+    choices, errors = {}, []
+    for m in months:
+        i = m['index']
+        status = data.get(f'month_{i}', 'paid')
+        paid_text = data.get(f'month_{i}_paid', '').replace(',', '').strip()
+        owed = Decimal('0')
+        if status == 'unpaid':
+            owed = m['amount']
+        elif status == 'part':
+            try:
+                paid = Decimal(paid_text)
+                if not 0 < paid < m['amount']:
+                    raise InvalidOperation
+                owed = m['amount'] - paid
+            except (InvalidOperation, ValueError):
+                errors.append(f"{m['start']:%d %b %Y}: enter how much they paid, between 1 and {m['amount']:,.0f}.")
+        choices[i] = {'status': status, 'paid_text': paid_text, 'owed': owed}
+    return choices, errors
+
+
+def _arrears_lines(lease):
+    """What the tenant owed when they started on Rentipay: the month-by-month lines and/or the one total
+    ("Balance brought forward"). Deposits and credit lines aren't included."""
+    return [c for c in lease.charges.filter(kind=RentCharge.Kind.OPENING, amount__gt=0)
+            if not c.description or c.description.startswith('Part paid') or c.description == 'Balance brought forward']
+
+
+def opening_months(lease):
+    """The months from move-in until they started on Rentipay, each with what was recorded for it
+    ({**month, 'status', 'paid_text', 'owed'}), plus the one total they entered instead, if they did.
+    None for tenants who were new, with nothing from before Rentipay."""
+    opening = list(lease.charges.filter(kind=RentCharge.Kind.OPENING))
+    if not opening:
+        return None
+    setup = min(timezone.localtime(c.created_at).date() for c in opening)
+    lines = _arrears_lines(lease)
+    by_period = {c.period: c for c in lines if c.description != 'Balance brought forward'}
+    months = []
+    for m in rent_months(lease, today=setup):
+        line = by_period.get(m['period'])
+        if line is None:
+            status, paid_text, owed = 'paid', '', Decimal('0')
+        elif line.amount >= m['amount']:
+            status, paid_text, owed = 'unpaid', '', line.amount
+        else:
+            status, paid_text, owed = 'part', f"{m['amount'] - line.amount:.0f}", line.amount
+        months.append({**m, 'status': status, 'paid_text': paid_text, 'owed': owed})
+    total = sum((c.amount for c in lines if c.description == 'Balance brought forward'), Decimal('0'))
+    return {'months': months, 'setup': setup, 'one_total': total}
+
+
+def replace_opening_months(lease, unpaid_months, actor):
+    """Correct which months were paid before Rentipay: the old arrears lines are voided (kept in the history) and
+    new ones made. Returns (old total, new total)."""
+    old = _arrears_lines(lease)
+    before = sum((c.amount for c in old), Decimal('0'))
+    with transaction.atomic():
+        for charge in old:
+            charge.void(actor, 'Corrected the months paid before Rentipay')
+        _month_lines(lease, unpaid_months)
+    return before, sum((owed for _, owed in unpaid_months), Decimal('0'))
 
 
 def unpaid_items(lease):
