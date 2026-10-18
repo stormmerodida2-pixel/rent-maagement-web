@@ -13,6 +13,7 @@ urlpatterns = [
     path('live/', views.live, name='live'),
     path('leases/<int:pk>/', views.lease_detail, name='lease_detail'),
     path('leases/<int:pk>/remind/', views.send_reminder, name='send_reminder'),
+    path('leases/<int:pk>/history/', views.tenant_history, name='tenant_history'),
     path('leases/<int:pk>/notice/', views.lease_notice, name='lease_notice'),
     path('leases/<int:pk>/rent/', views.lease_rent_change, name='rent_change'),
     path('leases/<int:pk>/plan/', views.plan_create, name='plan_create'),

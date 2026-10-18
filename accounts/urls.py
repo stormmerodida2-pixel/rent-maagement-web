@@ -14,6 +14,7 @@ urlpatterns = [
     path('login/verify/', views.login_verify, name='login_verify'),
     path('terms/accept/', views.accept_terms, name='accept_terms'),
     path('settings/rewards/', views.rewards, name='rewards'),
+    path('settings/receipts/', views.branding, name='branding'),
     path('settings/invite-a-landlord/', views.referrals, name='referrals'),
     path('settings/access/', views.viewer_list, name='viewers'),
     path('settings/access/new/', views.viewer_edit, name='viewer_add'),

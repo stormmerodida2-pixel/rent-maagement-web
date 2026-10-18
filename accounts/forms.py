@@ -482,3 +482,42 @@ class RewardForm(forms.ModelForm):
             'amount': 'Taken off what they owe automatically, and shown on their statement as "On-time reward".',
         }
         widgets = {'amount': forms.NumberInput(attrs={'inputmode': 'numeric', 'step': '50'})}
+
+
+class BrandingForm(forms.Form):
+    """Settings → Receipts and statements: the landlord's name, logo and colour on tenants' documents."""
+
+    brand_name = forms.CharField(max_length=80, required=False, label='Name on receipts',
+                                 help_text='e.g. "Kodi Properties Ltd". Leave blank to use each property\'s name.')
+    logo = forms.ImageField(required=False, label='Your logo',
+                            help_text='PNG with a transparent background looks best. It\'s resized to fit.',
+                            widget=forms.ClearableFileInput(attrs={'accept': 'image/*'}))
+    remove_logo = forms.BooleanField(required=False, label='Remove my logo')
+    brand_color = forms.RegexField(regex=r'^#[0-9a-fA-F]{6}$', required=False, label='Colour',
+                                   widget=forms.TextInput(attrs={'type': 'color'}),
+                                   help_text='For headings and lines on receipts and statements.')
+
+    def __init__(self, *args, profile, **kwargs):
+        super().__init__(*args, **kwargs)
+        self.profile = profile
+        self.initial.update(brand_name=profile.brand_name, brand_color=profile.brand_color or '#0e7a4b')
+        if not profile.brand_logo:
+            del self.fields['remove_logo']
+
+    def clean_logo(self):
+        logo = self.cleaned_data.get('logo')
+        if logo:
+            from listings.utils import prepare_logo
+
+            return prepare_logo(logo)
+        return None
+
+    def save(self):
+        data, profile = self.cleaned_data, self.profile
+        profile.brand_name, profile.brand_color = data['brand_name'].strip(), data['brand_color'] or ''
+        if data.get('remove_logo') or data.get('logo'):
+            profile.brand_logo.delete(save=False)
+        if data.get('logo'):
+            profile.brand_logo.save(data['logo'].name, data['logo'], save=False)
+        profile.save()
+        return profile

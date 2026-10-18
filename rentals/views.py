@@ -274,6 +274,22 @@ def lease_detail(request, pk):
 
 
 @login_required
+def tenant_history(request, pk):
+    """Everything that happened with this tenant, newest first, with filters."""
+    from .rewards import tenant_record
+    from .timeline import KINDS, tenant_timeline
+
+    lease = get_object_or_404(Lease.objects.select_related('tenant', 'unit__property'), pk=pk,
+                              unit__property__owner=request.user)
+    kind = request.GET.get('show', '')
+    kinds = [kind] if kind in dict(KINDS) else None
+    return render(request, 'rentals/tenant_history.html', {
+        'lease': lease, 'tenant': lease.tenant, 'events': tenant_timeline(lease.tenant, kinds), 'kinds': KINDS,
+        'show': kind if kinds else '', 'record': tenant_record(lease.tenant), 'balance': lease.balance,
+    })
+
+
+@login_required
 @require_POST
 def send_reminder(request, pk):
     lease = get_object_or_404(Lease, pk=pk, unit__property__owner=request.user)
@@ -456,12 +472,17 @@ def remind_all(request):
             messages.success(request, f'Sent {ok} reminder{"s" if ok != 1 else ""}.')
         return redirect('rentals:dashboard')
 
+    picked = set(request.GET.getlist('lease'))  # ticked on the Tenants list
     rows = []
     for lease, balance in owing:
         text = reminder_text(lease, balance)
-        rows.append({'lease': lease, 'balance': balance, 'text': text, 'parts': _sms_parts(text),
-                     'reminded_at': last_reminded.get(lease.pk), 'on_plan': on_track_plan(lease)})
-    selected = [r for r in rows if not r['reminded_at'] and not r['on_plan']]
+        row = {'lease': lease, 'balance': balance, 'text': text, 'parts': _sms_parts(text),
+               'reminded_at': last_reminded.get(lease.pk), 'on_plan': on_track_plan(lease)}
+        row['checked'] = str(lease.pk) in picked if picked else not row['reminded_at'] and not row['on_plan']
+        rows.append(row)
+    if picked:  # just the ones chosen, at the top
+        rows.sort(key=lambda r: not r['checked'])
+    selected = [r for r in rows if r['checked']]
     return render(request, 'rentals/remind_all.html', {
         'rows': rows,
         'selected_count': len(selected),

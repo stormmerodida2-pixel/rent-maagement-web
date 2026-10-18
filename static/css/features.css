@@ -304,3 +304,24 @@ details.daraja[open] > summary h2::before { transform: rotate(90deg); }
 .rate { display: flex; gap: 4px; align-items: center; justify-content: flex-end; margin-top: 6px; flex-wrap: wrap; }
 .rate-btn { border: 1px solid var(--border); background: var(--surface); border-radius: 999px; padding: 2px 9px; cursor: pointer; font-size: 1rem; line-height: 1.4; }
 .rate-btn.on { border-color: var(--brand); background: var(--brand-soft); }
+
+/* --- Tenant history timeline ------------------------------------------------------------------------------------ */
+.history-list { list-style: none; margin: 0; padding: 4px 0; }
+.history-day { padding: 14px 16px 4px; font-size: 0.8rem; font-weight: 600; color: var(--muted); text-transform: uppercase; letter-spacing: 0.03em; }
+.history-item { display: grid; grid-template-columns: 14px 1fr auto; gap: 10px; align-items: start; padding: 8px 16px; }
+.history-dot { width: 10px; height: 10px; border-radius: 50%; margin-top: 6px; background: var(--border); }
+.history-item.payment .history-dot { background: var(--brand); }
+.history-item.repair .history-dot { background: var(--warn); }
+.history-item.note .history-dot, .history-item.message .history-dot { background: #6172f3; }
+.history-item.tenancy .history-dot { background: var(--text); }
+.history-item.bad .history-dot { background: var(--danger, #d92d20); }
+
+/* --- Bulk actions on lists ------------------------------------------------------------------------------------- */
+.bulk-bar { display: flex; gap: 10px; align-items: center; flex-wrap: wrap; padding: 10px 16px; border-bottom: 1px solid var(--border); }
+.check-col { width: 34px; }
+
+/* --- Landlord branding on receipts and statements -------------------------------------------------------------- */
+.doc-logo { max-height: 56px; max-width: 220px; object-fit: contain; }
+.doc.branded .doc-head { border-bottom-color: var(--doc-accent); }
+.doc.branded .doc-title h1, .doc.branded .doc-title { color: var(--doc-accent); }
+.doc.branded .doc-total { box-shadow: inset 4px 0 0 var(--doc-accent); }

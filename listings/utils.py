@@ -43,6 +43,24 @@ def prepare_photo(upload):
     return ContentFile(out.getvalue(), name=f'{uuid.uuid4().hex}.jpg')
 
 
+def prepare_logo(upload):
+    """A landlord's logo for receipts: at most 600×200, PNG (keeps a transparent background), no EXIF."""
+    if upload.size > MAX_UPLOAD_BYTES:
+        raise ValidationError(f'{upload.name} is larger than 10 MB.')
+    try:
+        image = Image.open(upload)
+        image.load()
+    except (UnidentifiedImageError, OSError, Image.DecompressionBombError) as exc:
+        raise ValidationError(f"{upload.name} isn't an image we can read (use PNG, JPEG or WebP).") from exc
+    image = ImageOps.exif_transpose(image)
+    image.thumbnail((600, 200))
+    if image.mode not in ('RGB', 'RGBA', 'L', 'LA'):
+        image = image.convert('RGBA')
+    out = io.BytesIO()
+    image.save(out, 'PNG', optimize=True)
+    return ContentFile(out.getvalue(), name=f'{uuid.uuid4().hex}.png')
+
+
 # --- Alerts ---------------------------------------------------------------------------------------
 
 def notify_landlord(application):

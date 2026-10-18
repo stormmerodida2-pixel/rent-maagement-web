@@ -33,7 +33,7 @@
         {% for r in rows %}
         <tr>
           <td><input type="checkbox" name="lease" value="{{ r.lease.pk }}" id="remind-{{ r.lease.pk }}" data-parts="{{ r.parts }}"
-                     {% if not r.reminded_at and not r.on_plan %}checked{% endif %} aria-label="Remind {{ r.lease.tenant }}"></td>
+                     {% if r.checked %}checked{% endif %} aria-label="Remind {{ r.lease.tenant }}"></td>
           <td><label for="remind-{{ r.lease.pk }}" class="who">
             <span class="avatar">{{ r.lease.tenant.full_name|initials }}</span>
             <span><span class="name">{{ r.lease.tenant }}</span><span class="meta" style="display:block">{{ r.lease.unit }} · {{ r.lease.tenant.phone }}</span>
