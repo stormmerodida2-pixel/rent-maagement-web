@@ -122,3 +122,14 @@ class AcceptUpdatedTermsTests(CacheCleanup):
         Profile.objects.create(user=member.user, terms_version='2026-10-14')
         self.client.force_login(member.user)
         self.assertEqual(self.client.get(reverse('staff:home')).status_code, 200)
+
+
+class HomeHeaderTests(TestCase):
+    def test_logged_in_visitors_can_log_out_from_the_home_page(self):
+        user = get_user_model().objects.create_user('landlord')
+        self.client.force_login(user)
+        page = self.client.get(reverse('rentals:home'))
+        self.assertContains(page, 'Open dashboard')
+        self.assertContains(page, f'action="{reverse("logout")}"')
+        self.assertRedirects(self.client.post(reverse('logout')), reverse('rentals:home'))
+        self.assertContains(self.client.get(reverse('rentals:home')), 'Get started')
