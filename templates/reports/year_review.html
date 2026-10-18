@@ -1,0 +1,34 @@
+{% extends 'app_base.html' %}
+{% load ui %}
+{% block page_title %}Your {{ r.year }}{% endblock %}
+{% block content %}
+<div class="page-header">
+  <div><h1>Your {{ r.year }} in review</h1><p class="sub">{% if so_far %}The year so far. {% endif %}Share it, or take a screenshot.</p></div>
+  <div class="actions">
+    <button type="button" class="btn btn-primary" data-share="{{ share_text }}">{% icon 'link' %}<span data-share-label>Share</span></button>
+    {% if years|length > 1 %}
+    <span class="row" style="gap:6px">
+      {% for y in years %}{% if y != r.year %}<a class="btn btn-sm btn-ghost" href="{% url 'reports:year' y %}">{{ y }}</a>{% endif %}{% endfor %}
+    </span>
+    {% endif %}
+  </div>
+</div>
+
+<article class="year-card">
+  <h1>{{ user.first_name|default:"Your" }}{% if user.first_name %}'s{% endif %} {{ r.year }}</h1>
+  <div class="muted-light">Rent collected</div>
+  <div class="big">{{ r.collected|kes }}</div>
+  {% if r.rate is not None %}<div class="muted-light">{{ r.rate }}% of the rent that was due</div>{% endif %}
+
+  <div class="year-stats">
+    {% if r.best_month %}<div><strong>{{ r.best_month.0|date:"F" }}</strong><span>Best month: {{ r.best_month.2|kes }}</span></div>{% endif %}
+    {% if r.reliable %}<div><strong>{{ r.reliable.lease.tenant.full_name }}</strong><span>Most reliable tenant: on time {{ r.reliable.on_time }} of {{ r.reliable.months }} months ({{ r.reliable.lease.unit.label }})</span></div>{% endif %}
+    <div><strong>{{ r.payments }}</strong><span>Payments received</span></div>
+    <div><strong>{{ r.repairs_fixed }}</strong><span>Repair{{ r.repairs_fixed|pluralize }} fixed</span></div>
+    <div><strong>{{ r.moved_in }}</strong><span>Tenant{{ r.moved_in|pluralize }} moved in</span></div>
+    <div><strong>{{ r.occupied }} of {{ r.units }}</strong><span>Units let today</span></div>
+    {% if r.spent %}<div><strong>{{ r.made|kes }}</strong><span>You made, after {{ r.spent|kes }} spent</span></div>{% endif %}
+  </div>
+  <div class="year-brand">Made with {{ APP_NAME }}</div>
+</article>
+{% endblock %}

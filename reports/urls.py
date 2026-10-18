@@ -6,6 +6,8 @@ app_name = 'reports'
 
 urlpatterns = [
     path('', views.overview, name='overview'),
+    path('year/<int:year>/', views.year_review, name='year'),
+    path('suggestions/hide/', views.nudge_dismiss, name='nudge_dismiss'),
     path('rent-roll.csv', views.rent_roll_csv, name='rent_roll_csv'),
     path('payments.csv', views.payments_csv, name='payments_csv'),
     path('leases/<int:pk>/statement/', views.lease_statement, name='lease_statement'),

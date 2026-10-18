@@ -143,6 +143,21 @@
     form.querySelectorAll('input[name="lease"]').forEach(function (b) { b.checked = toggle.dataset.remindAll === '1'; });
     syncRemind(form);
   });
+  // Share buttons (e.g. the year in review): data-share="text". The phone's share sheet, or copy the text.
+  document.addEventListener('click', function (event) {
+    var button = event.target.closest('[data-share]');
+    if (!button) return;
+    var text = button.dataset.share;
+    var label = button.querySelector('[data-share-label]');
+    var copied = function () {
+      if (label) { label.textContent = 'Copied'; setTimeout(function () { label.textContent = 'Share'; }, 2000); }
+    };
+    if (navigator.share) {
+      navigator.share({ text: text }).catch(function () { /* closed the share sheet */ });
+    } else if (navigator.clipboard) {
+      navigator.clipboard.writeText(text).then(copied, function () {});
+    }
+  });
   // Copy buttons (e.g. a listing's share link): data-copy="#id-of-input".
   document.addEventListener('click', function (event) {
     var button = event.target.closest('[data-copy]');

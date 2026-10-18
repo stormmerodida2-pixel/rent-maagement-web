@@ -9,9 +9,11 @@ from django.contrib.auth.decorators import login_required
 from django.db.models import Sum
 from django.db.models.functions import TruncMonth
 from django.http import HttpResponse
-from django.shortcuts import get_object_or_404, render
+from django.conf import settings
+from django.shortcuts import get_object_or_404, redirect, render
 from django.urls import reverse
 from django.utils import timezone
+from django.views.decorators.http import require_POST
 
 from payments.models import Expense, MpesaAccount, Payment
 from payments.utils import expenses_by_property
@@ -204,3 +206,37 @@ def tenant_receipt(request, token, payment_pk):
     payment = get_object_or_404(Payment.objects.select_related('lease__tenant', 'lease__unit__property'),
                                 pk=payment_pk, lease__tenant=tenant)
     return render_receipt(request, payment, reverse('rentals:tenant_portal', args=[token]), tenant.language)
+
+
+# --- Year in review and dashboard suggestions -----------------------------------------------------------------------
+
+@login_required
+def year_review(request, year):
+    from .highlights import year_in_review
+
+    today = datetime.date.today()
+    first = request.user.date_joined.year
+    if not first <= year <= today.year:
+        from django.http import Http404
+
+        raise Http404
+    review = year_in_review(request.user, year)
+    share = (f'My {year} with {settings.APP_NAME}: KES {review["collected"]:,.0f} rent collected'
+             + (f' ({review["rate"]}% of what was due)' if review['rate'] is not None else '')
+             + f', {review["repairs_fixed"]} repairs fixed.')
+    return render(request, 'reports/year_review.html', {
+        'r': review, 'share_text': share, 'so_far': year == today.year,
+        'years': list(range(today.year, first - 1, -1)),
+    })
+
+
+@login_required
+@require_POST
+def nudge_dismiss(request):
+    from .models import DismissedNudge
+
+    key = request.POST.get('key', '')[:40]
+    if key:
+        DismissedNudge.objects.update_or_create(owner=request.user, key=key, defaults={
+            'until': datetime.date.today() + datetime.timedelta(days=30)})
+    return redirect('rentals:dashboard')

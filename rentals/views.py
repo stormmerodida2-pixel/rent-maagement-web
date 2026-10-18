@@ -102,6 +102,29 @@ def statement_due(account):
         timezone.now() - account.statement_imported_at > STATEMENT_NUDGE_AFTER
 
 
+def _highlights(user):
+    """Celebrations, the collection scorecard, the year in review and suggestions for the dashboard."""
+    from django.core.cache import cache
+
+    from reports.highlights import celebration_text, fully_paid, nudges, review_year, scorecard
+    from reports.models import DismissedNudge
+
+    # These add up every tenant's payments, so keep them a few minutes; a new payment or a hidden suggestion
+    # changes the key, so they're never stale where it shows.
+    hidden = DismissedNudge.objects.filter(owner=user).aggregate(m=Max('id'))['m'] or 0
+    key = f'highlights:{user.pk}:{datetime.date.today()}:{latest_payment_id(user)}:{hidden}'
+    found = cache.get(key)
+    if found is None:
+        found = {
+            'celebrations': [celebration_text(item) for item in fully_paid(user)],
+            'scorecard': scorecard(user),
+            'nudges': nudges(user),
+        }
+        cache.set(key, found, 5 * 60)
+    year = review_year()
+    return {**found, 'review_year': year if year and year >= user.date_joined.year else None}
+
+
 @login_required
 def dashboard(request):
     user = request.user
@@ -119,6 +142,7 @@ def dashboard(request):
         .select_related('staff__user'),
         'spending_to_approve': StaffExpense.objects.filter(owner=user, status=StaffExpense.Status.PENDING).count(),
         'stale_days': is_stale(user) if numbers['occupied_count'] else None,
+        **_highlights(user),
         'mpesa_account': account,
         'statement_due': statement_due(account),
         'setup_incomplete': not all(step['done'] for step in steps),

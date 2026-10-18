@@ -5,6 +5,7 @@
 <div class="page-header">
   <div><h1>Reports</h1><p class="sub">Billing, collections, spending and what you made in {{ month|date:"F Y" }}.</p></div>
   <div class="actions">
+    <a class="btn" href="{% url 'reports:year' month.year %}">{% icon 'chart' %}{{ month.year }} in review</a>
     <a class="btn" href="?month={{ prev_month|date:'Y-m' }}">← {{ prev_month|date:"M" }}</a>
     {% if next_month %}<a class="btn" href="?month={{ next_month|date:'Y-m' }}">{{ next_month|date:"M" }} →</a>{% endif %}
   </div>

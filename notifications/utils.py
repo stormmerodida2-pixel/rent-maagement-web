@@ -521,7 +521,10 @@ def payment_summary(owner, day):
 
     holding = [f'{r["member"].user.first_name or r["member"].name} is holding {_kes(r["holding"])} cash.'
                for r in staff_cash_for(owner) if r['holding'] > 0]
-    still = ' '.join([still, *holding])
+    from reports.highlights import celebration_text, fully_paid
+
+    party = [celebration_text(item) for item in fully_paid(owner, day) if item['paid_on'] == day]
+    still = ' '.join([still, *holding, *party])
     return [f'{day:%a %d %b}', _kes(sum(p.amount for p in payments)), ', '.join(parts), still]
 
 
