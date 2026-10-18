@@ -255,7 +255,7 @@ if os.environ.get('EMAIL_HOST'):
         },
     }
 else:
-    MAILERS = {'default': {'BACKEND': 'django.core.mail.backends.console.EmailBackend'}}
+    MAILERS = {'default': {'BACKEND': 'ops.mail.ReadableConsoleBackend'}}  # readable, links on one line
 # Where Contact-page messages are emailed (the people running the site).
 SUPPORT_EMAIL = os.environ.get('SUPPORT_EMAIL', '')
 DEFAULT_FROM_EMAIL = os.environ.get('DEFAULT_FROM_EMAIL', 'Rentipay <no-reply@localhost>')
