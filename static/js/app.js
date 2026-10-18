@@ -18,6 +18,49 @@
     if (input) input.select();
   });
 
+  // No double submits: once a form is really sent (after any "Are you sure?" pop-up), its buttons are disabled
+  // and the one pressed says "Working…". Disabled a moment later, not straight away, so the pressed button's own
+  // name/value still goes with the form. Re-enabled when the page is shown again from the back button, or after a
+  // few seconds when the form didn't leave the page (a CSV download). Opt out with data-no-busy on the form.
+  var BUSY_RESET_MS = 8000;
+  function setBusy(form, submitter, busy) {
+    form.querySelectorAll('button[type="submit"], button:not([type]), input[type="submit"]').forEach(function (b) {
+      if (busy) {
+        b.dataset.wasDisabled = b.disabled ? '1' : '';
+        b.disabled = true;
+      } else if (b.dataset.wasDisabled !== '1') {
+        b.disabled = false;
+      }
+    });
+    if (submitter && submitter.tagName === 'BUTTON') {
+      if (busy) {
+        submitter.dataset.idleHtml = submitter.innerHTML;
+        submitter.style.minWidth = submitter.offsetWidth + 'px';  // don't jump in size
+        submitter.textContent = (document.documentElement.lang || '').indexOf('sw') === 0 ? 'Subiri…' : 'Working…';
+      } else if (submitter.dataset.idleHtml !== undefined) {
+        submitter.innerHTML = submitter.dataset.idleHtml;
+        delete submitter.dataset.idleHtml;
+      }
+    }
+    form.toggleAttribute('aria-busy', busy);
+  }
+  document.addEventListener('submit', function (event) {
+    var form = event.target;
+    // Prevented: a confirmation pop-up is open, or the page handles the form itself.
+    if (event.defaultPrevented || form.hasAttribute('data-no-busy') || form.target === '_blank') return;
+    if (form.hasAttribute('aria-busy')) { event.preventDefault(); return; }  // already on its way
+    var submitter = event.submitter || form.querySelector('button[type="submit"], button:not([type])');
+    form.setAttribute('aria-busy', '');
+    setTimeout(function () { setBusy(form, submitter, true); }, 0);
+    setTimeout(function () { setBusy(form, submitter, false); }, BUSY_RESET_MS);
+  });
+  window.addEventListener('pageshow', function (event) {
+    if (!event.persisted) return;  // back/forward from the cache: forms must work again
+    document.querySelectorAll('form[aria-busy]').forEach(function (form) {
+      setBusy(form, form.querySelector('[data-idle-html]'), false);
+    });
+  });
+
   // Filters that apply as soon as they change.
   document.addEventListener('change', function (event) {
     if (event.target.matches('[data-autosubmit]') && event.target.form) event.target.form.submit();
