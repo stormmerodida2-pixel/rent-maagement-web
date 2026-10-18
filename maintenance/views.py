@@ -1,6 +1,9 @@
 from django.contrib import messages
+from django.contrib.auth.decorators import login_required
 from django.db.models import Case, Count, IntegerField, Q, Value, When
+from django.shortcuts import redirect
 from django.urls import reverse_lazy
+from django.views.decorators.http import require_POST
 from django.views.generic import CreateView, ListView, UpdateView
 
 from rentals.crud_views import FormPageMixin
@@ -69,6 +72,18 @@ class MaintenanceCreate(NotifyTenantsMixin, OwnedMixin, FormPageMixin, CreateVie
     success_url = reverse_lazy('maintenance:list')
     success_message = 'Logged "{obj.title}".'
 
+    def get_initial(self):
+        """From a unit's or tenant's page: Log repair arrives with the house (and who reported it) filled in."""
+        initial = super().get_initial()
+        unit, tenant = self.request.GET.get('unit', ''), self.request.GET.get('tenant', '')
+        if unit.isdigit():
+            initial['where'] = f'u{unit}'
+        elif self.request.GET.get('property', '').isdigit():
+            initial['where'] = f"p{self.request.GET['property']}"
+        if tenant.isdigit():
+            initial['reported_by'] = int(tenant)
+        return initial
+
 
 class MaintenanceUpdate(NotifyTenantsMixin, OwnedMixin, FormPageMixin, UpdateView):
     model = MaintenanceRequest
@@ -79,3 +94,29 @@ class MaintenanceUpdate(NotifyTenantsMixin, OwnedMixin, FormPageMixin, UpdateVie
     cancel_url = reverse_lazy('maintenance:list')
     success_url = reverse_lazy('maintenance:list')
     success_message = 'Updated "{obj.title}".'
+
+
+@login_required
+@require_POST
+def bulk_resolve(request):
+    """Mark several repairs done at once from the list, optionally texting the tenants."""
+    from audit import utils as audit
+
+    ids = [i for i in request.POST.getlist('repair') if i.isdigit()]
+    repairs = list(MaintenanceRequest.objects.filter(pk__in=ids, property__owner=request.user,
+                                                     status__in=OPEN_STATUSES).select_related('property', 'unit'))
+    if not repairs:
+        messages.error(request, 'Tick at least one open repair.')
+        return redirect('maintenance:list')
+    texted = 0
+    for repair in repairs:
+        repair.status = MaintenanceRequest.Status.RESOLVED
+        repair.save()  # sets resolved_at
+        if request.POST.get('notify_tenants'):
+            texted += notify_tenants(repair, created=False)
+    audit.record(owner=request.user, actor=request.user, action='repair.bulk_resolved',
+                 summary=f'Marked {len(repairs)} repair{"s" if len(repairs) != 1 else ""} done: '
+                         + ', '.join(r.title for r in repairs)[:200])
+    messages.success(request, f'Marked {len(repairs)} repair{"s" if len(repairs) != 1 else ""} done.'
+                     + (f' Texted {texted} tenant{"s" if texted != 1 else ""}.' if texted else ''))
+    return redirect('maintenance:list')

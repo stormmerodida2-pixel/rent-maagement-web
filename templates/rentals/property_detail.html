@@ -5,6 +5,7 @@
 <div class="page-header">
   <div><h1>{{ object.name }}</h1><p class="sub">{{ object.address|default:"No address" }}{% if object.water_rate %} · Water KES {{ object.water_rate|floatformat:"-2" }}/unit{% endif %}</p></div>
   <div class="actions">
+    <a class="btn" href="{% url 'maintenance:create' %}?property={{ object.pk }}&amp;next={{ request.path|urlencode }}">{% icon 'wrench' %}General repair</a>
     <a class="btn" href="{% url 'rentals:water_readings' object.pk %}">{% icon 'chart' %}Water readings</a>
     <a class="btn" href="{% url 'rentals:property_import' %}?property={{ object.pk }}">Import from Excel</a>
     <a class="btn" href="{% url 'rentals:property_rents' object.pk %}">Set rents</a>
@@ -32,6 +33,7 @@
           <td class="num nowrap">
             {% if not lease %}<a class="btn btn-sm" href="{% url 'rentals:lease_create' %}?unit={{ unit.pk }}">Let</a>{% endif %}
             {% if not lease or lease.moving_out %}<a class="btn btn-sm" href="{% url 'listings:create' unit.pk %}">Advertise</a>{% endif %}
+            <a class="btn btn-sm btn-ghost" href="{% url 'maintenance:create' %}?unit={{ unit.pk }}{% if lease %}&amp;tenant={{ lease.tenant_id }}{% endif %}&amp;next={{ request.path|urlencode }}" title="Log a repair for {{ unit.label }}">{% icon 'wrench' %}<span class="visually-hidden">Log repair for {{ unit.label }}</span></a>
             <a class="btn btn-sm btn-ghost" href="{% url 'rentals:unit_update' unit.pk %}">Edit</a>
           </td>
         </tr>

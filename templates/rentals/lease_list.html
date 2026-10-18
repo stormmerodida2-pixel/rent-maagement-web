@@ -19,12 +19,15 @@
       <input type="search" name="q" value="{{ q }}" placeholder="Search tenant, unit, property" aria-label="Search tenants"></form>
   </div>
   {% if rows %}
+  <form method="get" action="{% url 'rentals:remind_all' %}" id="bulk-remind">
+  <div class="bulk-bar"><span class="muted small">Tick tenants who owe, then</span><button class="btn btn-sm">{% icon 'bell' %}Remind selected</button></div>
   <div class="table-wrap">
     <table class="table">
-      <thead><tr><th>Tenant</th><th>Unit</th><th class="num">Rent</th><th>Since</th><th class="num">Balance</th></tr></thead>
+      <thead><tr><th class="check-col"><span class="visually-hidden">Select</span></th><th>Tenant</th><th>Unit</th><th class="num">Rent</th><th>Since</th><th class="num">Balance</th></tr></thead>
       <tbody>
       {% for lease, balance in rows %}
       <tr>
+        <td class="check-col">{% if lease.is_active and balance > 0 %}<input type="checkbox" name="lease" value="{{ lease.pk }}" aria-label="Select {{ lease.tenant }}">{% endif %}</td>
         <td><a class="who" href="{% url 'rentals:lease_detail' lease.pk %}" style="text-decoration:none"><span class="avatar">{{ lease.tenant.full_name|initials }}</span><span class="name">{{ lease.tenant }}</span></a></td>
         <td>{{ lease.unit }}{% if not lease.is_active %} <span class="badge">Ended</span>{% endif %}</td>
         <td class="num">{{ lease.monthly_rent|kes }}</td>
@@ -35,6 +38,7 @@
       </tbody>
     </table>
   </div>
+  </form>
   {% include 'includes/pagination.html' %}
   {% else %}
     <div class="empty"><strong>Nobody here</strong>{% if status == 'active' and not q %}Move a tenant into a unit to start billing rent.{% endif %}</div>

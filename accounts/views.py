@@ -1075,3 +1075,23 @@ def referrals(request):
         'free_months': BillingAccount.objects.filter(owner=request.user).values_list('free_months', flat=True).first()
         or 0,
     })
+
+
+
+@landlord_required
+def branding(request):
+    """Settings → Receipts and statements: the landlord's name, logo and colour on tenants' documents."""
+    from .forms import BrandingForm
+
+    form = BrandingForm(request.POST or None, request.FILES or None, profile=profile_for(request.user))
+    if request.method == 'POST' and form.is_valid():
+        form.save()
+        audit.record(owner=request.user, actor=request.user, action='branding.updated',
+                     summary='Updated the name, logo or colour on receipts and statements.')
+        messages.success(request, 'Saved. Your receipts and statements now use it.')
+        return redirect('accounts:settings')
+    return render(request, 'form_page.html', {
+        'form': form, 'page_title': 'Receipts and statements', 'multipart': True,
+        'intro': 'Put your own name, logo and colour on the receipts and statements your tenants see and print.',
+        'submit_label': 'Save', 'cancel_url': reverse('accounts:settings'),
+    })

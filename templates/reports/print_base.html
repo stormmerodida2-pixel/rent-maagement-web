@@ -11,10 +11,11 @@
   <button type="button" class="btn btn-primary" data-print>{% translate "Print / Save as PDF" %}</button>
 </div>
 {% endlanguage %}
-<article class="doc">
+<article class="doc{% if brand_color %} branded{% endif %}"{% if brand_color %} style="--doc-accent: {{ brand_color }}"{% endif %}>
   <header class="doc-head">
     <div>
-      <div class="row" style="gap:10px">{% include 'includes/logo.html' %}<strong style="font-size:18px">{{ lease.unit.property.name }}</strong></div>
+      <div class="row" style="gap:10px">{% if brand_logo %}<img class="doc-logo" src="{{ brand_logo }}" alt="{{ brand_name|default:lease.unit.property.name }}">{% else %}{% include 'includes/logo.html' %}{% endif %}<strong style="font-size:18px">{{ brand_name|default:lease.unit.property.name }}</strong></div>
+      {% if brand_name %}<div class="small" style="margin-top:4px">{{ lease.unit.property.name }}</div>{% endif %}
       <div class="muted small" style="margin-top:6px">{{ lease.unit.property.address }}<br>{% translate "Landlord" %}: {{ landlord_name }}{% if landlord_email %} · {{ landlord_email }}{% endif %}</div>
     </div>
     <div class="doc-title">{% block doc_title %}{% endblock %}</div>

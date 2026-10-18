@@ -152,11 +152,20 @@ def payments_csv(request):
 # --- Printable documents (landlord and tenant versions share templates) -----------------
 
 def _landlord_details(owner):
+    import re
+
+    from accounts.models import profile_for
+
     account = MpesaAccount.objects.filter(owner=owner).first()
+    profile = profile_for(owner)
+    color = profile.brand_color if re.fullmatch(r'#[0-9a-fA-F]{6}', profile.brand_color or '') else ''
     return {
         'landlord_name': owner.get_full_name() or owner.username,
         'landlord_email': owner.email,
         'mpesa_account': account if account and account.has_pay_number else None,
+        'brand_name': profile.brand_name,
+        'brand_logo': profile.brand_logo.url if profile.brand_logo else '',
+        'brand_color': color,
     }
 
 

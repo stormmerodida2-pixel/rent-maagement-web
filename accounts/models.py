@@ -12,6 +12,11 @@ class Profile(models.Model):
     email_verified_at = models.DateTimeField(null=True, blank=True)
     terms_accepted_at = models.DateTimeField(null=True, blank=True)
     terms_version = models.CharField(max_length=20, blank=True)
+    # The landlord's own look on tenants' receipts and statements (Settings → Receipts and statements).
+    brand_name = models.CharField('name on receipts', max_length=80, blank=True,
+                                  help_text='e.g. "Kodi Properties Ltd". Leave blank to use the property name.')
+    brand_logo = models.ImageField('logo', upload_to='branding/', blank=True)
+    brand_color = models.CharField('colour', max_length=7, blank=True, help_text='Used for headings and lines.')
 
     def __str__(self):
         return f'Profile of {self.user}'

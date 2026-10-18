@@ -8,4 +8,5 @@ urlpatterns = [
     path('', views.MaintenanceList.as_view(), name='list'),
     path('new/', views.MaintenanceCreate.as_view(), name='create'),
     path('<int:pk>/', views.MaintenanceUpdate.as_view(), name='update'),
+    path('done/', views.bulk_resolve, name='bulk_resolve'),
 ]

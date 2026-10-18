@@ -16,12 +16,21 @@
     </nav>
   </div>
   {% if object_list %}
+  <form method="post" action="{% url 'maintenance:bulk_resolve' %}">{% csrf_token %}
+  {% if status == 'open' %}
+  <div class="bulk-bar">
+    <span class="muted small">Tick repairs, then</span>
+    <label class="small"><input type="checkbox" name="notify_tenants"> text the tenants</label>
+    <button class="btn btn-sm" data-confirm="The ticked repairs will be marked done." data-confirm-title="Mark repairs done?" data-confirm-ok="Mark done">Mark selected done</button>
+  </div>
+  {% endif %}
   <div class="table-wrap">
     <table class="table">
-      <thead><tr><th>Issue</th><th>Where</th><th>Priority</th><th>Status</th><th>Assigned to</th><th class="num">Cost</th></tr></thead>
+      <thead><tr>{% if status == 'open' %}<th class="check-col"><span class="visually-hidden">Select</span></th>{% endif %}<th>Issue</th><th>Where</th><th>Priority</th><th>Status</th><th>Assigned to</th><th class="num">Cost</th></tr></thead>
       <tbody>
       {% for r in object_list %}
       <tr>
+        {% if status == 'open' %}<td class="check-col"><input type="checkbox" name="repair" value="{{ r.pk }}" aria-label="Select {{ r.title }}"></td>{% endif %}
         <td><a href="{% url 'maintenance:update' r.pk %}"><strong>{{ r.title }}</strong></a>
           <div class="muted small">{{ r.created_at|date:"d M Y" }}{% if r.reported_by %} · by {{ r.reported_by }}{% endif %}</div></td>
         <td>{% if r.is_general %}{{ r.property.name }} <span class="badge badge-info">General</span>{% else %}{{ r.unit }}{% endif %}</td>
@@ -34,6 +43,7 @@
       </tbody>
     </table>
   </div>
+  </form>
   {% include 'includes/pagination.html' %}
   {% else %}<div class="empty"><strong>Nothing here</strong>{% if status == 'open' %}No open repairs. Nice.{% endif %}</div>{% endif %}
 </section>

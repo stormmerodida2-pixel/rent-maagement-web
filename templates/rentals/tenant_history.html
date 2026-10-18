@@ -1,0 +1,38 @@
+{% extends 'app_base.html' %}
+{% load ui %}
+{% block page_title %}{{ tenant }} · history{% endblock %}
+{% block content %}
+<div class="page-header">
+  <div class="profile">
+    <span class="avatar avatar-lg">{{ tenant.full_name|initials }}</span>
+    <div><h1>{{ tenant }}</h1>
+      <p class="sub">Everything with {{ tenant.full_name.split.0 }}, newest first.{% if record %} Paid on time {{ record.on_time }} of {{ record.months }} months{% if record.good %} · <span class="badge badge-success">⭐ Good tenant</span>{% endif %}.{% endif %}</p></div>
+  </div>
+  <div class="actions"><a class="btn" href="{% url 'rentals:lease_detail' lease.pk %}">← Back to {{ tenant.full_name.split.0 }}</a></div>
+</div>
+
+<nav class="tabs" aria-label="Show" style="margin-bottom:16px;flex-wrap:wrap">
+  <a href="?" class="{% if not show %}active{% endif %}">Everything</a>
+  {% for value, label in kinds %}<a href="?show={{ value }}" class="{% if show == value %}active{% endif %}">{{ label }}</a>{% endfor %}
+</nav>
+
+<section class="card">
+  {% if events %}
+  <ul class="history-list">
+    {% for e in events %}
+    {% ifchanged e.when.date %}<li class="history-day">{{ e.when|date:"l j F Y" }}</li>{% endifchanged %}
+    <li class="history-item {{ e.kind }} {{ e.tone }}">
+      <span class="history-dot" aria-hidden="true"></span>
+      <div>
+        <div>{% if e.url %}<a href="{{ e.url }}">{{ e.title }}</a>{% else %}{{ e.title }}{% endif %}</div>
+        {% if e.detail %}<div class="muted small">{{ e.detail }}</div>{% endif %}
+      </div>
+      <span class="muted small nowrap">{% if e.kind != 'tenancy' %}{{ e.when|date:"H:i" }}{% endif %}</span>
+    </li>
+    {% endfor %}
+  </ul>
+  {% else %}
+  <div class="empty"><strong>Nothing here yet</strong></div>
+  {% endif %}
+</section>
+{% endblock %}
