@@ -14,6 +14,7 @@ urlpatterns = [
     path('leases/<int:pk>/', views.lease_detail, name='lease_detail'),
     path('leases/<int:pk>/remind/', views.send_reminder, name='send_reminder'),
     path('leases/<int:pk>/history/', views.tenant_history, name='tenant_history'),
+    path('leases/<int:pk>/months/', views.edit_opening_months, name='edit_opening_months'),
     path('leases/<int:pk>/inspection/<str:kind>/', inspections.inspection, name='inspection'),
     path('leases/<int:pk>/inspections/compare/', inspections.inspection_compare, name='inspection_compare'),
     path('inspection-photos/<int:pk>/delete/', inspections.inspection_photo_delete, name='inspection_photo_delete'),

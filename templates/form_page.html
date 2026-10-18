@@ -3,6 +3,13 @@
 {% block content %}
 <div class="form-page">
 <div class="page-header"><div><h1>{{ page_title }}</h1>{% if intro %}<p class="sub">{{ intro }}</p>{% endif %}</div></div>
+{% if aside %}
+<div class="alert alert-info" style="margin-bottom:16px">
+  <span>{{ aside.text }}</span>
+  <span class="spacer"></span>
+  <a class="btn btn-sm btn-primary" href="{{ aside.url }}">{{ aside.label }}</a>
+</div>
+{% endif %}
 <section class="card form-card">
   <div class="card-body">
     <form method="post" novalidate{% if multipart %} enctype="multipart/form-data"{% endif %}{% if confirm %} data-confirm="{{ confirm }}" data-confirm-ok="{{ submit_label }}" data-confirm-danger{% endif %}>

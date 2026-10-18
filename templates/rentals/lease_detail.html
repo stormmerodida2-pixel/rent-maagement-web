@@ -16,6 +16,7 @@
   <div class="actions">
     <a class="btn" href="{% url 'payments:payment_create' %}?lease={{ lease.pk }}">{% icon 'wallet' %}Record cash/bank</a>
     <a class="btn" href="{% url 'rentals:charge_create' lease.pk %}">{% icon 'plus' %}Add charge</a>
+    {% if has_opening %}<a class="btn" href="{% url 'rentals:edit_opening_months' lease.pk %}">{% icon 'calendar' %}Fix months before Rentipay</a>{% endif %}
     <a class="btn" href="{% url 'maintenance:create' %}?unit={{ lease.unit_id }}&amp;tenant={{ lease.tenant_id }}&amp;next={{ request.path|urlencode }}">{% icon 'wrench' %}Log repair</a>
     <a class="btn" href="{% url 'rentals:tenant_history' lease.pk %}">{% icon 'calendar' %}Full history</a>
     <a class="btn" href="{% url 'rentals:agreement' lease.pk %}">{% icon 'file' %}Tenancy agreement</a>
@@ -119,7 +120,7 @@
       </div>
     </section>
 
-    <section class="card">
+    <section class="card" id="statement">
       <div class="card-header"><h2>Statement</h2><span class="muted">Newest first</span><span class="spacer"></span>
         <a class="btn btn-sm" href="{% url 'reports:lease_statement' lease.pk %}">Print statement</a></div>
       {% if statement %}

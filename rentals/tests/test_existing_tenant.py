@@ -163,3 +163,70 @@ class TenantSeesWhatTheyOweTests(TestCase):
         page = self.client.get(reverse('rentals:tenant_portal', args=[tenant.portal_token]))
         self.assertContains(page, 'Kodi ambayo haijalipwa')
         self.assertContains(page, 'KES 14,000')
+
+
+class EditMonthsTests(TestCase):
+    """A month marked "Not paid" by mistake (the tenant had paid it) is corrected, and the balance follows."""
+
+    def setUp(self):
+        self.owner = get_user_model().objects.create_user('landlord', password='pw')
+        prop = Property.objects.create(owner=self.owner, name='Riverside')
+        self.unit = Unit.objects.create(property=prop, label='A1', default_rent=10000)
+        self.tenant = Tenant.objects.create(owner=self.owner, full_name='Jane Wanjiru', phone='254712345678')
+        self.client.force_login(self.owner)
+        start = (TODAY.replace(day=1) - datetime.timedelta(days=100)).replace(day=5)
+        base = {'tenancy': 'existing', 'owed_how': 'months', 'unit': self.unit.pk, 'tenant': self.tenant.pk,
+                'start_date': start.isoformat(), 'monthly_rent': '', 'service_charge': '', 'deposit': '',
+                'due_day': '', 'late_fee': '', 'late_fee_grace_days': '', 'deposit_paid': ''}
+        self.months = self.client.post(reverse('rentals:lease_create'), base).context['months']
+        choices = {f'month_{m["index"]}': 'paid' for m in self.months}
+        choices.update({'month_0': 'unpaid', 'month_1': 'part', 'month_1_paid': '4000'})  # the mistake: month 0
+        self.client.post(reverse('rentals:lease_create'), {**base, **choices, 'months_confirmed': '1'})
+        self.lease = Lease.objects.get()
+        self.url = reverse('rentals:edit_opening_months', args=[self.lease.pk])
+
+    def test_page_shows_what_was_chosen(self):
+        self.assertEqual(self.lease.balance, D('16000'))
+        self.assertContains(self.client.get(reverse('rentals:lease_detail', args=[self.lease.pk])), self.url)
+        months = self.client.get(self.url).context['months']
+        self.assertEqual([m['status'] for m in months[:2]], ['unpaid', 'part'])
+        self.assertEqual(months[1]['paid_text'], '4000')
+        self.assertTrue(all(m['status'] == 'paid' for m in months[2:]))
+
+    def test_mark_it_paid_and_the_balance_follows(self):
+        choices = {f'month_{m["index"]}': 'paid' for m in self.months}
+        choices.update({'month_1': 'part', 'month_1_paid': '4000'})  # month 0 was actually paid
+        resp = self.client.post(self.url, choices)
+        self.assertRedirects(resp, reverse('rentals:lease_detail', args=[self.lease.pk]))
+        self.assertEqual(self.lease.balance, D('6000'))
+        # The old lines are kept, voided, so the history shows the correction.
+        self.assertEqual(RentCharge.all_objects.filter(kind=RentCharge.Kind.OPENING, voided_at__isnull=False).count(), 2)
+        from audit.models import AuditEntry
+
+        self.assertTrue(AuditEntry.objects.filter(action='opening.corrected').exists())
+        again = self.client.get(self.url).context['months']
+        self.assertEqual([m['status'] for m in again[:2]], ['paid', 'part'])
+
+    def test_and_back_again(self):
+        choices = {f'month_{m["index"]}': 'unpaid' for m in self.months}
+        self.client.post(self.url, choices)
+        self.assertEqual(self.lease.balance, D('10000') * len(self.months))
+
+    def test_bad_part_amount_changes_nothing(self):
+        resp = self.client.post(self.url, {'month_0': 'part', 'month_0_paid': '99999'})
+        self.assertContains(resp, 'enter how much they paid')
+        self.assertEqual(self.lease.balance, D('16000'))
+
+    def test_new_tenants_have_nothing_to_fix(self):
+        unit = Unit.objects.create(property=self.unit.property, label='A2', default_rent=10000)
+        tenant = Tenant.objects.create(owner=self.owner, full_name='New Person', phone='254700000000')
+        new = Lease.objects.create(unit=unit, tenant=tenant, start_date=TODAY, monthly_rent=10000)
+        resp = self.client.get(reverse('rentals:edit_opening_months', args=[new.pk]))
+        self.assertRedirects(resp, reverse('rentals:lease_detail', args=[new.pk]), fetch_redirect_response=False)
+
+    def test_edit_rent_page_points_to_the_months(self):
+        page = self.client.get(reverse('rentals:lease_update', args=[self.lease.pk]))
+        self.assertContains(page, 'owes KES 16,000')
+        self.assertContains(page, 'Change which months were paid')
+        self.assertContains(page, self.url)
+        self.assertNotIn('balance_owed', page.context['form'].fields)  # never typed in by hand
