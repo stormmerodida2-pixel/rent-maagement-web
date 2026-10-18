@@ -328,7 +328,11 @@ def send_report_card(user, month, record=True):
                 body=render_to_string('notifications/email/report_card.txt', context),
                 to=[user.email],
             )
-            message.attach_alternative(render_to_string('notifications/email/report_card.html', context), 'text/html')
+            from django.templatetags.static import static
+
+            logo = settings.SITE_URL.rstrip('/') + static('img/logo-transparent.png')
+            message.attach_alternative(render_to_string('notifications/email/report_card.html',
+                                                        {**context, 'logo_url': logo}), 'text/html')
             message.send()
             email_sent = True
         except Exception:

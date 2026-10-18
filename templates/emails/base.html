@@ -1,0 +1,82 @@
+<!doctype html>
+<html lang="en">
+<head>
+<meta charset="utf-8">
+<meta name="viewport" content="width=device-width, initial-scale=1">
+<meta name="color-scheme" content="light">
+<meta name="supported-color-schemes" content="light">
+<title>{{ title }}</title>
+</head>
+<body style="margin:0;padding:0;background:#eef3f0;font-family:'Segoe UI',Helvetica,Arial,sans-serif;color:#101828;-webkit-text-size-adjust:100%">
+<span style="display:none;max-height:0;overflow:hidden;opacity:0;color:#eef3f0">{{ preheader }}</span>
+<table role="presentation" width="100%" cellpadding="0" cellspacing="0" style="background:#eef3f0">
+<tr><td align="center" style="padding:32px 14px 40px">
+
+  <table role="presentation" width="100%" cellpadding="0" cellspacing="0" style="max-width:560px;background:#ffffff;border-radius:18px;overflow:hidden;box-shadow:0 8px 28px rgba(16,24,40,0.08)">
+    <tr><td style="height:6px;background:#0e7a4b;font-size:0;line-height:0">&nbsp;</td></tr>
+    <tr><td align="center" style="padding:34px 32px 6px">
+      <a href="{{ site_url }}" style="text-decoration:none"><img src="{{ logo_url }}" width="190" alt="{{ APP_NAME }}" style="display:block;border:0;width:190px;max-width:70%;height:auto;margin:0 auto"></a>
+    </td></tr>
+    {% if title %}
+    <tr><td align="center" style="padding:22px 36px 4px">
+      <h1 style="margin:0;font-size:23px;line-height:1.3;font-weight:700;color:#101828;letter-spacing:-0.2px">{{ title }}</h1>
+    </td></tr>
+    {% endif %}
+    <tr><td style="padding:22px 36px 8px">
+      <div style="border-top:1px solid #eaecf0;height:1px;line-height:1px;font-size:0">&nbsp;</div>
+    </td></tr>
+    <tr><td style="padding:14px 36px 30px">
+      {% for block in blocks %}
+        {% if block.kind == 'greeting' %}
+          <p style="margin:0 0 14px;font-size:16px;line-height:1.5;font-weight:600;color:#101828">{{ block.text }}</p>
+        {% elif block.kind == 'button' %}
+          <table role="presentation" width="100%" cellpadding="0" cellspacing="0" style="margin:10px 0 6px"><tr><td align="center">
+            <table role="presentation" cellpadding="0" cellspacing="0"><tr>
+              <td align="center" style="border-radius:12px;background:#0e7a4b;box-shadow:0 4px 12px rgba(14,122,75,0.28)">
+                <a href="{{ block.url }}" style="display:inline-block;padding:15px 34px;font-size:16px;font-weight:700;color:#ffffff;text-decoration:none;border-radius:12px;letter-spacing:0.2px">{{ block.label }}</a>
+              </td>
+            </tr></table>
+          </td></tr></table>
+          <table role="presentation" width="100%" cellpadding="0" cellspacing="0" style="margin:14px 0 20px"><tr>
+            <td style="background:#f6f8f7;border:1px solid #eaecf0;border-radius:10px;padding:10px 14px;font-size:12px;line-height:1.5;color:#667085">
+              Button not working? Copy this link into your browser:<br>
+              <a href="{{ block.url }}" style="color:#0e7a4b;word-break:break-all;text-decoration:none">{{ block.url }}</a>
+            </td>
+          </tr></table>
+        {% elif block.kind == 'list' %}
+          <table role="presentation" width="100%" cellpadding="0" cellspacing="0" style="margin:0 0 16px">
+            {% for item in block.items %}
+            <tr>
+              <td width="22" valign="top" style="padding:2px 0 8px;font-size:15px;line-height:1.6;color:#0e7a4b;font-weight:700">&#10003;</td>
+              <td valign="top" style="padding:2px 0 8px;font-size:15px;line-height:1.6;color:#344054">{{ item }}</td>
+            </tr>
+            {% endfor %}
+          </table>
+        {% else %}
+          <p style="margin:0 0 16px;font-size:15px;line-height:1.65;color:#344054">{{ block.html }}</p>
+        {% endif %}
+      {% endfor %}
+    </td></tr>
+  </table>
+
+  <table role="presentation" width="100%" cellpadding="0" cellspacing="0" style="max-width:560px">
+    <tr><td align="center" style="padding:26px 24px 0;font-size:13px;line-height:1.6;color:#667085">
+      <strong style="color:#344054">{{ APP_NAME }}</strong><br>
+      Rent collection on M-Pesa for Kenyan landlords
+    </td></tr>
+    <tr><td align="center" style="padding:12px 24px 0;font-size:13px">
+      <a href="{{ site_url }}" style="color:#0e7a4b;text-decoration:none;font-weight:600">Website</a>
+      <span style="color:#d0d5dd">&nbsp;&nbsp;|&nbsp;&nbsp;</span>
+      <a href="{{ site_url }}/help/" style="color:#0e7a4b;text-decoration:none;font-weight:600">Help</a>
+      <span style="color:#d0d5dd">&nbsp;&nbsp;|&nbsp;&nbsp;</span>
+      <a href="{{ site_url }}/contact/" style="color:#0e7a4b;text-decoration:none;font-weight:600">Contact us</a>
+    </td></tr>
+    <tr><td align="center" style="padding:14px 24px 0;font-size:11px;line-height:1.6;color:#98a2b3">
+      You're receiving this because you use {{ APP_NAME }}.{% if address %}<br>{{ address }}{% endif %}
+    </td></tr>
+  </table>
+
+</td></tr>
+</table>
+</body>
+</html>
