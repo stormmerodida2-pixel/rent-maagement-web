@@ -52,6 +52,14 @@
 </div>
 {% endif %}
 
+{% if tax_due %}
+<div class="alert {% if tax_due.late %}alert-error{% else %}alert-warning{% endif %}" style="margin-bottom:20px">
+  {% icon 'file' 18 %}
+  <span><strong>KRA rental income tax for {{ tax_due.month|date:"F" }}: {{ tax_due.tax|kes }}</strong>, {% if tax_due.late %}was due{% else %}due{% endif %} on iTax by {{ tax_due.due|date:"j F" }}.</span>
+  <span class="spacer"></span>
+  <a class="btn btn-sm" href="{% url 'reports:tax' %}?year={{ tax_due.month.year }}">See workings / mark filed</a>
+</div>
+{% endif %}
 {% if stale_days %}
 <div class="alert alert-warning" style="margin-bottom:20px">
   {% icon 'bell' 18 %}

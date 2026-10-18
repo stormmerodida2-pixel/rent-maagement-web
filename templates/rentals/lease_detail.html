@@ -18,6 +18,7 @@
     <a class="btn" href="{% url 'rentals:charge_create' lease.pk %}">{% icon 'plus' %}Add charge</a>
     <a class="btn" href="{% url 'maintenance:create' %}?unit={{ lease.unit_id }}&amp;tenant={{ lease.tenant_id }}&amp;next={{ request.path|urlencode }}">{% icon 'wrench' %}Log repair</a>
     <a class="btn" href="{% url 'rentals:tenant_history' lease.pk %}">{% icon 'calendar' %}Full history</a>
+    <a class="btn" href="{% url 'rentals:agreement' lease.pk %}">{% icon 'file' %}Tenancy agreement</a>
     <a class="btn" href="{% url 'rentals:tenant_update' lease.tenant_id %}?next={{ request.path|urlencode }}">Edit tenant</a>
     <a class="btn" href="{% url 'rentals:lease_update' lease.pk %}">Edit rent &amp; details</a>
     {% if lease.is_active %}<a class="btn" href="{% url 'rentals:rent_change' lease.pk %}">Change rent</a>{% endif %}
@@ -172,6 +173,33 @@
             <button class="btn btn-sm" style="margin-top:8px">Save note</button>
           </form>
         </details>
+      </div>
+    </section>
+
+    <section class="card" id="documents">
+      <div class="card-header"><h2>Inspections and documents</h2></div>
+      <div class="card-body stack">
+        <div class="row" style="gap:8px;flex-wrap:wrap">
+          {% with i=inspections.move_in %}<a class="btn btn-sm" href="{% url 'rentals:inspection' lease.pk 'move_in' %}">{% icon 'phone' %}Move-in photos{% if i %} ({{ i.photos.all|length }}){% endif %}</a>{% endwith %}
+          {% with o=inspections.move_out %}<a class="btn btn-sm" href="{% url 'rentals:inspection' lease.pk 'move_out' %}">{% icon 'phone' %}Move-out photos{% if o %} ({{ o.photos.all|length }}){% endif %}</a>{% endwith %}
+          {% if inspections.move_in and inspections.move_out %}<a class="btn btn-sm btn-primary" href="{% url 'rentals:inspection_compare' lease.pk %}">Side by side</a>{% endif %}
+        </div>
+        {% if not inspections.move_in %}<p class="muted small" style="margin:0">Photograph each room when they move in: it settles what happens to the deposit later.</p>{% endif %}
+        {% if documents %}
+        <ul class="doc-list">
+          {% for d in documents %}
+          <li><a href="{% url 'rentals:document_file' d.pk %}" target="_blank" rel="noopener">{% icon 'file' 16 %}{{ d.label }}</a>
+            <span class="muted small">{{ d.created_at|date:"d M Y" }}</span>
+            <form method="post" action="{% url 'rentals:document_delete' d.pk %}" class="inline-form">{% csrf_token %}<button class="linkish small" data-confirm="&quot;{{ d.label }}&quot; will be deleted." data-confirm-title="Delete document?" data-confirm-ok="Delete">Delete</button></form></li>
+          {% endfor %}
+        </ul>
+        {% endif %}
+        <form method="post" action="{% url 'rentals:document_upload' lease.pk %}" enctype="multipart/form-data" class="row" style="gap:8px;flex-wrap:wrap">{% csrf_token %}
+          <select name="kind" aria-label="Type of document">{% for v, l in document_kinds %}<option value="{{ v }}">{{ l }}</option>{% endfor %}</select>
+          <input type="file" name="file" accept="image/*,application/pdf" required aria-label="Photo or PDF" style="flex:1;min-width:180px">
+          <button class="btn btn-sm">Upload</button>
+        </form>
+        <p class="muted small" style="margin:0">Photo or PDF, up to 10 MB. Kept privately: only you can open them.</p>
       </div>
     </section>
 

@@ -32,7 +32,7 @@ from payments.models import C2BPayment, CashHandover, MpesaAccount, Payment, Sta
 from . import utils as rent_changes
 from .forms import BulkRentChangeForm, NoticeForm, PaymentPlanForm, RentChangeForm
 from .utils import add_tenant_note, create_plan, unpaid_items, on_track_plan, plan_progress, plan_schedule, refresh_plan, tenant_page
-from .models import Lease, PaymentPlan, Property, RentCharge, Tenant, Unit
+from .models import Lease, PaymentPlan, Property, RentCharge, Tenant, TenantDocument, Unit
 
 
 def home(request):
@@ -103,6 +103,13 @@ def statement_due(account):
         timezone.now() - account.statement_imported_at > STATEMENT_NUDGE_AFTER
 
 
+def _tax_due(user):
+    from notifications.models import LandlordPreferences
+    from reports.tax import due_now
+
+    return due_now(user) if LandlordPreferences.for_user(user).tax_reminders else None
+
+
 def _highlights(user):
     """Celebrations, the collection scorecard, the year in review and suggestions for the dashboard."""
     from django.core.cache import cache
@@ -143,6 +150,7 @@ def dashboard(request):
         .select_related('staff__user'),
         'spending_to_approve': StaffExpense.objects.filter(owner=user, status=StaffExpense.Status.PENDING).count(),
         'stale_days': is_stale(user) if numbers['occupied_count'] else None,
+        'tax_due': _tax_due(user),
         **_highlights(user),
         'mpesa_account': account,
         'statement_due': statement_due(account),
@@ -266,6 +274,9 @@ def lease_detail(request, pk):
             key=lambda r: r.voided_at, reverse=True,
         ),
         'history': lease.audit_entries.select_related('actor')[:15],
+        'inspections': {i.kind: i for i in lease.inspections.prefetch_related('photos')},
+        'documents': lease.tenant.documents.all(),
+        'document_kinds': TenantDocument.Kind.choices,
         'mpesa_transactions': lease.mpesa_transactions.all()[:10],
         'sms_messages': lease.sms_messages.all()[:10],
         'mpesa_account': MpesaAccount.objects.filter(owner=request.user).first(),

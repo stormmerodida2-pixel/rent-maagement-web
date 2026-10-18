@@ -496,11 +496,17 @@ class BrandingForm(forms.Form):
     brand_color = forms.RegexField(regex=r'^#[0-9a-fA-F]{6}$', required=False, label='Colour',
                                    widget=forms.TextInput(attrs={'type': 'color'}),
                                    help_text='For headings and lines on receipts and statements.')
+    agreement_clauses = forms.CharField(
+        required=False, max_length=3000, label='Your own terms for tenancy agreements',
+        widget=forms.Textarea(attrs={'rows': 4, 'placeholder': 'e.g. No pets without written permission.\n'
+                                                               'Gate closes at 11pm.'}),
+        help_text='One per line. Added to every tenancy agreement you print.')
 
     def __init__(self, *args, profile, **kwargs):
         super().__init__(*args, **kwargs)
         self.profile = profile
-        self.initial.update(brand_name=profile.brand_name, brand_color=profile.brand_color or '#0e7a4b')
+        self.initial.update(brand_name=profile.brand_name, brand_color=profile.brand_color or '#0e7a4b',
+                            agreement_clauses=profile.agreement_clauses)
         if not profile.brand_logo:
             del self.fields['remove_logo']
 
@@ -515,6 +521,7 @@ class BrandingForm(forms.Form):
     def save(self):
         data, profile = self.cleaned_data, self.profile
         profile.brand_name, profile.brand_color = data['brand_name'].strip(), data['brand_color'] or ''
+        profile.agreement_clauses = data['agreement_clauses'].strip()
         if data.get('remove_logo') or data.get('logo'):
             profile.brand_logo.delete(save=False)
         if data.get('logo'):

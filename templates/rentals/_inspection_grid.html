@@ -1,0 +1,13 @@
+{% load i18n %}
+{% if rows %}
+<div class="compare-head"><span></span><strong>{% translate "Moving in" %}{% if move_in %} · {{ move_in.done_on|date:"j M Y" }}{% endif %}</strong><strong>{% translate "Moving out" %}{% if move_out %} · {{ move_out.done_on|date:"j M Y" }}{% endif %}</strong></div>
+{% for room, before, after in rows %}
+<section class="compare-row">
+  <h3>{{ room }}</h3>
+  <div class="compare-side">{% for p in before %}<figure>{% if tenant_view %}<a href="{% url 'rentals:tenant_inspection_photo' token p.pk %}" target="_blank" rel="noopener"><img loading="lazy" src="{% url 'rentals:tenant_inspection_photo' token p.pk %}" alt="{{ room }}"></a>{% else %}<a href="{% url 'private_file' 'inspection' p.pk %}" target="_blank" rel="noopener"><img loading="lazy" src="{% url 'private_file' 'inspection' p.pk %}" alt="{{ room }}"></a>{% endif %}{% if p.note %}<figcaption>{{ p.note }}</figcaption>{% endif %}</figure>{% empty %}<p class="muted small">{% translate "No photo" %}</p>{% endfor %}</div>
+  <div class="compare-side">{% for p in after %}<figure>{% if tenant_view %}<a href="{% url 'rentals:tenant_inspection_photo' token p.pk %}" target="_blank" rel="noopener"><img loading="lazy" src="{% url 'rentals:tenant_inspection_photo' token p.pk %}" alt="{{ room }}"></a>{% else %}<a href="{% url 'private_file' 'inspection' p.pk %}" target="_blank" rel="noopener"><img loading="lazy" src="{% url 'private_file' 'inspection' p.pk %}" alt="{{ room }}"></a>{% endif %}{% if p.note %}<figcaption>{{ p.note }}</figcaption>{% endif %}</figure>{% empty %}<p class="muted small">{% translate "No photo" %}</p>{% endfor %}</div>
+</section>
+{% endfor %}
+{% else %}
+<div class="empty"><strong>{% translate "No inspection photos yet" %}</strong></div>
+{% endif %}

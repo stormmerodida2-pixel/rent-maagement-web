@@ -325,3 +325,34 @@ details.daraja[open] > summary h2::before { transform: rotate(90deg); }
 .doc.branded .doc-head { border-bottom-color: var(--doc-accent); }
 .doc.branded .doc-title h1, .doc.branded .doc-title { color: var(--doc-accent); }
 .doc.branded .doc-total { box-shadow: inset 4px 0 0 var(--doc-accent); }
+
+/* --- KRA tax page ---------------------------------------------------------------------------------------------- */
+.grid-3 { display: grid; grid-template-columns: repeat(3, minmax(0, 1fr)); gap: 16px; }
+@media (max-width: 720px) { .grid-3 { grid-template-columns: 1fr; } }
+
+/* --- Inspections ---------------------------------------------------------------------------------------------- */
+.photo-grid { display: grid; grid-template-columns: repeat(auto-fill, minmax(130px, 1fr)); gap: 10px; }
+.photo-grid figure, .compare-side figure { margin: 0; }
+.photo-grid img, .compare-side img { width: 100%; aspect-ratio: 4 / 3; object-fit: cover; border-radius: 8px; display: block; background: var(--surface-2); }
+.photo-grid figcaption, .compare-side figcaption { font-size: 0.8rem; color: var(--muted); margin-top: 3px; }
+.compare-head, .compare-row { display: grid; grid-template-columns: 120px 1fr 1fr; gap: 12px; align-items: start; }
+.compare-head { padding-bottom: 8px; border-bottom: 1px solid var(--border); }
+.compare-row { padding: 12px 0; border-bottom: 1px solid var(--border); }
+.compare-row h3 { font-size: 0.95rem; margin: 0; }
+.compare-side { display: grid; gap: 8px; }
+@media (max-width: 640px) {
+  .compare-head { grid-template-columns: 1fr 1fr; } .compare-head span { display: none; }
+  .compare-row { grid-template-columns: 1fr 1fr; } .compare-row h3 { grid-column: 1 / -1; }
+}
+
+/* --- Tenancy agreement and documents --------------------------------------------------------------------------- */
+.agreement h2 { font-size: 1rem; margin: 18px 0 6px; }
+.agreement p, .agreement li { line-height: 1.55; }
+.agreement ol { padding-left: 22px; }
+.agreement .parties { list-style: none; padding-left: 0; }
+.signatures { display: grid; grid-template-columns: repeat(3, minmax(0, 1fr)); gap: 24px; margin-top: 40px; }
+.sign-line { border-bottom: 1px solid #101828; height: 40px; margin-bottom: 6px; }
+@media print { .agreement h2 { break-after: avoid; } .signatures { break-inside: avoid; } }
+.doc-list { list-style: none; margin: 0; padding: 0; display: grid; gap: 6px; }
+.doc-list li { display: flex; gap: 10px; align-items: center; flex-wrap: wrap; }
+.doc-list a { display: inline-flex; gap: 6px; align-items: center; }

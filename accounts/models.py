@@ -17,6 +17,8 @@ class Profile(models.Model):
                                   help_text='e.g. "Kodi Properties Ltd". Leave blank to use the property name.')
     brand_logo = models.ImageField('logo', upload_to='branding/', blank=True)
     brand_color = models.CharField('colour', max_length=7, blank=True, help_text='Used for headings and lines.')
+    agreement_clauses = models.TextField('your own terms', blank=True, max_length=3000,
+                                         help_text='Added to every tenancy agreement, one per line.')
 
     def __str__(self):
         return f'Profile of {self.user}'

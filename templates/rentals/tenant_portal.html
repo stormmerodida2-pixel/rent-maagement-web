@@ -52,7 +52,7 @@
       {% if balance > 0 %}<span class="badge badge-danger">{% translate "Balance due" %}</span>{% else %}<span class="badge badge-success">{% translate "Paid up" %}</span>{% endif %}
     </div>
     <div class="card-body stack">
-      <div class="row" style="justify-content:flex-end;margin-bottom:-8px"><a class="small" href="{% url 'reports:tenant_statement' tenant.portal_token lease.pk %}">{% translate "View statement" %}</a></div>
+      <div class="row" style="justify-content:flex-end;gap:14px;margin-bottom:-8px">{% if lease.inspections.exists %}<a class="small" href="{% url 'rentals:tenant_inspection' tenant.portal_token lease.pk %}">{% translate "Inspection photos" %}</a>{% endif %}<a class="small" href="{% url 'reports:tenant_statement' tenant.portal_token lease.pk %}">{% translate "View statement" %}</a></div>
       <div class="balance-hero {% if balance > 0 %}owing{% else %}clear{% endif %}">
         <div class="label">{% if balance > 0 %}{% translate "You owe" %}{% elif balance < 0 %}{% translate "You're in credit" %}{% else %}{% translate "Balance" %}{% endif %}</div>
         <div class="value">{% if balance < 0 %}{{ balance|kes|cut:"-" }}{% else %}{{ balance|kes }}{% endif %}</div>

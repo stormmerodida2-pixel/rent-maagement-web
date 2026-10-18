@@ -273,3 +273,63 @@ def verify_receipt(request):
             return render(request, 'reports/verify.html', {'code': code, 'result': result, 'payment': payment,
                                                            'tenant': tenant})
     return render(request, 'reports/verify.html', {'code': code, 'result': result})
+
+
+# --- KRA Monthly Rental Income tax ----------------------------------------------------------------------------------
+
+@login_required
+def tax(request):
+    from .tax import RATE, YEARLY_FROM, YEARLY_TO, tax_year
+
+    today = datetime.date.today()
+    try:
+        year = int(request.GET.get('year', today.year))
+    except ValueError:
+        year = today.year
+    year = min(max(year, request.user.date_joined.year), today.year)
+    data = tax_year(request.user, year)
+    if request.GET.get('format') == 'csv':
+        response = HttpResponse(content_type='text/csv')
+        response['Content-Disposition'] = f'attachment; filename="rental-income-tax-{year}.csv"'
+        out = csv.writer(response)
+        out.writerow(['Month', 'Residential rent received (KES)', 'Deposits excluded (KES)', 'MRI tax 7.5% (KES)',
+                      'Due', 'Filed on', 'iTax reference (PRN)', 'Tax paid (KES)', 'Shops/commercial (KES)'])
+        for r in data['rows']:
+            f = r['filing']
+            out.writerow([f'{r["month"]:%B %Y}', r['residential'], r['deposits'], r['tax'], f'{r["due"]:%d %b %Y}',
+                          f'{f.filed_on:%d %b %Y}' if f else '', f.reference if f else '', f.amount if f else '',
+                          r['commercial']])
+        out.writerow(['Total', data['total_rent'], '', data['total_tax'], '', '', '', data['total_filed'],
+                      data['commercial']])
+        return response
+    return render(request, 'reports/tax.html', {
+        **data, 'rate': RATE * 100, 'from_amount': YEARLY_FROM, 'to_amount': YEARLY_TO,
+        'years': list(range(today.year, request.user.date_joined.year - 1, -1)),
+    })
+
+
+@login_required
+@require_POST
+def tax_filed(request):
+    from audit import utils as audit
+
+    from .models import TaxFiling
+    from .tax import month_rent, tax_on
+
+    try:
+        month = datetime.datetime.strptime(request.POST.get('month', ''), '%Y-%m').date()
+    except ValueError:
+        return redirect('reports:tax')
+    if request.POST.get('undo'):
+        TaxFiling.objects.filter(owner=request.user, month=month).delete()
+    else:
+        try:
+            amount = Decimal(request.POST.get('amount') or tax_on(month_rent(request.user, month)['residential']))
+        except ArithmeticError:
+            amount = tax_on(month_rent(request.user, month)['residential'])
+        TaxFiling.objects.update_or_create(owner=request.user, month=month, defaults={
+            'amount': amount, 'reference': request.POST.get('reference', '').strip()[:40],
+            'filed_on': datetime.date.today()})
+        audit.record(owner=request.user, actor=request.user, action='tax.filed',
+                     summary=f'Marked {month:%B %Y} rental income tax as filed: KES {amount:,.0f}.')
+    return redirect(reverse('reports:tax') + f'?year={month.year}')

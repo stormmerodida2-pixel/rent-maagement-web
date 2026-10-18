@@ -50,6 +50,9 @@ class LandlordPreferences(models.Model):
         help_text="At 8pm on days you received payments: how much, how, and who still owes. Nothing on days with "
                   'no payments. Sent to your phone number above.')
     summary_sent_on = models.DateField(null=True, blank=True, editable=False)
+    tax_reminders = models.BooleanField(
+        'remind me about KRA rental income tax', default=True,
+        help_text='On the 15th, if last month\'s Monthly Rental Income tax isn\'t marked as filed (due on the 20th).')
     stale_reminded_at = models.DateTimeField(null=True, blank=True, editable=False)
 
     def __str__(self):
