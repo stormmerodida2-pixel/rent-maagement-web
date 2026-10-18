@@ -7,6 +7,8 @@ app_name = 'payments'
 # Each landlord's M-Pesa account has its own secret token in its webhook URLs.
 # Safaricom rejects C2B callback URLs containing words like "mpesa" or "safaricom".
 urlpatterns = [
+    path('confirm/', views.claims, name='claims'),
+    path('confirm/<int:pk>/', views.claim_decide, name='claim_decide'),
     path('hooks/<str:token>/stk/', views.stk_callback, name='stk_callback'),
     path('hooks/<str:token>/c2b/validation/', views.c2b_validation, name='c2b_validation'),
     path('hooks/<str:token>/c2b/confirmation/', views.c2b_confirmation, name='c2b_confirmation'),

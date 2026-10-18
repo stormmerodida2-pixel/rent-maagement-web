@@ -27,7 +27,7 @@ from notifications.utils import (
 )
 from payments import mpesa
 from payments.forms import StkPushForm
-from payments.models import C2BPayment, CashHandover, MpesaAccount, Payment, StaffExpense
+from payments.models import C2BPayment, CashHandover, MpesaAccount, Payment, StaffExpense, PaymentClaim
 
 from . import utils as rent_changes
 from .forms import BulkRentChangeForm, NoticeForm, PaymentPlanForm, RentChangeForm
@@ -170,6 +170,8 @@ def dashboard(request):
         'handovers_to_confirm': CashHandover.objects.filter(owner=user, status=CashHandover.Status.PENDING)
         .select_related('staff__user'),
         'spending_to_approve': StaffExpense.objects.filter(owner=user, status=StaffExpense.Status.PENDING).count(),
+        'claims_to_confirm': PaymentClaim.objects.filter(lease__unit__property__owner=user,
+                                                         status=PaymentClaim.Status.PENDING).count(),
         'stale_days': is_stale(user) if numbers['occupied_count'] else None,
         'tax_due': _tax_due(user),
         **_highlights(user),
@@ -607,6 +609,12 @@ def tenant_portal(request, token):
                     ) % {'phone': txn.phone, 'amount': txn.amount})
             return redirect('rentals:tenant_portal', token=token)
 
+        if request.POST.get('action') == 'claim':
+            lease = next((l for l in leases if str(l.pk) == request.POST.get('lease')), None)
+            if lease is not None:
+                _tenant_claim(request, tenant, lease)
+            return redirect(reverse('rentals:tenant_portal', args=[token]) + (f'#paid-{lease.pk}' if lease else ''))
+
         if request.POST.get('action') in ('board_post', 'board_remove', 'rate'):
             _tenant_board_or_rating(request, tenant, leases)
             return redirect(reverse('rentals:tenant_portal', args=[token]) + (
@@ -637,7 +645,60 @@ def tenant_portal(request, token):
         'mpesa_account': MpesaAccount.objects.filter(owner=tenant.owner).first(),
         **_tenant_rewards(tenant, leases),
         **_tenant_board(tenant, leases),
+        **_tenant_claims(leases),
     })
+
+
+def _tenant_claims(leases):
+    from payments.models import Payment, PaymentClaim
+
+    since = timezone.now() - datetime.timedelta(days=30)
+    by_lease = {}
+    for claim in PaymentClaim.objects.filter(lease__in=leases, created_at__gte=since).order_by('-created_at'):
+        by_lease.setdefault(claim.lease_id, []).append(claim)
+    return {'claims_by_lease': by_lease, 'today': timezone.localdate(),
+            'claim_methods': [(Payment.Method.BANK, gettext('Bank transfer')), (Payment.Method.CASH, gettext('Cash')),
+                              (Payment.Method.MPESA, gettext('M-Pesa'))]}
+
+
+def _tenant_claim(request, tenant, lease):
+    """"I've paid": the tenant tells their landlord about a payment, with a photo of the slip if they have one."""
+    from django.core.exceptions import ValidationError
+
+    from listings.utils import prepare_photo
+    from payments.claims import MAX_PENDING, notify_landlord
+    from payments.models import Payment, PaymentClaim
+
+    try:
+        amount = Decimal(request.POST.get('amount', '').replace(',', ''))
+        paid_on = datetime.date.fromisoformat(request.POST.get('paid_on', ''))
+    except (ArithmeticError, ValueError):
+        messages.error(request, gettext('Enter the amount and the date you paid.'))
+        return
+    today = timezone.localdate()
+    if amount <= 0 or amount > 10_000_000 or paid_on > today or paid_on < today - datetime.timedelta(days=366):
+        messages.error(request, gettext('Enter the amount and the date you paid.'))
+        return
+    if PaymentClaim.objects.filter(lease=lease, status=PaymentClaim.Status.PENDING).count() >= MAX_PENDING:
+        messages.error(request, gettext('Your landlord has a few of these to check already. Please wait for them first.'))
+        return
+    method = request.POST.get('method')
+    claim = PaymentClaim(lease=lease, amount=amount, paid_on=paid_on,
+                         method=method if method in Payment.Method.values else Payment.Method.BANK,
+                         reference=''.join(request.POST.get('reference', '').split()).upper()[:40],
+                         note=' '.join(request.POST.get('note', '').split())[:200])
+    upload = request.FILES.get('photo')
+    if upload:
+        try:
+            photo = prepare_photo(upload)
+        except ValidationError:
+            messages.error(request, gettext("That photo couldn't be read. Try another, or send without it."))
+            return
+        claim.photo.save(photo.name, photo, save=False)
+    claim.save()
+    notify_landlord(claim)
+    messages.success(request, gettext("Sent. Your balance updates once your landlord confirms it, and you'll get a "
+                                      'receipt by SMS.'))
 
 
 BOARD_POSTS_PER_DAY = 3
