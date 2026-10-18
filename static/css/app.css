@@ -1,5 +1,11 @@
 /* Design system: tokens first, then base, layout, components, page-specific bits. */
 
+/* Inter, served from here (no extra connections to Google on slow networks). One variable file: weights 400–800. */
+@font-face {
+  font-family: 'Inter'; font-style: normal; font-weight: 400 800; font-display: swap;
+  src: url("../fonts/inter-latin.woff2") format("woff2");
+}
+
 :root {
   --bg: #f6f7f9;
   --surface: #ffffff;

@@ -212,8 +212,8 @@ TRUSTED_PROXY_COUNT = int(os.environ.get('TRUSTED_PROXY_COUNT', '0'))
 _csp = {
     'default-src': [CSP.SELF],
     'script-src': [CSP.SELF, CSP.NONCE],
-    'style-src': [CSP.SELF, CSP.UNSAFE_INLINE, 'https://fonts.googleapis.com'],
-    'font-src': [CSP.SELF, 'https://fonts.gstatic.com'],
+    'style-src': [CSP.SELF, CSP.UNSAFE_INLINE],
+    'font-src': [CSP.SELF],  # Inter is served from our own static files
     'img-src': [CSP.SELF, 'data:'],
     'connect-src': [CSP.SELF],
     'object-src': [CSP.NONE],

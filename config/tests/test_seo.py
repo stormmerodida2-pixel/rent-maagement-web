@@ -2,6 +2,7 @@ from django.contrib.auth import get_user_model
 from django.core.cache import cache
 from django.test import TestCase, override_settings
 from django.urls import reverse
+from django.utils.html import escape
 
 from ops.models import SiteSettings
 from rentals.tests import make_lease
@@ -79,3 +80,46 @@ class SocialLinksTests(TestCase):
     def test_no_links_no_icons(self):
         cache.delete(SiteSettings.CACHE_KEY)
         self.assertNotContains(self.client.get('/'), 'social-links')
+
+
+class DescriptionsAndStructuredDataTests(TestCase):
+    """Each public page has its own description (search results and link previews), plus structured data."""
+
+    def ld(self, html):
+        import json
+        import re
+
+        return [json.loads(b) for b in re.findall(r'<script type="application/ld\+json"[^>]*>(.*?)</script>', html, re.S)]
+
+    def test_each_public_page_describes_itself(self):
+        from rentals.utils import SEO_DESCRIPTIONS
+
+        seen = set()
+        for name, text in SEO_DESCRIPTIONS.items():
+            self.assertLessEqual(len(text), 160, name)
+            html = self.client.get(reverse(name)).content.decode()
+            self.assertIn(f'<meta name="description" content="{escape(text)}">', html, name)
+            self.assertIn(f'<meta property="og:description" content="{escape(text)}">', html, name)
+            seen.add(text)
+        self.assertEqual(len(seen), len(SEO_DESCRIPTIONS))  # no two pages share one
+
+    def test_home_describes_the_app(self):
+        data = self.ld(self.client.get(reverse('rentals:home')).content.decode())[0]
+        types = [g['@type'] for g in data['@graph']]
+        self.assertEqual(types, ['Organization', 'WebSite', 'SoftwareApplication'])
+        app = data['@graph'][2]
+        self.assertEqual((app['offers']['priceCurrency'], app['areaServed']['name']), ('KES', 'Kenya'))
+
+    def test_help_questions_become_an_faq(self):
+        html = self.client.get(reverse('help')).content.decode()
+        [faq] = self.ld(html)
+        self.assertEqual(faq['@type'], 'FAQPage')
+        self.assertGreater(len(faq['mainEntity']), 20)
+        first = faq['mainEntity'][0]
+        self.assertTrue(first['name'].endswith('?'))
+        self.assertNotIn('<', first['acceptedAnswer']['text'])  # plain text, no markup
+
+    def test_no_google_fonts(self):
+        html = self.client.get(reverse('rentals:home')).content.decode()
+        self.assertNotIn('fonts.googleapis.com', html)
+        self.assertIn('inter-latin', html)

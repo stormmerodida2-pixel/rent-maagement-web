@@ -13,16 +13,14 @@
     })();
   </script>
   <title>{% block title %}{{ APP_NAME }}{% endblock %}</title>
-  <meta name="description" content="{% block description %}Collect rent over M-Pesa, track arrears and manage maintenance for your rental properties.{% endblock %}">
+  <meta name="description" content="{% block description %}{{ seo_description }}{% endblock %}">
   <link rel="icon" type="image/png" href="{% static 'img/icons/favicon-64.png' %}">
   <link rel="apple-touch-icon" href="{% static 'img/icons/apple-touch-icon.png' %}">
   {% block manifest %}<link rel="manifest" href="{% url 'manifest' %}">{% endblock %}
   <meta name="theme-color" content="#0e7a4b">
   <meta name="apple-mobile-web-app-capable" content="yes">
   <meta name="apple-mobile-web-app-title" content="{{ APP_NAME }}">
-  <link rel="preconnect" href="https://fonts.googleapis.com">
-  <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
-  <link href="https://fonts.googleapis.com/css2?family=Inter:wght@400;500;600;700;800&display=swap" rel="stylesheet">
+  <link rel="preload" href="{% static 'fonts/inter-latin.woff2' %}" as="font" type="font/woff2" crossorigin>
   <link rel="stylesheet" href="{% static 'css/app.css' %}">
   <link rel="stylesheet" href="{% static 'css/features.css' %}">
   <script src="{% static 'js/theme.js' %}" defer></script>

@@ -1,5 +1,6 @@
 {% extends 'base.html' %}
-{% block seo %}{% with seo_title="Help" %}{% include 'includes/seo_public.html' %}{% endwith %}{% endblock %}
+{% load ui %}
+{% block seo %}{% with seo_title="Help" %}{% include 'includes/seo_public.html' %}{% endwith %}{% if faq_data %}{% jsonld faq_data %}{% endif %}{% endblock %}
 {% block title %}Help · {{ APP_NAME }}{% endblock %}
 {% block body %}
 <header class="topbar">
