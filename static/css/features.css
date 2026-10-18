@@ -318,7 +318,23 @@ details.daraja[open] > summary h2::before { transform: rotate(90deg); }
 
 /* --- Bulk actions on lists ------------------------------------------------------------------------------------- */
 .bulk-bar { display: flex; gap: 10px; align-items: center; flex-wrap: wrap; padding: 10px 16px; border-bottom: 1px solid var(--border); }
+.bulk-bar label { display: inline-flex; align-items: center; gap: 6px; margin: 0; font-weight: 400; }
+.bulk-bar input[type="checkbox"], .check-col input[type="checkbox"] { width: 18px; height: 18px; padding: 0; margin: 0; flex: none; accent-color: var(--brand); }
 .check-col { width: 34px; }
+
+/* Phones: the bar is one compact line, and each row's tick box sits in the top-right corner of its card, so the
+   repair (or tenant) stays the card's title. */
+@media (max-width: 640px) {
+  .bulk-bar { padding: 10px 14px; gap: 8px 12px; }
+  .bulk-bar .bulk-hint { display: none; }
+  .bulk-bar .btn { margin-left: auto; }
+  table.table.stack tr:has(> td.check-col) { position: relative; }
+  table.table.stack td.check-col { position: absolute; top: 12px; right: 16px; width: auto; padding: 0; display: block; }
+  table.table.stack td.check-col::before { content: none; }
+  table.table.stack td.check-col + td { display: block; text-align: left; padding: 0 34px 6px 0; }
+  table.table.stack td.check-col + td::before { content: none; }
+  table.table.stack td.check-col.blank + td { padding-right: 0; }
+}
 
 /* --- Landlord branding on receipts and statements -------------------------------------------------------------- */
 .doc-logo { max-height: 56px; max-width: 220px; object-fit: contain; }
