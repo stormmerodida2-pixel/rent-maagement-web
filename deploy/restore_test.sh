@@ -23,11 +23,11 @@ BUCKET_REGION=$(env_value BACKUP_S3_REGION)
 [ -n "$BUCKET" ] || { echo "BACKUP_S3_BUCKET isn't set on $HOST: off-site backups aren't set up."; exit 1; }
 
 latest() {  # latest <name pattern>
-  aws s3 ls "s3://$BUCKET/backups/" --region "$BUCKET_REGION" | awk '{print $4}' | grep -E "$1" | sort | tail -1
+  aws s3 ls "s3://$BUCKET/backups/" --region "$BUCKET_REGION" | awk '{print $4}' | { grep -E "$1" || true; } | sort | tail -1
 }
 DB_KEY=$(latest '^rentals-[0-9]{8}-[0-9]{6}\.dump\.enc$')
 FILES_KEY=$(latest '^rentals-files-[0-9]{8}-[0-9]{6}\.tar\.gz\.enc$')
-[ -n "$DB_KEY" ] || { echo "No database backup found in s3://$BUCKET/backups/."; exit 1; }
+[ -n "$DB_KEY" ] || { echo "No database backup found in s3://$BUCKET/backups/."; exit 1; }  # a files backup is optional
 echo "Testing s3://$BUCKET/backups/$DB_KEY"
 [ -n "$FILES_KEY" ] && echo "    and s3://$BUCKET/backups/$FILES_KEY"
 DB_URL=$(aws s3 presign "s3://$BUCKET/backups/$DB_KEY" --region "$BUCKET_REGION" --expires-in 900)
