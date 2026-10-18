@@ -126,3 +126,29 @@ class ImpersonationTests(TestCase):
         log = SupportSession.objects.get()
         self.assertEqual(self.client.post(f'/admin/accounts/supportsession/{log.pk}/delete/', {'post': 'yes'}).status_code,
                          403)
+
+
+class SwitchingTests(TestCase):
+    """Mid-impersonation, the Landlords page and its buttons still work as the superadmin."""
+
+    def setUp(self):
+        cache.clear()
+        User = get_user_model()
+        self.admin = User.objects.create_superuser('boss', password='pw')
+        self.grace = User.objects.create_user('grace', first_name='Grace')
+        self.otieno = User.objects.create_user('otieno', first_name='Otieno')
+        make_lease(self.grace)
+        make_lease(self.otieno, label='B1')
+        self.client.force_login(self.admin)
+
+    def test_list_and_switch_while_impersonating(self):
+        self.client.post(reverse('impersonate_start', args=[self.grace.pk]))
+        page = self.client.get(reverse('admin_landlords'))
+        self.assertEqual(page.status_code, 200)
+        self.assertContains(page, "You're impersonating <strong>Grace</strong>")
+        resp = self.client.post(reverse('impersonate_start', args=[self.otieno.pk]))
+        self.assertRedirects(resp, reverse('rentals:dashboard'), fetch_redirect_response=False)
+        self.assertContains(self.client.get(reverse('rentals:dashboard')), 'Impersonating Otieno')
+        first, second = SupportSession.objects.order_by('started_at')
+        self.assertIsNotNone(first.ended_at)  # Grace's session was closed by the switch
+        self.assertIsNone(second.ended_at)

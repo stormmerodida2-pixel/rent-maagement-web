@@ -26,6 +26,8 @@ LIMIT = 60 * 60  # seconds
 # Never while impersonating, even with changes allowed: the landlord's own login secrets and the staff area.
 BLOCKED_PATHS = ('/settings/password/', '/settings/two-step/', '/staff/', '/admin/', '/verify-phone/')
 STOP_PATH = '/support/impersonate/stop/'
+# Always as the superadmin, even mid-impersonation: the Landlords list, starting (another) and stopping.
+ADMIN_PATHS = ('/support/landlords/', '/support/impersonate/')
 
 
 def can_impersonate(user):
@@ -60,8 +62,9 @@ class ImpersonationMiddleware:
             if expired and can_impersonate(real):
                 messages.info(request, 'Your support session ended after an hour.')
             return self.get_response(request)
-        if request.path == STOP_PATH:
-            return self.get_response(request)  # stop runs as the superadmin
+        if request.path.startswith(ADMIN_PATHS):
+            request.impersonation = data  # the banner still shows who you're impersonating
+            return self.get_response(request)  # runs as the superadmin
         if request.path.startswith(BLOCKED_PATHS):
             messages.info(request, "That page isn't available while viewing a landlord's account.")
             return redirect('rentals:dashboard')
@@ -101,8 +104,10 @@ def landlords(request):
 
     page = Paginator(qs.order_by('-date_joined'), 50).get_page(request.GET.get('page'))
     _add_billing(page.object_list)
+    data = request.session.get(SESSION_KEY) or {}
     return render(request, 'accounts/landlords.html', {
         'page_obj': page, 'landlords': page.object_list, 'q': q, 'show': show, 'counts': counts,
+        'impersonating': get_user_model().objects.filter(pk=data.get('id')).first() if data else None,
     })
 
 
@@ -123,6 +128,7 @@ def start(request, pk):
     if not can_impersonate(request.user):
         raise PermissionDenied
     target = get_object_or_404(eligible_landlords(), pk=pk)
+    _close(request.session.get(SESSION_KEY))  # switching straight from another landlord
     log = SupportSession.objects.create(superadmin=request.user, landlord=target, allow_changes=True,
                                         reason=' '.join(request.POST.get('reason', '').split())[:150])
     request.session[SESSION_KEY] = {'id': target.pk, 'by': request.user.pk, 'started': time.time(), 'log': log.pk}
