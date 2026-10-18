@@ -1,4 +1,4 @@
-"""Superadmins view the app as a landlord, for support, with safeguards and a trail in the landlord's Activity."""
+"""Superadmins view the app as a landlord, for support: safeguards, and a private log the landlord never sees."""
 
 import time
 from decimal import Decimal
@@ -14,7 +14,7 @@ from rentals.models import Property
 from rentals.tests import make_lease
 
 from ..impersonation import LIMIT, SESSION_KEY
-from ..models import StaffMember
+from ..models import StaffMember, SupportSession
 
 
 class ImpersonationTests(TestCase):
@@ -38,9 +38,14 @@ class ImpersonationTests(TestCase):
         self.assertContains(dash, "you're viewing <strong>Grace Wanjiru</strong>")
         self.assertContains(dash, 'view only')
         self.assertContains(self.client.get(reverse('rentals:lease_detail', args=[self.lease.pk])), str(self.lease.tenant))
-        entry = AuditEntry.objects.get(action='support.started')
-        self.assertEqual((entry.owner, entry.actor), (self.landlord, self.admin))
-        self.assertIn('Cannot upload M-Pesa statement', entry.summary)
+        # Not told: nothing in their Activity. The private log has it.
+        self.assertFalse(AuditEntry.objects.filter(owner=self.landlord, action__startswith='support').exists())
+        activity = self.client.get(reverse('audit:activity'))
+        self.assertNotContains(activity, 'Rentipay support')
+        self.assertNotContains(activity, 'opened your account')
+        log = SupportSession.objects.get()
+        self.assertEqual((log.superadmin, log.landlord, log.reason, log.allow_changes, log.ended_at),
+                         (self.admin, self.landlord, 'Cannot upload M-Pesa statement', False, None))
 
     def test_view_only_changes_nothing(self):
         self.start()
@@ -54,6 +59,7 @@ class ImpersonationTests(TestCase):
         self.client.post(reverse('payments:payment_void', args=[payment.pk]), {'reason': 'Duplicate'})
         entry = AuditEntry.objects.filter(action__contains='void').latest('created_at')
         self.assertEqual((entry.owner, entry.actor), (self.landlord, self.admin))
+        self.assertEqual(entry.actor_label, 'Rentipay support')  # not the superadmin's own name
 
     def test_their_password_and_staff_area_stay_off_limits(self):
         self.start(mode='changes')
@@ -65,7 +71,8 @@ class ImpersonationTests(TestCase):
         resp = self.client.post(reverse('impersonate_stop'))
         self.assertRedirects(resp, reverse('impersonate'))
         self.assertNotIn(SESSION_KEY, self.client.session)
-        self.assertTrue(AuditEntry.objects.filter(action='support.ended', owner=self.landlord).exists())
+        self.assertIsNotNone(SupportSession.objects.get().ended_at)
+        self.assertFalse(AuditEntry.objects.filter(owner=self.landlord, action__startswith='support').exists())
         self.assertNotContains(self.client.get(reverse('rentals:dashboard')), "you're viewing")
 
     def test_ends_after_an_hour(self):
@@ -76,6 +83,7 @@ class ImpersonationTests(TestCase):
         page = self.client.get(reverse('rentals:dashboard'), follow=True)
         self.assertNotContains(page, "you're viewing")
         self.assertNotIn(SESSION_KEY, self.client.session)
+        self.assertIsNotNone(SupportSession.objects.get().ended_at)
 
     def test_reason_required(self):
         self.start(reason='  ')
@@ -100,3 +108,12 @@ class ImpersonationTests(TestCase):
         session.save()
         self.assertNotContains(self.client.get(reverse('rentals:dashboard')), "you're viewing")
         self.assertNotIn(SESSION_KEY, self.client.session)
+
+    def test_private_log_is_superadmin_only_and_read_only(self):
+        self.start()
+        self.client.post(reverse('impersonate_stop'))
+        self.assertEqual(self.client.get('/admin/accounts/supportsession/').status_code, 200)
+        log = SupportSession.objects.get()
+        self.assertEqual(self.client.post(f'/admin/accounts/supportsession/{log.pk}/delete/', {'post': 'yes'}).status_code,
+                         403)
+        self.assertTrue(SupportSession.objects.exists())

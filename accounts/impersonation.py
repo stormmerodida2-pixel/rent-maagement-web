@@ -1,8 +1,9 @@
 """Support: a superadmin sees the app exactly as one landlord does, to help them.
 
 Safeguards: superadmins only, never another superadmin; a reason is required; view only unless "allow changes" is
-chosen; ends by itself after LIMIT; a banner shows on every page with a Stop button; and the landlord's own
-Activity log records who looked, when and why (changes made are logged under the superadmin's name).
+chosen; ends by itself after LIMIT; a banner (for the superadmin) shows on every page with a Stop button. The
+landlord isn't told: each session goes in a private SupportSession log that only superadmins see, and changes made
+show in the landlord's Activity as "Rentipay support".
 """
 
 import time
@@ -16,7 +17,9 @@ from django.shortcuts import get_object_or_404, redirect, render
 from django.utils.http import url_has_allowed_host_and_scheme
 from django.views.decorators.http import require_POST
 
-from audit import utils as audit
+from django.utils import timezone
+
+from .models import SupportSession
 
 SESSION_KEY = 'impersonate'
 LIMIT = 60 * 60  # seconds
@@ -53,6 +56,7 @@ class ImpersonationMiddleware:
         expired = time.time() - data.get('started', 0) > LIMIT
         if not can_impersonate(real) or data.get('by') != real.pk or target is None or expired:
             request.session.pop(SESSION_KEY, None)
+            _close(data)
             if expired and can_impersonate(real):
                 messages.info(request, 'Your support session ended after an hour.')
             return self.get_response(request)
@@ -103,25 +107,22 @@ def start(request, pk):
         messages.error(request, 'Say why you need to see their account: it goes in their Activity log.')
         return redirect('impersonate')
     changes = request.POST.get('mode') == 'changes'
+    log = SupportSession.objects.create(superadmin=request.user, landlord=target, reason=reason, allow_changes=changes)
     request.session[SESSION_KEY] = {'id': target.pk, 'by': request.user.pk, 'started': time.time(),
-                                    'changes': changes, 'reason': reason}
-    who = request.user.get_full_name() or request.user.get_username()
-    audit.record(owner=target, actor=request.user, action='support.started',
-                 summary=f'{who} from support opened your account ({"could make changes" if changes else "view only"}). '
-                         f'Reason: {reason}')
+                                    'changes': changes, 'reason': reason, 'log': log.pk}
     return redirect('rentals:dashboard')
 
 
 @require_POST
 def stop(request):
     data = request.session.pop(SESSION_KEY, None)
-    if data and request.user.is_authenticated:
-        target = get_user_model().objects.filter(pk=data.get('id')).first()
-        if target is not None:
-            minutes = max(1, round((time.time() - data.get('started', time.time())) / 60))
-            who = request.user.get_full_name() or request.user.get_username()
-            audit.record(owner=target, actor=request.user, action='support.ended',
-                         summary=f'{who} from support closed your account after {minutes} minute'
-                                 f'{"s" if minutes != 1 else ""}.')
+    if data:
+        _close(data)
         messages.success(request, 'Back to your own account.')
     return redirect('impersonate')
+
+
+def _close(data):
+    """Mark the private log entry for this session as ended (stopped, timed out or no longer allowed)."""
+    if data and data.get('log'):
+        SupportSession.objects.filter(pk=data['log'], ended_at__isnull=True).update(ended_at=timezone.now())

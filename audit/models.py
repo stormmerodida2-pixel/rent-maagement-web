@@ -32,5 +32,7 @@ class AuditEntry(models.Model):
     def actor_label(self):
         if self.actor is None:
             return 'System'
+        if self.actor.is_superuser:
+            return 'Rentipay support'
         name = self.actor.get_full_name() or self.actor.get_username()
         return f'{name} (staff)' if hasattr(self.actor, 'staff_membership') else name
