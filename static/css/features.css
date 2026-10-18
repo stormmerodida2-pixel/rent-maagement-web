@@ -383,3 +383,7 @@ details.daraja[open] > summary h2::before { transform: rotate(90deg); }
 .paid-box summary { list-style: none; cursor: pointer; justify-content: center; }
 .paid-box summary::-webkit-details-marker { display: none; }
 .paid-box[open] summary { background: var(--surface-2); }
+
+/* Home page header when logged in: "Log out" next to "Open dashboard"; just the icon on phones. */
+.site-nav form { margin: 0; }
+@media (max-width: 640px) { .site-nav .nav-logout-label { display: none; } }
