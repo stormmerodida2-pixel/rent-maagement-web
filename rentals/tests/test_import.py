@@ -50,7 +50,7 @@ class ImportTests(TestCase):
         sheet = load_workbook(io.BytesIO(resp.content)).active
         # Older sheets with a Bedrooms column (HEAD, used below) are still read.
         self.assertEqual([c.value for c in sheet[1]], [h for h in HEAD if h != 'Bedrooms'])
-        self.assertEqual(sheet.data_validations.dataValidation[0].formula1, '"Single room,One bedroom,Two bedroom,Shop"')
+        self.assertEqual(sheet.data_validations.dataValidation[0].formula1, '"Single room,Double room,One bedroom,Two bedroom,Three bedroom,Shop"')
 
     def test_preview_checks_rows_and_saves_nothing(self):
         occupied = make_lease(self.owner, label='Z1')

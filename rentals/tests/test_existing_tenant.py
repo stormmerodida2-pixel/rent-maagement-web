@@ -230,3 +230,22 @@ class EditMonthsTests(TestCase):
         self.assertContains(page, 'Change which months were paid')
         self.assertContains(page, self.url)
         self.assertNotIn('balance_owed', page.context['form'].fields)  # never typed in by hand
+
+
+class UnitTypeTests(TestCase):
+    def test_double_room_and_three_bedroom(self):
+        from ..utils import unit_type_from_text
+
+        owner = get_user_model().objects.create_user('landlord')
+        prop = Property.objects.create(owner=owner, name='Riverside')
+        double = Unit.objects.create(property=prop, label='D1', default_rent=8000, unit_type=Unit.Type.DOUBLE)
+        three = Unit.objects.create(property=prop, label='T1', default_rent=40000, unit_type=Unit.Type.THREE_BEDROOM)
+        self.assertEqual((double.get_unit_type_display(), double.bedrooms), ('Double room', 1))
+        self.assertEqual((three.get_unit_type_display(), three.bedrooms), ('Three bedroom', 3))
+        for text, expected in (('Double room', 'double'), ('doubles', 'double'), ('3 bedroom', 'three_bedroom'),
+                               ('3BR', 'three_bedroom'), ('Three bedroom', 'three_bedroom')):
+            self.assertEqual(unit_type_from_text(text), expected, text)
+        self.client.force_login(owner)
+        form = self.client.get(reverse('rentals:property_create')).content.decode()
+        self.assertIn('Double room', form)
+        self.assertIn('Three bedroom', form)

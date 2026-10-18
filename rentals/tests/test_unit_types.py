@@ -38,9 +38,9 @@ class UnitTypeTests(TestCase):
         self.client.force_login(self.owner)
         self.prop = Property.objects.create(owner=self.owner, name='Riverside')
 
-    def test_four_types_with_bedrooms_from_the_type(self):
+    def test_types_with_bedrooms_from_the_type(self):
         self.assertEqual([label for _, label in Unit.Type.choices],
-                         ['Single room', 'One bedroom', 'Two bedroom', 'Shop'])
+                         ['Single room', 'Double room', 'One bedroom', 'Two bedroom', 'Three bedroom', 'Shop'])
         unit = Unit.objects.create(property=self.prop, label='S1', unit_type='shop', default_rent=8000)
         self.assertEqual(unit.bedrooms, 0)
         unit.unit_type = 'two_bedroom'
