@@ -1,9 +1,10 @@
 """Support: a superadmin sees the app exactly as one landlord does, to help them.
 
-Safeguards: superadmins only, never another superadmin; a reason is required; view only unless "allow changes" is
-chosen; ends by itself after LIMIT; a banner (for the superadmin) shows on every page with a Stop button. The
-landlord isn't told: each session goes in a private SupportSession log that only superadmins see, and changes made
-show in the landlord's Activity as "Rentipay support".
+Started from the Landlords page (administrators only) with one click. Safeguards: superadmins only, never another
+superadmin, caretaker or read-only viewer; the landlord's password, two-step and the staff area stay off limits;
+ends by itself after LIMIT; a banner (for the superadmin) shows on every page with a Stop button. The landlord isn't
+told: each session goes in a private SupportSession log that only superadmins see, and changes made show in the
+landlord's Activity as "Rentipay support".
 """
 
 import time
@@ -14,7 +15,6 @@ from django.contrib.auth.decorators import login_required
 from django.core.exceptions import PermissionDenied
 from django.db.models import Q
 from django.shortcuts import get_object_or_404, redirect, render
-from django.utils.http import url_has_allowed_host_and_scheme
 from django.views.decorators.http import require_POST
 
 from django.utils import timezone
@@ -65,11 +65,6 @@ class ImpersonationMiddleware:
         if request.path.startswith(BLOCKED_PATHS):
             messages.info(request, "That page isn't available while viewing a landlord's account.")
             return redirect('rentals:dashboard')
-        if request.method not in ('GET', 'HEAD', 'OPTIONS') and not data.get('changes'):
-            messages.error(request, 'This support session is view only, so nothing was changed.')
-            back = request.META.get('HTTP_REFERER', '')
-            safe = url_has_allowed_host_and_scheme(back, {request.get_host()}, request.is_secure())
-            return redirect(back if safe and back else 'rentals:dashboard')
 
         from audit.utils import acting_user
 
@@ -82,18 +77,44 @@ class ImpersonationMiddleware:
 
 
 @login_required
-def choose(request):
-    """Superadmins: find a landlord to view as."""
+def landlords(request):
+    """Administrators: every landlord, with how far they've got, and an Impersonate button each."""
+    from django.db.models import Count, Max
+
     if not can_impersonate(request.user):
         raise PermissionDenied
-    q = request.GET.get('q', '').strip()
-    landlords = eligible_landlords().filter(properties__isnull=False).distinct()
+    q, show = request.GET.get('q', '').strip(), request.GET.get('show', 'all')
+    qs = eligible_landlords().select_related('profile').annotate(
+        n_properties=Count('properties', distinct=True),
+        n_units=Count('properties__units', distinct=True),
+        n_let=Count('properties__units__leases', filter=Q(properties__units__leases__is_active=True), distinct=True),
+        last_activity=Max('audit_entries__created_at'))
     if q:
-        landlords = landlords.filter(Q(first_name__icontains=q) | Q(last_name__icontains=q) | Q(email__icontains=q)
-                                     | Q(profile__phone__icontains=q) | Q(properties__name__icontains=q)).distinct()
-    return render(request, 'accounts/impersonate.html', {
-        'landlords': landlords.order_by('first_name', 'last_name')[:50], 'q': q, 'limit_minutes': LIMIT // 60,
+        qs = qs.filter(Q(first_name__icontains=q) | Q(last_name__icontains=q) | Q(email__icontains=q)
+                       | Q(profile__phone__icontains=q) | Q(properties__name__icontains=q)).distinct()
+    counts = {'all': qs.count(), 'using': qs.filter(n_let__gt=0).count(), 'new': qs.filter(n_properties=0).count()}
+    if show == 'using':
+        qs = qs.filter(n_let__gt=0)
+    elif show == 'new':
+        qs = qs.filter(n_properties=0)
+    from django.core.paginator import Paginator
+
+    page = Paginator(qs.order_by('-date_joined'), 50).get_page(request.GET.get('page'))
+    _add_billing(page.object_list)
+    return render(request, 'accounts/landlords.html', {
+        'page_obj': page, 'landlords': page.object_list, 'q': q, 'show': show, 'counts': counts,
     })
+
+
+def _add_billing(users):
+    """Each landlord's billing status, if billing has started for them."""
+    from billing.models import BillingAccount
+    from billing.utils import status
+
+    accounts = {a.owner_id: a for a in BillingAccount.objects.filter(owner__in=list(users))}
+    for user in users:
+        account = accounts.get(user.pk)
+        user.billing_status = status(account) if account else ''
 
 
 @login_required
@@ -102,14 +123,9 @@ def start(request, pk):
     if not can_impersonate(request.user):
         raise PermissionDenied
     target = get_object_or_404(eligible_landlords(), pk=pk)
-    reason = ' '.join(request.POST.get('reason', '').split())[:150]
-    if not reason:
-        messages.error(request, 'Say why you need to see their account: it goes in their Activity log.')
-        return redirect('impersonate')
-    changes = request.POST.get('mode') == 'changes'
-    log = SupportSession.objects.create(superadmin=request.user, landlord=target, reason=reason, allow_changes=changes)
-    request.session[SESSION_KEY] = {'id': target.pk, 'by': request.user.pk, 'started': time.time(),
-                                    'changes': changes, 'reason': reason, 'log': log.pk}
+    log = SupportSession.objects.create(superadmin=request.user, landlord=target, allow_changes=True,
+                                        reason=' '.join(request.POST.get('reason', '').split())[:150])
+    request.session[SESSION_KEY] = {'id': target.pk, 'by': request.user.pk, 'started': time.time(), 'log': log.pk}
     return redirect('rentals:dashboard')
 
 
@@ -119,7 +135,7 @@ def stop(request):
     if data:
         _close(data)
         messages.success(request, 'Back to your own account.')
-    return redirect('impersonate')
+    return redirect('admin_landlords')
 
 
 def _close(data):

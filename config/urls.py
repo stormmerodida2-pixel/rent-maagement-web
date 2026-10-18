@@ -53,7 +53,7 @@ urlpatterns = [
     path('reports/', include('reports.urls')),
     path('activity/', include('audit.urls')),
     path('announcements/', include('announcements.urls')),
-    path('support/impersonate/', impersonation.choose, name='impersonate'),
+    path('support/landlords/', impersonation.landlords, name='admin_landlords'),
     path('support/impersonate/<int:pk>/start/', impersonation.start, name='impersonate_start'),
     path('support/impersonate/stop/', impersonation.stop, name='impersonate_stop'),
     path('', include('support.urls')),

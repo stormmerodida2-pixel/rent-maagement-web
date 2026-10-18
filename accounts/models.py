@@ -188,7 +188,7 @@ class SupportSession(models.Model):
 
     superadmin = models.ForeignKey(settings.AUTH_USER_MODEL, on_delete=models.PROTECT, related_name='+')
     landlord = models.ForeignKey(settings.AUTH_USER_MODEL, on_delete=models.CASCADE, related_name='+')
-    reason = models.CharField(max_length=150)
+    reason = models.CharField(max_length=150, blank=True)
     allow_changes = models.BooleanField(default=False)
     started_at = models.DateTimeField(auto_now_add=True)
     ended_at = models.DateTimeField(null=True, blank=True)

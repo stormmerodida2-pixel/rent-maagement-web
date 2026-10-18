@@ -1,0 +1,41 @@
+{% extends 'app_base.html' %}
+{% load ui %}
+{% block page_title %}Landlords{% endblock %}
+{% block content %}
+<div class="page-header">
+  <div><h1>Landlords</h1><p class="sub">Everyone who has signed up as a landlord, newest first. Impersonate one to see and do exactly what they can.</p></div>
+  <div class="actions"><a class="btn" href="{% url 'admin:accounts_supportsession_changelist' %}">{% icon 'shield' %}Impersonation log</a></div>
+</div>
+<section class="card">
+  <div class="toolbar">
+    <nav class="tabs" aria-label="Show">
+      <a href="?show=all{% if q %}&amp;q={{ q|urlencode }}{% endif %}" class="{% if show == 'all' %}active{% endif %}">All <span class="muted">{{ counts.all }}</span></a>
+      <a href="?show=using{% if q %}&amp;q={{ q|urlencode }}{% endif %}" class="{% if show == 'using' %}active{% endif %}">Using it <span class="muted">{{ counts.using }}</span></a>
+      <a href="?show=new{% if q %}&amp;q={{ q|urlencode }}{% endif %}" class="{% if show == 'new' %}active{% endif %}">Not set up yet <span class="muted">{{ counts.new }}</span></a>
+    </nav>
+    <span class="spacer"></span>
+    <form method="get"><input type="hidden" name="show" value="{{ show }}"><input type="search" name="q" value="{{ q }}" placeholder="Name, email, phone or property" aria-label="Search landlords"></form>
+  </div>
+  {% if landlords %}
+  <div class="table-wrap"><table class="table">
+    <thead><tr><th>Landlord</th><th>Properties</th><th class="num">Units let</th><th>Joined</th><th>Last seen</th><th>Billing</th><th></th></tr></thead>
+    <tbody>
+    {% for u in landlords %}
+    <tr>
+      <td><strong>{{ u.get_full_name|default:u.username }}</strong>
+        <div class="muted small">{{ u|login_label }}{% if u.email and u.profile.phone %} · {{ u.profile.phone }}{% endif %}</div>
+        {% if not u.profile.email_verified_at and not u.profile.phone_verified_at %}<span class="badge badge-warn">Not confirmed</span>{% endif %}</td>
+      <td class="small">{% if u.n_properties %}{{ u.n_properties }} propert{{ u.n_properties|pluralize:"y,ies" }}{% else %}<span class="muted">None yet</span>{% endif %}</td>
+      <td class="num">{% if u.n_units %}{{ u.n_let }} of {{ u.n_units }}{% else %}—{% endif %}</td>
+      <td class="nowrap small">{{ u.date_joined|date:"d M Y" }}</td>
+      <td class="nowrap small">{% if u.last_login %}{{ u.last_login|timesince }} ago{% else %}<span class="muted">Never</span>{% endif %}</td>
+      <td class="small">{% if u.billing_status %}{% badge u.billing_status u.billing_status|capfirst %}{% else %}<span class="muted">—</span>{% endif %}</td>
+      <td class="num"><form method="post" action="{% url 'impersonate_start' u.pk %}">{% csrf_token %}<button class="btn btn-sm btn-primary">Impersonate</button></form></td>
+    </tr>
+    {% endfor %}
+    </tbody>
+  </table></div>
+  {% include 'includes/pagination.html' %}
+  {% else %}<div class="empty"><strong>No landlords found</strong></div>{% endif %}
+</section>
+{% endblock %}
