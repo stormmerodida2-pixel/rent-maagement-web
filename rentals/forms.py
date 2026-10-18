@@ -30,7 +30,8 @@ class PropertyForm(OwnedForm):
 
     class Meta:
         model = Property
-        fields = ['name', 'address', 'water_rate']
+        fields = ['name', 'address', 'water_rate', 'building_info']
+        widgets = {'building_info': forms.Textarea(attrs={'rows': 3})}
 
     def __init__(self, *args, **kwargs):
         super().__init__(*args, **kwargs)

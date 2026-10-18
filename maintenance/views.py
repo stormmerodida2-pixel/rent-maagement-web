@@ -1,5 +1,5 @@
 from django.contrib import messages
-from django.db.models import Case, IntegerField, Value, When
+from django.db.models import Case, Count, IntegerField, Q, Value, When
 from django.urls import reverse_lazy
 from django.views.generic import CreateView, ListView, UpdateView
 
@@ -24,16 +24,25 @@ class MaintenanceList(OwnedMixin, ListView):
     paginate_by = 50
 
     def get_queryset(self):
-        qs = super().get_queryset().select_related('property', 'unit__property', 'reported_by')
+        qs = super().get_queryset().select_related('property', 'unit__property', 'reported_by').annotate(
+            thumbs_up=Count('ratings', filter=Q(ratings__good=True)),
+            thumbs_down=Count('ratings', filter=Q(ratings__good=False)))
         status = self.request.GET.get('status', 'open')
         if status == 'open':
             return qs.filter(status__in=OPEN_STATUSES).order_by(PRIORITY_ORDER, '-created_at')
         if status in MaintenanceRequest.Status.values:
             qs = qs.filter(status=status)
-        return qs
+        return qs.order_by('-created_at')  # explicit: the rating counts make Django drop Meta.ordering
 
     def get_context_data(self, **kwargs):
-        return super().get_context_data(status=self.request.GET.get('status', 'open'), **kwargs)
+        from .models import RepairRating
+
+        # Who does good work: tenants' ratings of finished repairs, by who fixed them.
+        by_fixer = (RepairRating.objects.filter(repair__property__owner=self.request.user)
+                    .exclude(repair__assigned_to='').values('repair__assigned_to')
+                    .annotate(up=Count('pk', filter=Q(good=True)), down=Count('pk', filter=Q(good=False)))
+                    .order_by('-up', 'down'))
+        return super().get_context_data(status=self.request.GET.get('status', 'open'), fixers=by_fixer, **kwargs)
 
 
 class NotifyTenantsMixin:

@@ -8,6 +8,7 @@ from django.urls import include, path, reverse
 from accounts import views as account_views
 from accounts.urls import staff_patterns
 from ops.views import business_details, healthz
+from reports import views as report_views
 
 from . import views
 from .views import SITEMAPS, robots_txt
@@ -31,6 +32,7 @@ urlpatterns = [
     path('privacy/', views.privacy, name='privacy'),
     path('terms/', views.terms, name='terms'),
     path('help/', views.help_page, name='help'),
+    path('verify/', report_views.verify_receipt, name='verify_receipt'),
     path('private/<str:kind>/<int:pk>/', views.private_file, name='private_file'),
     path('admin/', admin.site.urls),
     path('login/', account_views.LoginView.as_view(), name='login'),

@@ -10,13 +10,37 @@ from rentals.utils import OwnedMixin
 
 from . import utils as sending
 from .forms import AnnouncementForm
-from .models import Announcement, PlatformNotice
+from .models import Announcement, BoardPost, PlatformNotice
 
 
 class AnnouncementList(OwnedMixin, ListView):
     model = Announcement
     template_name = 'announcements/list.html'
     paginate_by = 30
+
+    def get_context_data(self, **kwargs):
+        return super().get_context_data(board_posts=board_posts_for(property__owner=self.request.user)[:20], **kwargs)
+
+
+def board_posts_for(**filters):
+    """Noticeboard posts still showing (not removed, posted in the last BoardPost.POST_DAYS days)."""
+    import datetime
+
+    from django.utils import timezone
+
+    since = timezone.now() - datetime.timedelta(days=BoardPost.POST_DAYS)
+    return (BoardPost.objects.filter(removed=False, created_at__gte=since, **filters)
+            .select_related('tenant', 'property'))
+
+
+@login_required
+@require_POST
+def board_post_remove(request, pk):
+    post = get_object_or_404(BoardPost, pk=pk, property__owner=request.user)
+    post.removed = True
+    post.save(update_fields=['removed'])
+    messages.success(request, 'Removed from the noticeboard.')
+    return redirect('announcements:list')
 
 
 class AnnouncementCreate(OwnedMixin, NextUrlMixin, CreateView):

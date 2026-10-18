@@ -21,7 +21,7 @@ from rentals.utils import tenant_language
 from rentals.models import Lease, Property, RentCharge, Tenant
 from rentals.views import statement
 
-from .utils import _add_months, _billed, _month
+from .utils import _add_months, _billed, _month, payment_from_code, receipt_code
 
 @login_required
 def overview(request):
@@ -176,7 +176,7 @@ def render_receipt(request, payment, back_url, viewer_language='en'):
     with tenant_language(payment.lease.tenant):
         return render(request, 'reports/print_receipt.html', {
             'payment': payment, 'lease': payment.lease, 'balance_after': payment.lease.balance,
-            'back_url': back_url, 'viewer_language': viewer_language,
+            'back_url': back_url, 'viewer_language': viewer_language, 'receipt_code': receipt_code(payment),
             **_landlord_details(payment.lease.unit.property.owner),
         })
 
@@ -240,3 +240,27 @@ def nudge_dismiss(request):
         DismissedNudge.objects.update_or_create(owner=request.user, key=key, defaults={
             'until': datetime.date.today() + datetime.timedelta(days=30)})
     return redirect('rentals:dashboard')
+
+
+VERIFY_PER_IP_PER_HOUR = 30
+
+
+def verify_receipt(request):
+    """Public: anyone (a new landlord, a bank, the tenant) checks that a receipt code is genuine."""
+    from accounts import utils as ratelimit
+
+    code = request.GET.get('code', '').strip()
+    result = None
+    if code:
+        ip = ratelimit.client_ip(request)
+        if ratelimit.is_limited('verify', ip, VERIFY_PER_IP_PER_HOUR):
+            return ratelimit.too_many(request, 60)
+        ratelimit.hit('verify', ip, 60 * 60)
+        payment = payment_from_code(code)
+        result = 'invalid' if payment is None else 'voided' if payment.voided_at else 'ok'
+        if payment is not None:
+            names = payment.lease.tenant.full_name.split()
+            tenant = (f'{names[0][0]}. {names[-1]}' if len(names) > 1 else names[0]) if names else ''
+            return render(request, 'reports/verify.html', {'code': code, 'result': result, 'payment': payment,
+                                                           'tenant': tenant})
+    return render(request, 'reports/verify.html', {'code': code, 'result': result})

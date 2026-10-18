@@ -79,6 +79,8 @@ class BillingAccount(models.Model):
     owner = models.OneToOneField(settings.AUTH_USER_MODEL, on_delete=models.CASCADE, related_name='billing')
     trial_ends = models.DateField()
     paid_until = models.DateField(help_text='Trial or paid service runs up to (not including) this day.')
+    free_months = models.PositiveSmallIntegerField(default=0, help_text='Earned by referring landlords: each one '
+                                                                        'makes a coming monthly bill free.')
     created_at = models.DateTimeField(auto_now_add=True)
 
     def __str__(self):

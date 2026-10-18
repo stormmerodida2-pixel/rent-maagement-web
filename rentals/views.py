@@ -518,6 +518,11 @@ def tenant_portal(request, token):
                     ) % {'phone': txn.phone, 'amount': txn.amount})
             return redirect('rentals:tenant_portal', token=token)
 
+        if request.POST.get('action') in ('board_post', 'board_remove', 'rate'):
+            _tenant_board_or_rating(request, tenant, leases)
+            return redirect(reverse('rentals:tenant_portal', args=[token]) + (
+                '#repairs' if request.POST.get('action') == 'rate' else '#board'))
+
         if request.POST.get('action') == 'maintenance':
             maintenance_form = TenantMaintenanceForm(request.POST, units=units)
             if maintenance_form.is_valid():
@@ -542,7 +547,57 @@ def tenant_portal(request, token):
         'maintenance_form': maintenance_form,
         'mpesa_account': MpesaAccount.objects.filter(owner=tenant.owner).first(),
         **_tenant_rewards(tenant, leases),
+        **_tenant_board(tenant, leases),
     })
+
+
+BOARD_POSTS_PER_DAY = 3
+RATE_WITHIN_DAYS = 30
+
+
+def _tenant_board(tenant, leases):
+    """The building noticeboard (the landlord's "Good to know" and neighbours' posts) and repair ratings."""
+    from announcements.views import board_posts_for
+    from maintenance.models import RepairRating
+
+    properties = list({lease.unit.property_id: lease.unit.property for lease in leases}.values())
+    return {
+        'board': [{'property': prop, 'posts': list(board_posts_for(property=prop)[:15])} for prop in properties],
+        'board_max': 280,
+        'ratings': dict(RepairRating.objects.filter(tenant=tenant).values_list('repair_id', 'good')),
+        'rate_since': timezone.now() - datetime.timedelta(days=RATE_WITHIN_DAYS),
+    }
+
+
+def _tenant_board_or_rating(request, tenant, leases):
+    from announcements.models import BoardPost
+    from maintenance.models import MaintenanceRequest as Repair
+    from maintenance.models import RepairRating
+
+    action = request.POST.get('action')
+    if action == 'board_post':
+        text = ' '.join(request.POST.get('text', '').split())[:BoardPost.MAX_LENGTH]
+        prop = next((lease.unit.property for lease in leases if str(lease.unit.property_id) == request.POST.get('property')),
+                    None)
+        today_posts = BoardPost.objects.filter(tenant=tenant, created_at__date=timezone.localdate()).count()
+        if not text or prop is None:
+            messages.error(request, gettext('Write something to post.'))
+        elif today_posts >= BOARD_POSTS_PER_DAY:
+            messages.error(request, gettext('You can post up to 3 notices a day.'))
+        else:
+            BoardPost.objects.create(property=prop, tenant=tenant, text=text)
+            messages.success(request, gettext('Posted on the noticeboard.'))
+    elif action == 'board_remove':
+        BoardPost.objects.filter(pk=request.POST.get('post'), tenant=tenant).update(removed=True)
+        messages.success(request, gettext('Removed.'))
+    elif action == 'rate':
+        allowed = {r.pk for r in _tenant_repairs(tenant, leases)}
+        repair = Repair.objects.filter(pk=request.POST.get('repair'), status=Repair.Status.RESOLVED,
+                                       resolved_at__gte=timezone.now() - datetime.timedelta(days=RATE_WITHIN_DAYS)).first()
+        if repair and repair.pk in allowed:
+            RepairRating.objects.update_or_create(repair=repair, tenant=tenant,
+                                                  defaults={'good': request.POST.get('good') == '1'})
+            messages.success(request, gettext('Thanks for letting your landlord know.'))
 
 
 def _tenant_rewards(tenant, leases):

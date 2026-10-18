@@ -5,7 +5,7 @@ msgid ""
 msgstr ""
 "Project-Id-Version: Rentipay\n"
 "Report-Msgid-Bugs-To: \n"
-"POT-Creation-Date: 2026-10-18 07:30+0300\n"
+"POT-Creation-Date: 2026-10-18 07:42+0300\n"
 "PO-Revision-Date: YEAR-MO-DA HO:MI+ZONE\n"
 "Last-Translator: FULL NAME <EMAIL@ADDRESS>\n"
 "Language-Team: Kiswahili\n"
@@ -262,6 +262,21 @@ msgstr "Angalia simu yako (%(phone)s) na uweke PIN yako ya M-Pesa ili kulipa KES
 msgid "Thanks, your request has been sent to your landlord."
 msgstr "Asante, ombi lako limetumwa kwa mwenye nyumba."
 
+msgid "Write something to post."
+msgstr "Andika kitu cha kubandika."
+
+msgid "You can post up to 3 notices a day."
+msgstr "Unaweza kubandika matangazo hadi 3 kwa siku."
+
+msgid "Posted on the noticeboard."
+msgstr "Imebandikwa kwenye ubao wa matangazo."
+
+msgid "Removed."
+msgstr "Imeondolewa."
+
+msgid "Thanks for letting your landlord know."
+msgstr "Asante kwa kumjulisha mwenye nyumba."
+
 msgid "Message"
 msgstr "Ujumbe"
 
@@ -474,6 +489,35 @@ msgstr "Unahama? Mpe mwenye nyumba wako ajaye rekodi yako."
 msgid "Get my reference letter"
 msgstr "Pata barua yangu ya rejea"
 
+#, python-format
+msgid "%(name)s noticeboard"
+msgstr "Ubao wa matangazo wa %(name)s"
+
+msgid "Good to know"
+msgstr "Mambo ya kujua"
+
+#, python-format
+msgid "%(ago)s ago"
+msgstr "Imepita %(ago)s"
+
+msgid "Remove"
+msgstr "Ondoa"
+
+msgid "Nothing pinned yet. Lost something, found something, or need to tell your neighbours? Post it here."
+msgstr "Hakuna kilichobandikwa bado. Umepoteza au umeokota kitu, au unataka kuwaambia majirani? Bandika hapa."
+
+msgid "Your notice"
+msgstr "Tangazo lako"
+
+msgid "e.g. Found: car keys by the gate. Ask at B2."
+msgstr "mf. Nimeokota funguo za gari karibu na lango. Uliza B2."
+
+msgid "Your neighbours see your first name and house. Shown for 30 days."
+msgstr "Majirani wataona jina lako la kwanza na nyumba yako. Linaonekana kwa siku 30."
+
+msgid "Post"
+msgstr "Bandika"
+
 msgid "Being fixed in your building"
 msgstr "Yanayorekebishwa katika jengo lako"
 
@@ -505,6 +549,15 @@ msgstr "Marekebisho ya nyumba yako"
 #, python-format
 msgid "fixed %(date)s"
 msgstr "ilirekebishwa %(date)s"
+
+msgid "How was the fix?"
+msgstr "Marekebisho yalikuwaje?"
+
+msgid "Good"
+msgstr "Mazuri"
+
+msgid "Not good"
+msgstr "Si mazuri"
 
 msgid "No repairs yet."
 msgstr "Bado hakuna marekebisho."
@@ -574,6 +627,10 @@ msgstr "Salio la akaunti"
 
 msgid "Balance shown is as of today."
 msgstr "Salio lililoonyeshwa ni la leo."
+
+#, python-format
+msgid "Receipt code <strong>%(code)s</strong>. Anyone can check it is genuine at"
+msgstr "Nambari ya risiti <strong>%(code)s</strong>. Mtu yeyote anaweza kuthibitisha kuwa ni halali kwenye"
 
 msgid "Statement"
 msgstr "Taarifa ya akaunti"

@@ -18,4 +18,5 @@
   <strong>{% if balance_after < 0 %}{{ balance_after|kes|cut:"-" }}{% else %}{{ balance_after|kes }}{% endif %}</strong>
 </div>
 <p class="muted small" style="margin-top:8px">{% translate "Balance shown is as of today." %}</p>
+<p class="muted small">{% blocktranslate with code=receipt_code %}Receipt code <strong>{{ code }}</strong>. Anyone can check it is genuine at{% endblocktranslate %} {{ request.get_host }}/verify/</p>
 {% endblock %}

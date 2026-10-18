@@ -1,3 +1,4 @@
+import builtins
 import math
 
 from django.conf import settings
@@ -164,3 +165,30 @@ def current_notices(tenant, limit=10):
             .filter(models.Q(announcement__expires_at__isnull=True) | models.Q(announcement__expires_at__gt=now))
             .select_related('announcement')
             .order_by('-announcement__pinned', '-announcement__sent_at')[:limit])
+
+
+class BoardPost(models.Model):
+    """A short notice a tenant pins to their building's noticeboard ("Found: car keys by the gate"). Shown to the
+    property's tenants for POST_DAYS; the landlord can remove it, and so can the tenant who posted it."""
+
+    POST_DAYS = 30
+    MAX_LENGTH = 280
+
+    property = models.ForeignKey(Property, on_delete=models.CASCADE, related_name='board_posts')
+    tenant = models.ForeignKey(Tenant, on_delete=models.CASCADE, related_name='board_posts')
+    text = models.CharField(max_length=MAX_LENGTH)
+    removed = models.BooleanField(default=False)
+    created_at = models.DateTimeField(auto_now_add=True)
+
+    class Meta:
+        ordering = ['-created_at']
+
+    def __str__(self):
+        return f'{self.tenant}: {self.text[:40]}'
+
+    @builtins.property  # the `property` field shadows the builtin
+    def author(self):
+        """First name and unit only, never the phone number."""
+        first = self.tenant.full_name.split()[0] if self.tenant.full_name else ''
+        lease = self.tenant.leases.filter(is_active=True, unit__property=self.property).select_related('unit').first()
+        return f'{first} ({lease.unit.label})' if lease else first

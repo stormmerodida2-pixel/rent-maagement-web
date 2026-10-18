@@ -82,3 +82,35 @@ def month_summary(user, month):
             status__in=[MaintenanceRequest.Status.RESOLVED, MaintenanceRequest.Status.CANCELLED]).count(),
         'had_activity': bool(billed or collected),
     }
+
+
+# --- Receipt codes (anyone can check a receipt is genuine at /verify/) --------------------------------------------
+
+def receipt_code(payment):
+    """e.g. "R4F-7KQ2X": the payment number in base 36 plus a check that can't be guessed."""
+    import base64
+    import hashlib
+    import hmac
+
+    from django.conf import settings
+
+    from accounts.utils import base36
+
+    check = hmac.new(settings.SECRET_KEY.encode(), f'receipt:{payment.pk}'.encode(), hashlib.sha256).digest()
+    return f'R{base36(payment.pk).upper()}-{base64.b32encode(check).decode()[:5]}'
+
+
+def payment_from_code(code):
+    """The payment (voided ones included) a receipt code belongs to, or None."""
+    import hmac
+
+    code = ''.join((code or '').split()).upper()
+    ident, _, _check = code.removeprefix('R').partition('-')
+    try:
+        pk = int(ident, 36)
+    except ValueError:
+        return None
+    payment = Payment.all_objects.select_related('lease__tenant', 'lease__unit__property').filter(pk=pk).first()
+    if payment is None or not hmac.compare_digest(receipt_code(payment), code):
+        return None
+    return payment

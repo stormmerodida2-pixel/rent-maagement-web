@@ -25,6 +25,10 @@ class Property(models.Model):
     )
     name = models.CharField(max_length=200)
     address = models.CharField(max_length=300, blank=True)
+    building_info = models.TextField(
+        'good to know', blank=True, max_length=600,
+        help_text='Shown to tenants on their noticeboard: e.g. "Garbage collected Tue and Fri. Water: Mon and Thu '
+                  'mornings. Caretaker Peter: 0712 345 678."')
     water_rate = models.DecimalField(
         'water rate (KES per unit)', max_digits=8, decimal_places=2, null=True, blank=True,
         help_text='Price per meter unit (usually m³). Leave blank if you don\'t bill water by meter.',

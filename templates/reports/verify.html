@@ -1,0 +1,31 @@
+{% extends 'base.html' %}
+{% load ui %}
+{% block seo %}{% with seo_title="Check a rent receipt" %}{% include 'includes/seo_public.html' %}{% endwith %}{% endblock %}
+{% block title %}Check a receipt · {{ APP_NAME }}{% endblock %}
+{% block body %}
+<header class="topbar">
+  <a class="brand" href="{% url 'rentals:home' %}" style="padding:0">{% include 'includes/logo.html' %}</a>
+  <span class="spacer"></span>
+  {% include 'includes/theme_switch.html' %}
+</header>
+<main class="legal">
+  <article class="card prose">
+    <h1>Check a rent receipt</h1>
+    <p class="muted">Every receipt from {{ APP_NAME }} has a code like <strong>R4F-7KQ2X</strong>. Enter it to see whether the receipt is genuine.</p>
+    <form method="get" class="row" style="gap:8px;flex-wrap:wrap;margin:14px 0">
+      <label class="visually-hidden" for="code">Receipt code</label>
+      <input id="code" name="code" value="{{ code }}" placeholder="R4F-7KQ2X" autocomplete="off" autocapitalize="characters" style="flex:1;min-width:180px" required>
+      <button class="btn btn-primary">Check</button>
+    </form>
+    {% if result == 'ok' %}
+    <div class="alert alert-success"><span><strong>✓ Genuine receipt.</strong> {{ payment.amount|kes:2 }} received on {{ payment.paid_at|date:"j F Y" }} from {{ tenant }} for rent at {{ payment.lease.unit.property.name }} ({{ payment.lease.unit.label }}), by {{ payment.get_method_display }}.</span></div>
+    {% elif result == 'voided' %}
+    <div class="alert alert-warning"><span><strong>This receipt was cancelled.</strong> The landlord cancelled this payment record on {{ payment.voided_at|date:"j F Y" }}, so it no longer counts.</span></div>
+    {% elif result == 'invalid' %}
+    <div class="alert alert-error"><span><strong>No receipt has this code.</strong> Check it was typed exactly as printed. If it still doesn't match, the receipt may not be genuine.</span></div>
+    {% endif %}
+    <p class="muted small" style="margin-top:16px">Only the amount, date, place and the tenant's initial and surname are shown, never phone numbers or balances.</p>
+  </article>
+  <p class="muted small legal-links"><a href="{% url 'rentals:home' %}">{{ APP_NAME }}</a> · <a href="{% url 'help' %}">Help</a></p>
+</main>
+{% endblock %}

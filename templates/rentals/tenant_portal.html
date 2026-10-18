@@ -146,6 +146,38 @@
   </section>
   {% endif %}
 
+  {% for b in board %}
+  <section class="card" id="board">
+    <div class="card-header"><h2>{% icon 'megaphone' 18 %} {% blocktranslate with name=b.property.name %}{{ name }} noticeboard{% endblocktranslate %}</h2></div>
+    <div class="card-body stack">
+      {% if b.property.building_info %}
+      <div class="good-to-know"><strong>{% translate "Good to know" %}</strong><p>{{ b.property.building_info|linebreaksbr }}</p></div>
+      {% endif %}
+      {% for p in b.posts %}
+      <div class="board-post">
+        <p>{{ p.text }}</p>
+        <div class="muted small">{{ p.author }} · {% blocktranslate with ago=p.created_at|timesince %}{{ ago }} ago{% endblocktranslate %}
+          {% if p.tenant_id == tenant.pk %}
+          <form method="post" action="#board" class="inline-form">{% csrf_token %}<input type="hidden" name="action" value="board_remove"><input type="hidden" name="post" value="{{ p.pk }}"><button class="linkish">{% translate "Remove" %}</button></form>
+          {% endif %}
+        </div>
+      </div>
+      {% empty %}
+      <p class="muted small">{% translate "Nothing pinned yet. Lost something, found something, or need to tell your neighbours? Post it here." %}</p>
+      {% endfor %}
+      <form method="post" action="#board" class="stack" style="gap:8px">{% csrf_token %}
+        <input type="hidden" name="action" value="board_post"><input type="hidden" name="property" value="{{ b.property.pk }}">
+        <label class="visually-hidden" for="board-{{ b.property.pk }}">{% translate "Your notice" %}</label>
+        <textarea id="board-{{ b.property.pk }}" name="text" rows="2" maxlength="{{ board_max }}" required placeholder="{% translate 'e.g. Found: car keys by the gate. Ask at B2.' %}"></textarea>
+        <div class="row" style="justify-content:space-between;gap:8px;flex-wrap:wrap">
+          <span class="muted small">{% translate "Your neighbours see your first name and house. Shown for 30 days." %}</span>
+          <button class="btn btn-sm btn-primary">{% translate "Post" %}</button>
+        </div>
+      </form>
+    </div>
+  </section>
+  {% endfor %}
+
   {% if general_issues %}
   <section class="card">
     <div class="card-header"><h2>{% translate "Being fixed in your building" %}</h2></div>
@@ -192,7 +224,7 @@
     </div>
   </section>
 
-  <section class="card">
+  <section class="card" id="repairs">
     <div class="card-header"><h2>{% translate "Repairs to your house" %}</h2></div>
     {% if requests %}
     <table class="table">
@@ -200,7 +232,16 @@
       {% for r in requests %}
       <tr>
         <td><strong>{{ r.title }}</strong><div class="muted small">{% blocktranslate with date=r.created_at|date:"d M Y" %}Reported {{ date }}{% endblocktranslate %}{% if r.resolved_at %} · {% blocktranslate with date=r.resolved_at|date:"d M" %}fixed {{ date }}{% endblocktranslate %}{% endif %}</div></td>
-        <td class="num">{% badge r.status r.get_status_display %}</td>
+        <td class="num">{% badge r.status r.get_status_display %}
+          {% if r.status == 'resolved' and r.resolved_at >= rate_since %}
+          <div class="rate">
+            {% with rated=ratings|get_item:r.pk %}
+            {% if rated is None %}<span class="muted small">{% translate "How was the fix?" %}</span>{% endif %}
+            <form method="post" action="#repairs" class="inline-form">{% csrf_token %}<input type="hidden" name="action" value="rate"><input type="hidden" name="repair" value="{{ r.pk }}"><input type="hidden" name="good" value="1"><button class="rate-btn{% if rated is True %} on{% endif %}" title="{% translate 'Good' %}" aria-label="{% translate 'Good' %}">👍</button></form>
+            <form method="post" action="#repairs" class="inline-form">{% csrf_token %}<input type="hidden" name="action" value="rate"><input type="hidden" name="repair" value="{{ r.pk }}"><input type="hidden" name="good" value="0"><button class="rate-btn{% if rated is False %} on{% endif %}" title="{% translate 'Not good' %}" aria-label="{% translate 'Not good' %}">👎</button></form>
+            {% endwith %}
+          </div>
+          {% endif %}</td>
       </tr>
       {% endfor %}
       </tbody>

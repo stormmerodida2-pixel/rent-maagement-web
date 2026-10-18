@@ -1,0 +1,35 @@
+{% extends 'app_base.html' %}
+{% load ui %}
+{% block page_title %}Invite a landlord{% endblock %}
+{% block content %}
+<div class="page-header">
+  <div><h1>Invite a landlord</h1><p class="sub">Know another landlord? Send them your link. When they join and pay their first {{ APP_NAME }} bill, you get <strong>a month free</strong>. Invite as many as you like.</p></div>
+</div>
+<section class="card">
+  <div class="card-body stack">
+    <label for="ref-link"><strong>Your invite link</strong></label>
+    <div class="row" style="gap:8px;flex-wrap:wrap">
+      <input id="ref-link" value="{{ url }}" readonly style="flex:1;min-width:220px">
+      <button type="button" class="btn" data-copy="#ref-link">{% icon 'file' %}<span data-copy-label>Copy</span></button>
+      <button type="button" class="btn btn-primary" data-share="{{ share_text }}">{% icon 'link' %}<span data-share-label>Share</span></button>
+    </div>
+    <p class="muted small">Share opens WhatsApp and your other apps on a phone. The message says: "{{ share_text }}"</p>
+  </div>
+</section>
+
+<section class="card" style="margin-top:20px">
+  <div class="card-header"><h2>Landlords you invited</h2><span class="spacer"></span>{% if free_months %}<span class="badge badge-success">{{ free_months }} free month{{ free_months|pluralize }} to use</span>{% endif %}</div>
+  {% if referrals %}
+  <div class="table-wrap"><table class="table">
+    <thead><tr><th>Landlord</th><th>Joined</th><th>Your free month</th></tr></thead>
+    <tbody>{% for r in referrals %}
+      <tr><td>{{ r.referred.first_name|default:"A landlord" }}</td><td class="nowrap">{{ r.created_at|date:"d M Y" }}</td>
+        <td>{% if r.rewarded_at %}<span class="badge badge-success">Earned {{ r.rewarded_at|date:"d M" }}</span>{% else %}<span class="muted small">When they pay their first bill</span>{% endif %}</td></tr>
+    {% endfor %}</tbody>
+  </table></div>
+  {% else %}
+  <div class="empty"><strong>Nobody yet</strong>Your first free month is one WhatsApp message away.</div>
+  {% endif %}
+</section>
+<p class="muted small" style="margin-top:14px">Free months are used for your next bills automatically, one per month.</p>
+{% endblock %}

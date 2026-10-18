@@ -26,7 +26,7 @@
           <div class="muted small">{{ r.created_at|date:"d M Y" }}{% if r.reported_by %} · by {{ r.reported_by }}{% endif %}</div></td>
         <td>{% if r.is_general %}{{ r.property.name }} <span class="badge badge-info">General</span>{% else %}{{ r.unit }}{% endif %}</td>
         <td>{% badge r.priority r.get_priority_display %}</td>
-        <td>{% badge r.status r.get_status_display %}</td>
+        <td>{% badge r.status r.get_status_display %}{% if r.thumbs_up or r.thumbs_down %}<div class="small" title="Tenants' ratings">{% if r.thumbs_up %}👍 {{ r.thumbs_up }}{% endif %} {% if r.thumbs_down %}👎 {{ r.thumbs_down }}{% endif %}</div>{% endif %}</td>
         <td>{{ r.assigned_to|default:"—" }}</td>
         <td class="num">{% if r.cost is not None %}{{ r.cost|kes }}<div><a class="small" href="{% url 'payments:expense_create' %}?repair={{ r.pk }}">Record as expense</a></div>{% endif %}</td>
       </tr>
@@ -37,4 +37,13 @@
   {% include 'includes/pagination.html' %}
   {% else %}<div class="empty"><strong>Nothing here</strong>{% if status == 'open' %}No open repairs. Nice.{% endif %}</div>{% endif %}
 </section>
+{% if fixers %}
+<section class="card" style="margin-top:20px">
+  <div class="card-header"><h2>How fixes were rated</h2><span class="spacer"></span><span class="muted small">By tenants, after a repair was marked resolved</span></div>
+  <div class="table-wrap"><table class="table">
+    <thead><tr><th>Who fixed it</th><th class="num">👍</th><th class="num">👎</th></tr></thead>
+    <tbody>{% for f in fixers %}<tr><td>{{ f.repair__assigned_to }}</td><td class="num">{{ f.up }}</td><td class="num">{{ f.down }}</td></tr>{% endfor %}</tbody>
+  </table></div>
+</section>
+{% endif %}
 {% endblock %}
