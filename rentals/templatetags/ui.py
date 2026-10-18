@@ -104,3 +104,16 @@ def login_label(user):
 def get_item(mapping, key):
     """{{ ratings|get_item:repair.pk }}: a dict lookup by a variable key (None when missing)."""
     return mapping.get(key) if mapping else None
+
+
+@register.simple_tag(takes_context=True)
+def jsonld(context, data):
+    """Structured data for search engines: <script type="application/ld+json"> with the page's CSP nonce.
+    `<`, `>` and `&` are escaped so the JSON can never close the script tag."""
+    import json
+
+    from django.utils.html import format_html
+
+    text = json.dumps(data, ensure_ascii=False).replace('<', '\\u003c').replace('>', '\\u003e').replace('&', '\\u0026')
+    return format_html('<script type="application/ld+json" nonce="{}">{}</script>',
+                       context.get('csp_nonce', ''), mark_safe(text))

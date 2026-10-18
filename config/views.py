@@ -116,7 +116,32 @@ class LegalPage(TemplateView):
 
 
 privacy = LegalPage.as_view(template_name='legal/privacy.html', page_title='Privacy policy')
-help_page = LegalPage.as_view(template_name='help.html', page_title='Help')
+class HelpPage(LegalPage):
+    """The help page, with its questions and answers also given to search engines as an FAQ (they can show them
+    right in the search results)."""
+
+    def get_context_data(self, **kwargs):
+        ctx = super().get_context_data(**kwargs)
+        ctx['faq_data'] = None  # filled in from the rendered questions in render_to_response
+        return ctx
+
+    def render_to_response(self, context, **kwargs):
+        import html
+        import re
+
+        from django.template.loader import render_to_string
+        from django.utils.html import strip_tags
+
+        body = render_to_string(self.template_name, context, request=self.request)
+        pairs = re.findall(r'<details><summary>(.*?)</summary>\s*<p>(.*?)</p></details>', body, flags=re.S)
+        context['faq_data'] = {'@context': 'https://schema.org', '@type': 'FAQPage', 'mainEntity': [
+            {'@type': 'Question', 'name': html.unescape(strip_tags(q)).strip(),
+             'acceptedAnswer': {'@type': 'Answer', 'text': ' '.join(html.unescape(strip_tags(a)).split())}}
+            for q, a in pairs]} if pairs else None
+        return super().render_to_response(context, **kwargs)
+
+
+help_page = HelpPage.as_view(template_name='help.html', page_title='Help')
 terms = LegalPage.as_view(template_name='legal/terms.html', page_title='Terms of service')
 
 

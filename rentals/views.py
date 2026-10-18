@@ -37,7 +37,28 @@ from .models import Lease, PaymentPlan, Property, RentCharge, Tenant, TenantDocu
 
 def home(request):
     """Public landing page."""
-    return render(request, 'home.html')
+    return render(request, 'home.html', {'structured_data': home_structured_data()})
+
+
+def home_structured_data():
+    """What Rentipay is, for search engines: the organisation, the website and the app (free to start, in Kenya)."""
+    from django.templatetags.static import static
+
+    from .utils import SEO_DESCRIPTIONS
+
+    site = settings.SITE_URL.rstrip('/')
+    org = {'@type': 'Organization', '@id': f'{site}/#organization', 'name': settings.APP_NAME, 'url': f'{site}/',
+           'logo': site + static('img/icons/icon-512.png')}
+    return {'@context': 'https://schema.org', '@graph': [
+        org,
+        {'@type': 'WebSite', '@id': f'{site}/#website', 'name': settings.APP_NAME, 'url': f'{site}/',
+         'publisher': {'@id': f'{site}/#organization'}, 'inLanguage': ['en-KE', 'sw-KE']},
+        {'@type': 'SoftwareApplication', 'name': settings.APP_NAME, 'url': f'{site}/',
+         'applicationCategory': 'BusinessApplication', 'applicationSubCategory': 'Property management',
+         'operatingSystem': 'Web, Android, iOS', 'description': SEO_DESCRIPTIONS['rentals:home'],
+         'areaServed': {'@type': 'Country', 'name': 'Kenya'}, 'publisher': {'@id': f'{site}/#organization'},
+         'offers': {'@type': 'Offer', 'price': '0', 'priceCurrency': 'KES', 'description': 'Free to start'}},
+    ]}
 
 
 def dashboard_numbers(user):

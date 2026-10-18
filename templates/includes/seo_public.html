@@ -3,7 +3,10 @@
 <meta property="og:type" content="website">
 <meta property="og:site_name" content="{{ APP_NAME }}">
 <meta property="og:title" content="{% if seo_title %}{{ seo_title }} · {% endif %}{{ APP_NAME }}">
-<meta property="og:description" content="Collect rent on M-Pesa, track arrears, send SMS reminders and manage repairs for your rental properties.">
+<meta property="og:description" content="{{ seo_description }}">
+<meta name="twitter:title" content="{% if seo_title %}{{ seo_title }} · {% endif %}{{ APP_NAME }}">
+<meta name="twitter:description" content="{{ seo_description }}">
+<meta property="og:locale" content="en_KE">
 <meta property="og:url" content="{{ SITE_URL }}{{ request.path }}">
 <meta property="og:image" content="{{ SITE_URL }}{% static 'img/logo.jpeg' %}">
 <meta property="og:image:width" content="1408">

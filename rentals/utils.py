@@ -302,9 +302,30 @@ def billing_enabled():
         return False
 
 
+# What search engines and link previews (WhatsApp, Facebook) show for each public page: under 160 characters,
+# saying what the page offers a Kenyan landlord.
+SEO_DESCRIPTIONS = {
+    'rentals:home': 'Collect rent on M-Pesa Paybill or Till, see who has paid, send SMS reminders and receipts, and '
+                    'manage tenants, repairs and arrears. Built for Kenyan landlords.',
+    'accounts:signup': 'Create your free Rentipay account and start collecting rent on M-Pesa in minutes, with '
+                       'automatic reminders, receipts and arrears tracking.',
+    'login': 'Log in to Rentipay with your email or phone number.',
+    'help': 'Answers for Kenyan landlords: M-Pesa Paybill and Till setup, rent reminders, arrears, caretakers, '
+            'move-in inspections and KRA rental income tax.',
+    'support:contact': 'Questions about Rentipay? Talk to us on WhatsApp or by phone, or send us a message.',
+    'verify_receipt': 'Check that a Rentipay rent receipt is genuine: enter the receipt code printed on it.',
+    'privacy': "How Rentipay collects, uses and protects landlords' and tenants' personal data under Kenya's "
+               'Data Protection Act.',
+    'terms': 'The terms for using Rentipay, the rent collection and property management service for landlords.',
+}
+SEO_DEFAULT = ('Collect rent over M-Pesa, track arrears and manage maintenance for your rental properties in Kenya.')
+
+
 def branding(request):
+    match = getattr(request, 'resolver_match', None)
     context = {'APP_NAME': settings.APP_NAME, 'SITE_URL': settings.SITE_URL, 'SOCIAL_LINKS': social_links(),
-               'BILLING_ENABLED': billing_enabled()}
+               'BILLING_ENABLED': billing_enabled(),
+               'seo_description': SEO_DESCRIPTIONS.get(match.view_name if match else '', SEO_DEFAULT)}
     user = getattr(request, 'user', None)
     if user is not None and user.is_authenticated and request.resolver_match \
             and request.resolver_match.app_name in ('rentals', 'payments', 'maintenance', 'notifications', 'accounts', 'reports', 'audit', 'support', 'announcements',
