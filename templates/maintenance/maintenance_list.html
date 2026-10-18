@@ -19,7 +19,7 @@
   <form method="post" action="{% url 'maintenance:bulk_resolve' %}">{% csrf_token %}
   {% if status == 'open' %}
   <div class="bulk-bar">
-    <span class="muted small">Tick repairs, then</span>
+    <span class="muted small bulk-hint">Tick repairs, then</span>
     <label class="small"><input type="checkbox" name="notify_tenants"> text the tenants</label>
     <button class="btn btn-sm" data-confirm="The ticked repairs will be marked done." data-confirm-title="Mark repairs done?" data-confirm-ok="Mark done">Mark selected done</button>
   </div>
