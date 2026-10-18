@@ -6,6 +6,13 @@
   <div><h1>Landlords</h1><p class="sub">Everyone who has signed up as a landlord, newest first. Impersonate one to see and do exactly what they can.</p></div>
   <div class="actions"><a class="btn" href="{% url 'admin:accounts_supportsession_changelist' %}">{% icon 'shield' %}Impersonation log</a></div>
 </div>
+{% if impersonating %}
+<div class="alert alert-warning" style="margin-bottom:16px">
+  {% icon 'shield' 18 %}<span>You're impersonating <strong>{{ impersonating.get_full_name|default:impersonating.username }}</strong>. Impersonate someone else below to switch, or stop.</span>
+  <span class="spacer"></span>
+  <form method="post" action="{% url 'impersonate_stop' %}">{% csrf_token %}<button class="btn btn-sm">Stop</button></form>
+</div>
+{% endif %}
 <section class="card">
   <div class="toolbar">
     <nav class="tabs" aria-label="Show">
