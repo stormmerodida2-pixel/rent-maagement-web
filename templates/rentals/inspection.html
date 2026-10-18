@@ -1,0 +1,64 @@
+{% extends 'app_base.html' %}
+{% load ui %}
+{% block page_title %}{{ kind_label }} inspection · {{ lease.tenant }}{% endblock %}
+{% block content %}
+<div class="page-header">
+  <div><h1>{{ kind_label }} inspection</h1>
+    <p class="sub">{{ lease.tenant }} · {{ lease.unit }}. Walk through the house and photograph each room: walls, floors, doors, taps, the meter. {% if kind == 'move_in' %}Do it with the tenant, before they move their things in.{% else %}Compare with the move-in photos before agreeing deductions.{% endif %}</p></div>
+  <div class="actions">
+    {% if other %}<a class="btn" href="{% url 'rentals:inspection_compare' lease.pk %}">Side by side</a>{% endif %}
+    <a class="btn" href="{% url 'rentals:lease_detail' lease.pk %}">← Back</a>
+  </div>
+</div>
+
+<div class="grid-2">
+  <section class="card">
+    <div class="card-header"><h2>Photos</h2><span class="spacer"></span>{% if inspection %}<span class="muted small">{{ inspection.photos.count }} so far</span>{% endif %}</div>
+    <div class="card-body">
+      {% for room, photos in rooms.items %}
+      <h3 class="small" style="margin:12px 0 6px">{{ room }}</h3>
+      <div class="photo-grid">
+        {% for p in photos %}
+        <figure>
+          <a href="{% url 'private_file' 'inspection' p.pk %}" target="_blank" rel="noopener"><img loading="lazy" src="{% url 'private_file' 'inspection' p.pk %}" alt="{{ room }}"></a>
+          <figcaption>{{ p.note }}<form method="post" action="{% url 'rentals:inspection_photo_delete' p.pk %}" class="inline-form">{% csrf_token %}<button class="linkish" data-confirm="This photo will be deleted." data-confirm-title="Delete photo?" data-confirm-ok="Delete">Delete</button></form></figcaption>
+        </figure>
+        {% endfor %}
+      </div>
+      {% empty %}
+      <div class="empty"><strong>No photos yet</strong>Add the first room on the right.</div>
+      {% endfor %}
+    </div>
+  </section>
+
+  <div class="stack">
+    <section class="card">
+      <div class="card-header"><h2>Add photos</h2></div>
+      <div class="card-body">
+        <form method="post" enctype="multipart/form-data" class="stack">{% csrf_token %}
+          <div class="field"><label for="room">Room</label>
+            <select id="room" name="room">{% for r in room_choices %}<option>{{ r }}</option>{% endfor %}</select></div>
+          <div class="field"><label for="room_other">Or name it <span class="muted" style="font-weight:400">(optional)</span></label>
+            <input id="room_other" name="room_other" maxlength="40" placeholder="e.g. Back yard"></div>
+          <div class="field"><label for="photos">Photos</label>
+            <input id="photos" type="file" name="photos" accept="image/*" capture="environment" multiple required>
+            <span class="helptext">Up to 12 at a time. Location data is removed from photos.</span></div>
+          <div class="field"><label for="note">Note <span class="muted" style="font-weight:400">(optional)</span></label>
+            <input id="note" name="note" maxlength="200" placeholder="e.g. Small crack in the sink"></div>
+          <button class="btn btn-primary">Add photos</button>
+        </form>
+      </div>
+    </section>
+    <section class="card">
+      <div class="card-header"><h2>Notes</h2></div>
+      <div class="card-body">
+        <form method="post" class="stack">{% csrf_token %}
+          <div class="field"><label for="done_on">Date</label><input id="done_on" type="date" name="done_on" value="{{ inspection.done_on|default:''|date:'Y-m-d' }}"></div>
+          <div class="field"><label for="notes">What you agreed</label><textarea id="notes" name="notes" rows="4" maxlength="2000" placeholder="e.g. 2 keys handed over. Meter at 1043. Tenant agreed the bathroom tiles were already cracked.">{{ inspection.notes }}</textarea></div>
+          <button class="btn">Save notes</button>
+        </form>
+      </div>
+    </section>
+  </div>
+</div>
+{% endblock %}

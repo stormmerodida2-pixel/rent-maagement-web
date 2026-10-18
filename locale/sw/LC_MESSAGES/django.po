@@ -5,7 +5,7 @@ msgid ""
 msgstr ""
 "Project-Id-Version: Rentipay\n"
 "Report-Msgid-Bugs-To: \n"
-"POT-Creation-Date: 2026-10-18 07:42+0300\n"
+"POT-Creation-Date: 2026-10-18 08:23+0300\n"
 "PO-Revision-Date: YEAR-MO-DA HO:MI+ZONE\n"
 "Last-Translator: FULL NAME <EMAIL@ADDRESS>\n"
 "Language-Team: Kiswahili\n"
@@ -340,6 +340,27 @@ msgstr "Mwanga"
 
 msgid "Dark"
 msgstr "Giza"
+
+msgid "Moving in"
+msgstr "Kuhamia"
+
+msgid "Moving out"
+msgstr "Kuhama"
+
+msgid "No photo"
+msgstr "Hakuna picha"
+
+msgid "No inspection photos yet"
+msgstr "Bado hakuna picha za ukaguzi"
+
+msgid "Inspection photos"
+msgstr "Picha za ukaguzi"
+
+msgid "Photos your landlord took when you moved in (and out). They help agree what happens to your deposit."
+msgstr "Picha alizopiga mwenye nyumba ulipohamia (na ulipohama). Zinasaidia kukubaliana kuhusu amana yako."
+
+msgid "Notes"
+msgstr "Maelezo"
 
 #, python-format
 msgid "Hi %(name)s"

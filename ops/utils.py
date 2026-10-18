@@ -138,6 +138,7 @@ JOBS = [
     Job('send_rent_reminders', 'send_rent_reminders', daily_at=datetime.time(9, 0)),
     Job('send_plan_reminders', 'send_plan_reminders', daily_at=datetime.time(9, 30)),
     Job('send_stale_reminders', 'send_stale_reminders', daily_at=datetime.time(10, 0)),
+    Job('send_tax_reminders', 'send_tax_reminders', daily_at=datetime.time(8, 30)),  # acts on the 15th only
     Job('send_payment_summaries', 'send_payment_summaries', daily_at=datetime.time(20, 0)),
 ]
 

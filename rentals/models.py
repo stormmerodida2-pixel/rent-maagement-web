@@ -621,3 +621,64 @@ class RewardGiven(models.Model):
     class Meta:
         ordering = ['-through_period']
         constraints = [models.UniqueConstraint(fields=['lease', 'through_period'], name='one_reward_per_run')]
+
+
+class Inspection(models.Model):
+    """Photos of the house room by room when a tenant moves in, and again when they move out, to settle what
+    happened to the deposit."""
+
+    class Kind(models.TextChoices):
+        MOVE_IN = 'move_in', 'Move-in'
+        MOVE_OUT = 'move_out', 'Move-out'
+
+    lease = models.ForeignKey(Lease, on_delete=models.CASCADE, related_name='inspections')
+    kind = models.CharField(max_length=10, choices=Kind.choices)
+    done_on = models.DateField(default=datetime.date.today)
+    notes = models.TextField(blank=True, max_length=2000)
+    created_by = models.ForeignKey(settings.AUTH_USER_MODEL, on_delete=models.SET_NULL, null=True, related_name='+')
+    created_at = models.DateTimeField(auto_now_add=True)
+
+    class Meta:
+        ordering = ['done_on']
+        constraints = [models.UniqueConstraint(fields=['lease', 'kind'], name='one_inspection_per_kind')]
+
+    def __str__(self):
+        return f'{self.get_kind_display()} inspection, {self.lease}'
+
+
+class InspectionPhoto(models.Model):
+    ROOMS = ['Sitting room', 'Kitchen', 'Bedroom', 'Bedroom 2', 'Bathroom', 'Toilet', 'Balcony', 'Doors and windows',
+             'Meter readings', 'Shop front', 'Other']
+
+    inspection = models.ForeignKey(Inspection, on_delete=models.CASCADE, related_name='photos')
+    room = models.CharField(max_length=40)
+    photo = models.ImageField(upload_to='inspections/%Y/%m/', storage=private_storage)
+    note = models.CharField(max_length=200, blank=True, help_text='e.g. "Crack in the sink".')
+    created_at = models.DateTimeField(auto_now_add=True)
+
+    class Meta:
+        ordering = ['room', 'created_at']
+
+
+class TenantDocument(models.Model):
+    """A signed tenancy agreement, an ID copy or another paper, kept privately on the tenant's page."""
+
+    class Kind(models.TextChoices):
+        AGREEMENT = 'agreement', 'Signed tenancy agreement'
+        ID = 'id', 'ID or passport'
+        OTHER = 'other', 'Other'
+
+    tenant = models.ForeignKey(Tenant, on_delete=models.CASCADE, related_name='documents')
+    kind = models.CharField(max_length=10, choices=Kind.choices, default=Kind.AGREEMENT)
+    title = models.CharField(max_length=120, blank=True)
+    file = models.FileField(upload_to='documents/%Y/%m/', storage=private_storage)
+    content_type = models.CharField(max_length=40, default='image/jpeg')
+    uploaded_by = models.ForeignKey(settings.AUTH_USER_MODEL, on_delete=models.SET_NULL, null=True, related_name='+')
+    created_at = models.DateTimeField(auto_now_add=True)
+
+    class Meta:
+        ordering = ['-created_at']
+
+    @property
+    def label(self):
+        return self.title or self.get_kind_display()

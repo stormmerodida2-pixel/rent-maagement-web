@@ -1,0 +1,9 @@
+{% extends 'support/tenant_base.html' %}
+{% load i18n %}
+{% block title %}{% translate "Inspection photos" %} · {{ APP_NAME }}{% endblock %}
+{% block tenant_content %}
+<h1>{% translate "Inspection photos" %}</h1>
+<p class="muted">{{ lease.unit }}. {% translate "Photos your landlord took when you moved in (and out). They help agree what happens to your deposit." %}</p>
+<section class="card card-body">{% include 'rentals/_inspection_grid.html' %}</section>
+{% if move_in.notes %}<section class="card card-body"><strong>{% translate "Notes" %}:</strong> {{ move_in.notes|linebreaksbr }}{% if move_out.notes %}<br>{{ move_out.notes|linebreaksbr }}{% endif %}</section>{% endif %}
+{% endblock %}

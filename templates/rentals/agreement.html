@@ -1,0 +1,78 @@
+{% extends 'base.html' %}
+{% load ui humanize %}
+{% block title %}Tenancy agreement · {{ tenant }}{% endblock %}
+{% block body_class %}print-page{% endblock %}
+{% block body %}
+<div class="print-toolbar no-print">
+  <a class="btn btn-ghost" href="{{ back_url }}">← Back</a>
+  <span class="spacer"></span>
+  <button type="button" class="btn btn-primary" data-print>Print / Save as PDF</button>
+</div>
+<p class="no-print muted small" style="max-width:820px;margin:0 auto 12px">A general template filled in from {{ tenant.full_name.split.0 }}'s details. Read it through, and have an advocate check it before you rely on it. Print two copies, sign both, and upload the signed copy under <strong>Documents</strong> on the tenant's page.</p>
+<article class="doc agreement">
+  <header class="doc-head"><div><strong style="font-size:18px">{{ lease.unit.property.name }}</strong><div class="muted small">{{ lease.unit.property.address }}</div></div>
+    <div class="doc-title"><h1>Tenancy agreement</h1></div></header>
+
+  <p>This agreement is made on {{ today|date:"j F Y" }} between:</p>
+  <ol class="parties">
+    <li><strong>The landlord:</strong> {{ landlord }}{% if landlord_phone %}, phone {{ landlord_phone }}{% endif %}{% if landlord_email %}, email {{ landlord_email }}{% endif %}; and</li>
+    <li><strong>The tenant:</strong> {{ tenant.full_name }}{% if tenant.id_number %}, ID/passport no. {{ tenant.id_number }}{% else %}, ID/passport no. ____________________{% endif %}, phone {{ tenant.phone }}.</li>
+  </ol>
+
+  <h2>1. The premises</h2>
+  <p>The landlord lets to the tenant {{ lease.unit.get_unit_type_display|lower }} <strong>{{ lease.unit.label }}</strong> at {{ lease.unit.property.name }}{% if lease.unit.property.address %}, {{ lease.unit.property.address }}{% endif %} (“the premises”), for the tenant's {% if lease.unit.unit_type == 'shop' %}business{% else %}home{% endif %}.</p>
+
+  <h2>2. Term</h2>
+  <p>The tenancy starts on <strong>{{ lease.start_date|date:"j F Y" }}</strong> and runs from month to month until either party ends it under clause 8.</p>
+
+  <h2>3. Rent</h2>
+  <p>The rent is <strong>{{ lease.monthly_rent|kes }} a month</strong>, paid in advance on or before day <strong>{{ lease.due_day }}</strong> of each month{% if mpesa_account %}, by M-Pesa {% if mpesa_account.is_till %}Till number {{ mpesa_account.pay_number }}{% else %}Paybill {{ mpesa_account.pay_number }}, account {{ lease.account_number }}{% endif %}{% endif %}. A receipt is issued for every payment.{% if lease.service_charge %} A service charge of <strong>{{ lease.service_charge|kes }} a month</strong> is paid with the rent.{% endif %}{% if lease.late_fee %} Rent not paid within {{ lease.late_fee_grace_days }} day{{ lease.late_fee_grace_days|pluralize }} of the due day attracts a late fee of {{ lease.late_fee|kes }}.{% endif %}</p>
+  <p>The landlord may change the rent by giving the tenant at least one month's written notice.</p>
+
+  <h2>4. Deposit</h2>
+  {% if lease.deposit %}
+  <p>The tenant pays a deposit of <strong>{{ lease.deposit|kes }}</strong>. It is refunded within 30 days of the tenant moving out, less any unpaid rent or charges and the cost of repairing damage beyond fair wear and tear, with the deductions explained in writing. The deposit cannot be used as the last month's rent.</p>
+  {% else %}<p>No deposit is payable.</p>{% endif %}
+
+  <h2>5. Utilities</h2>
+  <p>{% if lease.unit.property.water_rate %}Water is metered and billed monthly at {{ lease.unit.property.water_rate|kes }} per unit. {% endif %}The tenant pays for their own electricity tokens and any other services they use.</p>
+
+  <h2>6. The tenant agrees to</h2>
+  <ol>
+    <li>pay the rent and charges on time;</li>
+    <li>keep the premises clean and in good condition, and report repairs promptly;</li>
+    <li>not make structural changes, or sublet or share the premises, without the landlord's written consent;</li>
+    <li>not cause a nuisance to neighbours, or use the premises for anything illegal;</li>
+    <li>allow the landlord or caretaker in to inspect or repair, at reasonable times after notice (at any time in an emergency);</li>
+    <li>leave the premises in the same condition as at the start, apart from fair wear and tear.</li>
+  </ol>
+
+  <h2>7. The landlord agrees to</h2>
+  <ol>
+    <li>let the tenant live in the premises peacefully;</li>
+    <li>keep the structure, roof, plumbing and common areas in good repair, and carry out repairs in reasonable time;</li>
+    <li>give receipts for all payments and notice before entering, except in an emergency.</li>
+  </ol>
+
+  <h2>8. Ending the tenancy</h2>
+  <p>Either party may end the tenancy by giving at least <strong>one month's written notice</strong>. The landlord may end it sooner under the law if the tenant breaks this agreement, for example by not paying rent.</p>
+
+  <h2>9. Inspections</h2>
+  <p>The premises are inspected and photographed room by room when the tenant moves in and when they move out. Both parties can see the photos, and they are used to agree any deductions from the deposit.</p>
+
+  {% if clauses %}
+  <h2>10. Other terms</h2>
+  <ol>{% for c in clauses %}<li>{{ c }}</li>{% endfor %}</ol>
+  {% endif %}
+
+  <h2>{% if clauses %}11{% else %}10{% endif %}. Notices</h2>
+  <p>Notices may be given in writing, including by SMS, WhatsApp or email to the numbers and addresses above.</p>
+
+  <div class="signatures">
+    <div><div class="sign-line"></div><strong>Landlord</strong><div class="muted small">{{ landlord }}</div><div class="muted small">Date: ______________</div></div>
+    <div><div class="sign-line"></div><strong>Tenant</strong><div class="muted small">{{ tenant.full_name }}</div><div class="muted small">Date: ______________</div></div>
+    <div><div class="sign-line"></div><strong>Witness</strong><div class="muted small">Name and ID: ______________</div><div class="muted small">Date: ______________</div></div>
+  </div>
+  <footer class="doc-foot muted small">Prepared with {{ APP_NAME }}.</footer>
+</article>
+{% endblock %}

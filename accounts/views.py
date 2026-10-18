@@ -1091,7 +1091,8 @@ def branding(request):
         messages.success(request, 'Saved. Your receipts and statements now use it.')
         return redirect('accounts:settings')
     return render(request, 'form_page.html', {
-        'form': form, 'page_title': 'Receipts and statements', 'multipart': True,
-        'intro': 'Put your own name, logo and colour on the receipts and statements your tenants see and print.',
+        'form': form, 'page_title': 'Receipts, statements and agreements', 'multipart': True,
+        'intro': 'Put your own name, logo and colour on the receipts and statements your tenants see and print, '
+                 'and add your own terms to tenancy agreements.',
         'submit_label': 'Save', 'cancel_url': reverse('accounts:settings'),
     })

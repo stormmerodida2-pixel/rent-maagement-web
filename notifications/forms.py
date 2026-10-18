@@ -9,7 +9,7 @@ from .models import LandlordPreferences, SmsSettings, WhatsAppSettings
 class PreferencesForm(forms.ModelForm):
     class Meta:
         model = LandlordPreferences
-        fields = ['phone', 'report_email', 'report_sms', 'payment_summary']
+        fields = ['phone', 'report_email', 'report_sms', 'payment_summary', 'tax_reminders']
         widgets = {'phone': forms.TextInput(attrs={'inputmode': 'tel', 'placeholder': '0712 345 678'})}
 
     def clean_phone(self):

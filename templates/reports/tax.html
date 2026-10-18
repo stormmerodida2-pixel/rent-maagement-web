@@ -1,0 +1,59 @@
+{% extends 'app_base.html' %}
+{% load ui %}
+{% block page_title %}KRA rental income tax{% endblock %}
+{% block content %}
+<div class="page-header">
+  <div><h1>KRA rental income tax {{ year }}</h1>
+    <p class="sub">Monthly Rental Income (MRI) tax is {{ rate|floatformat:1 }}% of the residential rent you receive, filed and paid on iTax by the 20th of the next month. This page works it out from the payments recorded here.</p></div>
+  <div class="actions">
+    {% for y in years %}{% if y != year %}<a class="btn btn-sm btn-ghost" href="?year={{ y }}">{{ y }}</a>{% endif %}{% endfor %}
+    <a class="btn" href="?year={{ year }}&amp;format=csv">{% icon 'file' %}Download for my accountant</a>
+  </div>
+</div>
+
+{% if below_threshold %}
+<div class="alert alert-info" style="margin-bottom:16px">{% icon 'file' 18 %}<span>At this rate your residential rent for {{ year }} is under {{ from_amount|kes }}, so MRI may not apply to you. Check with KRA or your tax adviser.</span></div>
+{% elif above_threshold %}
+<div class="alert alert-warning" style="margin-bottom:16px">{% icon 'file' 18 %}<span>Your residential rent for {{ year }} looks set to pass {{ to_amount|kes }}: above that, MRI no longer applies and rent is taxed as ordinary income. Talk to your tax adviser.</span></div>
+{% endif %}
+
+<div class="grid-3" style="margin-bottom:20px">
+  <div class="card card-body"><div class="muted small">Residential rent received</div><div class="score-big" style="font-size:1.6rem">{{ total_rent|kes }}</div></div>
+  <div class="card card-body"><div class="muted small">MRI tax ({{ rate|floatformat:1 }}%)</div><div class="score-big" style="font-size:1.6rem">{{ total_tax|kes }}</div></div>
+  <div class="card card-body"><div class="muted small">Marked filed and paid</div><div class="score-big" style="font-size:1.6rem">{{ total_filed|kes }}</div></div>
+</div>
+
+<section class="card">
+  <div class="table-wrap"><table class="table">
+    <thead><tr><th>Month</th><th class="num">Rent received</th><th class="num">Tax</th><th>Due</th><th>Filed</th></tr></thead>
+    <tbody>
+    {% for r in rows %}
+    <tr>
+      <td><strong>{{ r.month|date:"F" }}</strong>{% if r.deposits %}<div class="muted small">{{ r.deposits|kes }} of deposits left out</div>{% endif %}{% if r.commercial %}<div class="muted small">+ {{ r.commercial|kes }} from shops (not MRI)</div>{% endif %}</td>
+      <td class="num">{{ r.residential|kes }}</td>
+      <td class="num"><strong>{{ r.tax|kes }}</strong></td>
+      <td class="nowrap">{{ r.due|date:"j M" }}{% if r.status == 'late' %} <span class="badge badge-danger">Late</span>{% elif r.status == 'due' %} <span class="badge badge-warn">Due</span>{% elif r.status == 'running' %} <span class="badge">Month not over</span>{% endif %}</td>
+      <td>
+        {% if r.filing %}
+        <span class="badge badge-success">Filed {{ r.filing.filed_on|date:"j M" }}</span>{% if r.filing.reference %}<div class="muted small">PRN {{ r.filing.reference }}</div>{% endif %}
+        <form method="post" action="{% url 'reports:tax_filed' %}" class="inline-form">{% csrf_token %}<input type="hidden" name="month" value="{{ r.month|date:'Y-m' }}"><input type="hidden" name="undo" value="1"><button class="linkish small">Undo</button></form>
+        {% elif r.tax and r.status != 'running' %}
+        <form method="post" action="{% url 'reports:tax_filed' %}" class="row" style="gap:6px;flex-wrap:wrap">{% csrf_token %}
+          <input type="hidden" name="month" value="{{ r.month|date:'Y-m' }}">
+          <input name="reference" placeholder="PRN (optional)" aria-label="iTax payment reference for {{ r.month|date:'F' }}" class="input-narrow" style="width:140px">
+          <input name="amount" value="{{ r.tax|floatformat:0 }}" inputmode="numeric" aria-label="Tax paid for {{ r.month|date:'F' }}" class="input-narrow" style="width:90px">
+          <button class="btn btn-sm">Mark filed</button>
+        </form>
+        {% else %}<span class="muted small">—</span>{% endif %}
+      </td>
+    </tr>
+    {% endfor %}
+    </tbody>
+  </table></div>
+</section>
+
+<section class="card" style="margin-top:20px"><div class="card-body small">
+  <strong>How to file:</strong> log in to <a href="https://itax.kra.go.ke" target="_blank" rel="noopener">iTax</a> → Returns → File Return → Monthly Rental Income, enter the month's rent, then make the payment (you get a PRN to pay by M-Pesa Paybill 222222). Come back and tap <em>Mark filed</em>.
+  <p class="muted" style="margin-top:8px">Worked out from payments recorded in {{ APP_NAME }}: residential units only (shops are taxed differently), leaving out deposits from tenants who moved in that month. Rent you received but didn't record isn't included. This is a helper, not tax advice: check with KRA or your accountant.</p>
+</div></section>
+{% endblock %}

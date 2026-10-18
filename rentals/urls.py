@@ -1,7 +1,7 @@
 from django.urls import path
 
 from . import crud_views as crud
-from . import views
+from . import inspections, views
 
 app_name = 'rentals'
 
@@ -14,6 +14,15 @@ urlpatterns = [
     path('leases/<int:pk>/', views.lease_detail, name='lease_detail'),
     path('leases/<int:pk>/remind/', views.send_reminder, name='send_reminder'),
     path('leases/<int:pk>/history/', views.tenant_history, name='tenant_history'),
+    path('leases/<int:pk>/inspection/<str:kind>/', inspections.inspection, name='inspection'),
+    path('leases/<int:pk>/inspections/compare/', inspections.inspection_compare, name='inspection_compare'),
+    path('inspection-photos/<int:pk>/delete/', inspections.inspection_photo_delete, name='inspection_photo_delete'),
+    path('leases/<int:pk>/agreement/', inspections.agreement, name='agreement'),
+    path('leases/<int:pk>/documents/', inspections.document_upload, name='document_upload'),
+    path('documents/<int:pk>/', inspections.document_file, name='document_file'),
+    path('documents/<int:pk>/delete/', inspections.document_delete, name='document_delete'),
+    path('t/<str:token>/inspections/<int:pk>/', inspections.tenant_inspection, name='tenant_inspection'),
+    path('t/<str:token>/inspection-photos/<int:pk>/', inspections.tenant_inspection_photo, name='tenant_inspection_photo'),
     path('leases/<int:pk>/notice/', views.lease_notice, name='lease_notice'),
     path('leases/<int:pk>/rent/', views.lease_rent_change, name='rent_change'),
     path('leases/<int:pk>/plan/', views.plan_create, name='plan_create'),

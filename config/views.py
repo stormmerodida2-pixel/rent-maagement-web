@@ -239,6 +239,12 @@ def private_file(request, kind, pk):
         field = item.photo if item else None
         allowed = item and (item.unit.property.owner_id == request.user.pk or
                             (staff and item.recorded_by_id == request.user.pk))
+    elif kind == 'inspection':
+        from rentals.models import InspectionPhoto
+
+        item = InspectionPhoto.objects.filter(pk=pk, inspection__lease__unit__property__owner=request.user).first()
+        field = item.photo if item else None
+        allowed = item is not None
     elif kind == 'expense':
         from payments.models import Expense
 

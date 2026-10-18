@@ -1,0 +1,20 @@
+{% extends 'app_base.html' %}
+{% load ui %}
+{% block page_title %}Inspections · {{ lease.tenant }}{% endblock %}
+{% block content %}
+<div class="page-header">
+  <div><h1>Moving in and out, side by side</h1><p class="sub">{{ lease.tenant }} · {{ lease.unit }}. Use it to agree any deductions from the deposit. {{ lease.tenant.full_name.split.0 }} can see the same photos on their rent page.</p></div>
+  <div class="actions">
+    <a class="btn" href="{% url 'rentals:inspection' lease.pk 'move_in' %}">Move-in photos</a>
+    <a class="btn" href="{% url 'rentals:inspection' lease.pk 'move_out' %}">Move-out photos</a>
+    <a class="btn" href="{% url 'rentals:lease_detail' lease.pk %}">← Back</a>
+  </div>
+</div>
+<section class="card card-body">{% include 'rentals/_inspection_grid.html' %}</section>
+{% if move_in.notes or move_out.notes %}
+<section class="card card-body" style="margin-top:16px">
+  {% if move_in.notes %}<p><strong>Move-in notes:</strong> {{ move_in.notes|linebreaksbr }}</p>{% endif %}
+  {% if move_out.notes %}<p><strong>Move-out notes:</strong> {{ move_out.notes|linebreaksbr }}</p>{% endif %}
+</section>
+{% endif %}
+{% endblock %}
