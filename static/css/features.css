@@ -288,3 +288,8 @@ details.daraja[open] > summary h2::before { transform: rotate(90deg); }
 .year-stats strong { display: block; font-size: 1.15rem; }
 .year-stats span { color: rgba(255, 255, 255, 0.8); font-size: 0.85rem; }
 .year-brand { margin-top: 20px; font-size: 0.8rem; color: rgba(255, 255, 255, 0.7); }
+
+/* --- Tenant payment record and rewards -------------------------------------------------------------------------- */
+.record-big { font-size: 1.25rem; font-weight: 700; }
+.reward-box { border: 1px dashed color-mix(in srgb, var(--brand) 50%, transparent); border-radius: 10px; padding: 12px 14px;
+  display: grid; gap: 8px; background: var(--brand-soft); }

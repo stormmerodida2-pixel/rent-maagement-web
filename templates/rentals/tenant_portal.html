@@ -121,6 +121,31 @@
   <section class="card"><div class="empty"><strong>{% translate "No active lease" %}</strong>{% translate "Contact your landlord if this looks wrong." %}</div></section>
   {% endfor %}
 
+  {% if record or reward %}
+  <section class="card record-card">
+    <div class="card-header"><h2>{% translate "Your payment record" %}</h2>{% if record.good %}<span class="spacer"></span><span class="badge badge-success">⭐ {% translate "Good tenant" %}</span>{% endif %}</div>
+    <div class="card-body stack">
+      {% if record %}
+      <div class="record-big">{% blocktranslate with on_time=record.on_time months=record.months %}Paid on time {{ on_time }} of {{ months }} months{% endblocktranslate %}</div>
+      {% if record.streak >= 2 %}<div>🔥 {% blocktranslate with count=record.streak %}{{ count }} months on time in a row{% endblocktranslate %}</div>{% endif %}
+      {% endif %}
+      {% if reward %}
+      <div class="reward-box">
+        <strong>{% blocktranslate with amount=reward.rule.amount|kes months=reward.rule.months %}Pay on time {{ months }} months in a row and get {{ amount }} off your rent.{% endblocktranslate %}</strong>
+        <div class="progress"><span style="width:{% widthratio reward.run reward.rule.months 100 %}%"></span></div>
+        <div class="muted small">{% blocktranslate with run=reward.run months=reward.rule.months %}{{ run }} of {{ months }} done.{% endblocktranslate %} {% translate "Paying within 5 days of your rent day counts as on time." %}</div>
+      </div>
+      {% endif %}
+      {% if reference_ready %}
+      <div class="row" style="justify-content:space-between;gap:10px;flex-wrap:wrap">
+        <span class="muted small">{% translate "Moving house? Share your record with your next landlord." %}</span>
+        <a class="btn btn-sm" href="{% url 'rentals:tenant_reference_link' tenant.portal_token %}">{% translate "Get my reference letter" %}</a>
+      </div>
+      {% endif %}
+    </div>
+  </section>
+  {% endif %}
+
   {% if general_issues %}
   <section class="card">
     <div class="card-header"><h2>{% translate "Being fixed in your building" %}</h2></div>

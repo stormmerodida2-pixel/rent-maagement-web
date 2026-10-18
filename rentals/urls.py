@@ -8,6 +8,7 @@ app_name = 'rentals'
 urlpatterns = [
     path('', views.home, name='home'),
     path('dashboard/', views.dashboard, name='dashboard'),
+    path('reference/<str:ref>/', views.tenant_reference, name='tenant_reference'),
     path('dashboard/up-to-date/', views.records_confirmed, name='records_confirmed'),
     path('live/', views.live, name='live'),
     path('leases/<int:pk>/', views.lease_detail, name='lease_detail'),
@@ -21,6 +22,7 @@ urlpatterns = [
     path('properties/<int:pk>/rent/', views.property_rent_change, name='property_rent_change'),
     path('reminders/', views.remind_all, name='remind_all'),
     path('t/<str:token>/', views.tenant_portal, name='tenant_portal'),
+    path('t/<str:token>/reference/', views.tenant_reference_link, name='tenant_reference_link'),
 
     path('properties/', crud.PropertyList.as_view(), name='property_list'),
     path('properties/new/', crud.PropertyCreate.as_view(), name='property_create'),

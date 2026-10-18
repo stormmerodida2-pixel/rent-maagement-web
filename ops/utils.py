@@ -130,6 +130,7 @@ JOBS = [
     Job('clearsessions', 'clearsessions', daily_at=datetime.time(3, 0)),
     Job('generate_rent_charges', 'generate_rent_charges', daily_at=datetime.time(6, 0)),
     Job('create_recurring_expenses', 'create_recurring_expenses', daily_at=datetime.time(6, 15)),
+    Job('give_rewards', 'give_rewards', daily_at=datetime.time(6, 20)),
     Job('run_billing', 'run_billing', daily_at=datetime.time(6, 30)),
     # Daily, but each landlord gets last month's report card once (normally on the 1st).
     Job('send_report_cards', 'send_report_cards', daily_at=datetime.time(7, 0)),

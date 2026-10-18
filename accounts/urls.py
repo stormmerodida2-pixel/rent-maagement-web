@@ -13,6 +13,7 @@ urlpatterns = [
     path('settings/two-step/', views.two_factor_settings, name='two_factor'),
     path('login/verify/', views.login_verify, name='login_verify'),
     path('terms/accept/', views.accept_terms, name='accept_terms'),
+    path('settings/rewards/', views.rewards, name='rewards'),
     path('settings/access/', views.viewer_list, name='viewers'),
     path('settings/access/new/', views.viewer_edit, name='viewer_add'),
     path('settings/access/<int:pk>/', views.viewer_edit, name='viewer_edit'),

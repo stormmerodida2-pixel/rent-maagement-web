@@ -22,6 +22,12 @@
     {% icon 'arrow-right' %}
   </a>
 
+  <a class="card settings-item" href="{% url 'accounts:rewards' %}">
+    <span class="settings-icon">{% icon 'shield' %}</span>
+    <span class="settings-text"><strong>On-time rewards</strong>
+      <span class="muted small">{% if reward_rule.is_active %}KES {{ reward_rule.amount|floatformat:0 }} off after {{ reward_rule.months }} months paid on time{% else %}Reward tenants who pay on time, e.g. KES 500 off after 6 months{% endif %}</span></span>
+    {% icon 'arrow-right' %}
+  </a>
   <a class="card settings-item" href="{% url 'staff:manage' %}">
     <span class="settings-icon">{% icon 'users' %}</span>
     <span class="settings-text"><strong>Staff</strong>

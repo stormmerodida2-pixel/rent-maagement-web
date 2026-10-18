@@ -5,7 +5,7 @@ msgid ""
 msgstr ""
 "Project-Id-Version: Rentipay\n"
 "Report-Msgid-Bugs-To: \n"
-"POT-Creation-Date: 2026-10-17 23:28+0300\n"
+"POT-Creation-Date: 2026-10-18 07:30+0300\n"
 "PO-Revision-Date: YEAR-MO-DA HO:MI+ZONE\n"
 "Last-Translator: FULL NAME <EMAIL@ADDRESS>\n"
 "Language-Team: Kiswahili\n"
@@ -201,6 +201,9 @@ msgstr "Amana iliyotumika"
 msgid "Refund paid to tenant"
 msgstr "Pesa iliyorudishwa kwa mpangaji"
 
+msgid "On-time reward"
+msgstr "Zawadi ya kulipa kwa wakati"
+
 msgid "Other"
 msgstr "Nyingine"
 
@@ -227,6 +230,20 @@ msgstr "Kodi ya %(month)s"
 #, python-format
 msgid "%(kind)s for %(month)s"
 msgstr "%(kind)s ya %(month)s"
+
+#, python-format
+msgid "Congratulations %(name)s! You paid rent on time %(months)s months in a row, so %(amount)s comes off your rent. Thank you!"
+msgstr "Hongera %(name)s! Umelipa kodi kwa wakati miezi %(months)s mfululizo, kwa hivyo %(amount)s imepunguzwa kwenye kodi yako. Asante!"
+
+msgid "Well done for paying early!"
+msgstr "Hongera kwa kulipa mapema!"
+
+msgid "Well done for paying on time!"
+msgstr "Hongera kwa kulipa kwa wakati!"
+
+#, python-format
+msgid "That is %(count)s months on time in a row."
+msgstr "Hiyo ni miezi %(count)s mfululizo ya kulipa kwa wakati."
 
 #, python-format
 msgid "%(method)s payment"
@@ -425,6 +442,37 @@ msgstr "Hakuna mkataba unaoendelea"
 
 msgid "Contact your landlord if this looks wrong."
 msgstr "Wasiliana na mwenye nyumba ikiwa hili si sahihi."
+
+msgid "Your payment record"
+msgstr "Rekodi yako ya malipo"
+
+msgid "Good tenant"
+msgstr "Mpangaji bora"
+
+#, python-format
+msgid "Paid on time %(on_time)s of %(months)s months"
+msgstr "Umelipa kwa wakati miezi %(on_time)s kati ya %(months)s"
+
+#, python-format
+msgid "%(count)s months on time in a row"
+msgstr "Miezi %(count)s mfululizo kwa wakati"
+
+#, python-format
+msgid "Pay on time %(months)s months in a row and get %(amount)s off your rent."
+msgstr "Lipa kwa wakati miezi %(months)s mfululizo upate punguzo la %(amount)s kwenye kodi yako."
+
+#, python-format
+msgid "%(run)s of %(months)s done."
+msgstr "Miezi %(run)s kati ya %(months)s imekamilika."
+
+msgid "Paying within 5 days of your rent day counts as on time."
+msgstr "Kulipa ndani ya siku 5 baada ya siku yako ya kodi kunahesabiwa kama kwa wakati."
+
+msgid "Moving house? Share your record with your next landlord."
+msgstr "Unahama? Mpe mwenye nyumba wako ajaye rekodi yako."
+
+msgid "Get my reference letter"
+msgstr "Pata barua yangu ya rejea"
 
 msgid "Being fixed in your building"
 msgstr "Yanayorekebishwa katika jengo lako"
