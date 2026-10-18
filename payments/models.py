@@ -320,3 +320,34 @@ class Expense(Voidable):
 
     def __str__(self):
         return f'KES {self.amount:,.0f}: {self.description}'
+
+
+class PaymentClaim(models.Model):
+    """A tenant says "I've paid" (by bank, cash or M-Pesa the landlord hasn't seen yet), with a photo of the slip if
+    they have one. The landlord confirms it, which records the payment and sends the receipt, or rejects it."""
+
+    class Status(models.TextChoices):
+        PENDING = 'pending', _('Waiting for your landlord')
+        CONFIRMED = 'confirmed', _('Confirmed')
+        REJECTED = 'rejected', _('Not confirmed')
+
+    lease = models.ForeignKey(Lease, on_delete=models.CASCADE, related_name='payment_claims')
+    amount = models.DecimalField(max_digits=10, decimal_places=2)
+    method = models.CharField(max_length=10, choices=Payment.Method.choices, default=Payment.Method.BANK)
+    reference = models.CharField(max_length=40, blank=True, help_text='M-Pesa code or bank reference, if any.')
+    paid_on = models.DateField()
+    note = models.CharField(max_length=200, blank=True)
+    photo = models.ImageField(upload_to='claims/%Y/%m/', storage=private_storage, blank=True)
+    status = models.CharField(max_length=10, choices=Status.choices, default=Status.PENDING)
+    payment = models.OneToOneField(Payment, on_delete=models.SET_NULL, null=True, blank=True, related_name='claim')
+    decided_by = models.ForeignKey(settings.AUTH_USER_MODEL, on_delete=models.SET_NULL, null=True, blank=True,
+                                   related_name='+')
+    decided_at = models.DateTimeField(null=True, blank=True)
+    reject_reason = models.CharField(max_length=200, blank=True)
+    created_at = models.DateTimeField(auto_now_add=True)
+
+    class Meta:
+        ordering = ['-created_at']
+
+    def __str__(self):
+        return f'{self.lease.tenant} says they paid KES {self.amount:,.0f} ({self.get_status_display()})'

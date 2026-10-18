@@ -1,0 +1,48 @@
+{% extends 'app_base.html' %}
+{% load ui %}
+{% block page_title %}Payments to confirm{% endblock %}
+{% block content %}
+<div class="page-header">
+  <div><h1>Payments to confirm</h1><p class="sub">Tenants tapped "I've paid" on their rent page. Check each against your bank or M-Pesa statement: confirming records the payment and sends their receipt.</p></div>
+</div>
+
+{% for c in pending %}
+<section class="card claim-card" style="margin-bottom:14px">
+  <div class="card-body claim-body">
+    {% if c.photo %}<a class="claim-photo" href="{% url 'private_file' 'claim' c.pk %}" target="_blank" rel="noopener"><img src="{% url 'private_file' 'claim' c.pk %}" alt="Photo {{ c.lease.tenant }} attached"></a>{% endif %}
+    <div class="claim-info">
+      <div class="claim-amount">{{ c.amount|kes }}</div>
+      <div><strong>{{ c.lease.tenant }}</strong> <span class="muted">· {{ c.lease.unit }}</span></div>
+      <div class="muted small">{{ c.get_method_display }}{% if c.reference %} · <strong>{{ c.reference }}</strong>{% endif %} · paid {{ c.paid_on|date:"D d M Y" }} · told you {{ c.created_at|timesince }} ago</div>
+      {% if c.note %}<div class="small" style="margin-top:6px">"{{ c.note }}"</div>{% endif %}
+      {% if c.duplicate %}<div class="alert alert-warning small" style="margin-top:10px"><span>{{ c.reference }} is already recorded ({{ c.duplicate.amount|kes }} on {{ c.duplicate.paid_at|date:"d M" }}). It's probably a duplicate: reject it.</span></div>{% endif %}
+      <div class="claim-actions">
+        {% if not c.duplicate %}
+        <form method="post" action="{% url 'payments:claim_decide' c.pk %}">{% csrf_token %}<input type="hidden" name="decision" value="confirm">
+          <button class="btn btn-primary" data-confirm="{{ c.amount|kes }} from {{ c.lease.tenant }} will be recorded and their receipt sent." data-confirm-title="Confirm payment?" data-confirm-ok="Confirm">Confirm</button></form>
+        {% endif %}
+        <form method="post" action="{% url 'payments:claim_decide' c.pk %}" class="row" style="gap:6px;flex-wrap:wrap">{% csrf_token %}<input type="hidden" name="decision" value="reject">
+          <input name="reason" required maxlength="200" placeholder="Why not? e.g. Not in my bank statement" aria-label="Reason for not confirming" value="{% if c.duplicate %}Already recorded{% endif %}" style="width:240px">
+          <button class="btn">Reject</button></form>
+      </div>
+    </div>
+  </div>
+</section>
+{% empty %}
+<section class="card"><div class="empty"><strong>Nothing to confirm</strong>When a tenant taps "I've paid" on their rent page, it shows here.</div></section>
+{% endfor %}
+
+{% if done %}
+<section class="card" style="margin-top:20px">
+  <div class="card-header"><h2>Recently dealt with</h2></div>
+  <div class="table-wrap"><table class="table">
+    <thead><tr><th>Tenant</th><th class="num">Amount</th><th>Outcome</th></tr></thead>
+    <tbody>{% for c in done %}
+      <tr><td>{{ c.lease.tenant }}<div class="muted small">{{ c.get_method_display }}{% if c.reference %} · {{ c.reference }}{% endif %} · paid {{ c.paid_on|date:"d M" }}</div></td>
+        <td class="num">{{ c.amount|kes }}</td>
+        <td>{% if c.status == 'confirmed' %}<span class="badge badge-success">Confirmed</span>{% else %}<span class="badge">Rejected</span><div class="muted small">{{ c.reject_reason }}</div>{% endif %}<div class="muted small">{{ c.decided_at|date:"d M, H:i" }}</div></td></tr>
+    {% endfor %}</tbody>
+  </table></div>
+</section>
+{% endif %}
+{% endblock %}

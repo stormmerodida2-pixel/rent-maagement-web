@@ -573,3 +573,45 @@ def expense_stop_repeat(request, pk):
     messages.success(request, f'"{expense.description}" won\'t be added again. Past months stay recorded.')
     return redirect('payments:expense_list')
 
+
+
+# --- Tenants' "I've paid" -------------------------------------------------------------------------------------------
+
+@login_required
+def claims(request):
+    """Payments tenants say they made, to check against your statement and confirm or reject."""
+    from .claims import duplicate_of
+    from .models import PaymentClaim
+
+    base = PaymentClaim.objects.filter(lease__unit__property__owner=request.user).select_related(
+        'lease__tenant', 'lease__unit__property', 'decided_by')
+    pending = list(base.filter(status=PaymentClaim.Status.PENDING).order_by('created_at'))
+    for claim in pending:
+        claim.duplicate = duplicate_of(claim)
+    return render(request, 'payments/claims.html', {
+        'pending': pending, 'done': base.exclude(status=PaymentClaim.Status.PENDING)[:20]})
+
+
+@login_required
+@require_POST
+def claim_decide(request, pk):
+    from .claims import ClaimError, confirm, reject
+    from .models import PaymentClaim
+
+    claim = get_object_or_404(PaymentClaim.objects.select_related('lease__tenant', 'lease__unit__property'), pk=pk,
+                              lease__unit__property__owner=request.user)
+    try:
+        if request.POST.get('decision') == 'confirm':
+            confirm(claim, request.user)
+            messages.success(request, f'Recorded KES {claim.amount:,.0f} from {claim.lease.tenant}. Their receipt is '
+                                      'on its way.')
+        else:
+            reason = ' '.join(request.POST.get('reason', '').split())
+            if not reason:
+                messages.error(request, 'Say why, so the tenant knows what to do next.')
+                return redirect('payments:claims')
+            reject(claim, request.user, reason)
+            messages.info(request, f'Told {claim.lease.tenant} it couldn\'t be confirmed.')
+    except ClaimError as exc:
+        messages.error(request, str(exc))
+    return redirect('payments:claims')

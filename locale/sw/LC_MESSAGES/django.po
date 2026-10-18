@@ -5,7 +5,7 @@ msgid ""
 msgstr ""
 "Project-Id-Version: Rentipay\n"
 "Report-Msgid-Bugs-To: \n"
-"POT-Creation-Date: 2026-10-18 09:09+0300\n"
+"POT-Creation-Date: 2026-10-18 12:00+0300\n"
 "PO-Revision-Date: YEAR-MO-DA HO:MI+ZONE\n"
 "Last-Translator: FULL NAME <EMAIL@ADDRESS>\n"
 "Language-Team: Kiswahili\n"
@@ -139,6 +139,14 @@ msgstr "Habari %(name)s, kama tulivyokubaliana, utalipa deni la %(total)s kwa aw
 msgid "Hi %(name)s, your payment plan instalment of %(amount)s is due on %(date)s. %(how)s: %(link)s"
 msgstr "Habari %(name)s, awamu ya %(amount)s ya mpango wako wa malipo inapaswa kulipwa tarehe %(date)s. %(how)s: %(link)s"
 
+#, python-format
+msgid "Your landlord confirmed %(amount)s (%(how)s) for %(unit)s. Thank you! %(status)s"
+msgstr "Mwenye nyumba amethibitisha %(amount)s (%(how)s) kwa %(unit)s. Asante! %(status)s"
+
+#, python-format
+msgid "Hi %(name)s, your landlord could not confirm the %(amount)s you said you paid on %(date)s. Reason: %(reason)s"
+msgstr "Habari %(name)s, mwenye nyumba hakuweza kuthibitisha %(amount)s ulizosema ulilipa tarehe %(date)s. Sababu: %(reason)s"
+
 msgid "M-Pesa"
 msgstr "M-Pesa"
 
@@ -147,6 +155,15 @@ msgstr "Pesa taslimu"
 
 msgid "Bank transfer"
 msgstr "Uhamisho wa benki"
+
+msgid "Waiting for your landlord"
+msgstr "Inasubiri mwenye nyumba"
+
+msgid "Confirmed"
+msgstr "Imethibitishwa"
+
+msgid "Not confirmed"
+msgstr "Haijathibitishwa"
 
 msgid "Amount must be at least KES 1."
 msgstr "Kiasi lazima kiwe angalau KES 1."
@@ -261,6 +278,18 @@ msgstr "Angalia simu yako (%(phone)s) na uweke PIN yako ya M-Pesa ili kulipa KES
 
 msgid "Thanks, your request has been sent to your landlord."
 msgstr "Asante, ombi lako limetumwa kwa mwenye nyumba."
+
+msgid "Enter the amount and the date you paid."
+msgstr "Weka kiasi na tarehe uliyolipa."
+
+msgid "Your landlord has a few of these to check already. Please wait for them first."
+msgstr "Mwenye nyumba ana malipo kadhaa ya kuangalia tayari. Tafadhali subiri ayathibitishe kwanza."
+
+msgid "That photo couldn't be read. Try another, or send without it."
+msgstr "Picha hiyo haikuweza kusomeka. Jaribu nyingine, au tuma bila picha."
+
+msgid "Sent. Your balance updates once your landlord confirms it, and you'll get a receipt by SMS."
+msgstr "Imetumwa. Salio lako litasasishwa mwenye nyumba akithibitisha, na utapokea risiti kwa SMS."
 
 msgid "Write something to post."
 msgstr "Andika kitu cha kubandika."
@@ -472,6 +501,36 @@ msgstr "Nambari ya akaunti"
 
 msgid "Online payment isn't available yet. Please pay your landlord as usual."
 msgstr "Malipo ya mtandaoni bado hayapatikani. Tafadhali mlipe mwenye nyumba kama kawaida."
+
+msgid "I've paid"
+msgstr "Nimelipa"
+
+msgid "Paid by bank, cash or M-Pesa and it isn't showing? Tell your landlord here. Your balance updates once they confirm it."
+msgstr "Umelipa kwa benki, pesa taslimu au M-Pesa na haionekani? Mjulishe mwenye nyumba hapa. Salio lako litasasishwa akithibitisha."
+
+msgid "Amount (KES)"
+msgstr "Kiasi (KES)"
+
+msgid "How did you pay?"
+msgstr "Ulilipaje?"
+
+msgid "Date paid"
+msgstr "Tarehe ya kulipa"
+
+msgid "M-Pesa code or bank reference (if you have one)"
+msgstr "Nambari ya M-Pesa au ya benki (kama unayo)"
+
+msgid "e.g. TJK3XY9ABC"
+msgstr "mf. TJK3XY9ABC"
+
+msgid "Photo of the slip or M-Pesa message (optional)"
+msgstr "Picha ya risiti au ujumbe wa M-Pesa (si lazima)"
+
+msgid "Note (optional)"
+msgstr "Maelezo (si lazima)"
+
+msgid "Tell my landlord"
+msgstr "Mjulishe mwenye nyumba"
 
 msgid "No active lease"
 msgstr "Hakuna mkataba unaoendelea"

@@ -115,6 +115,37 @@
       {% else %}
       <div class="pay-box">{% translate "Online payment isn't available yet. Please pay your landlord as usual." %}</div>
       {% endif %}
+
+      {% with my_claims=claims_by_lease|get_item:lease.pk %}
+      {% if my_claims %}
+      <ul class="claim-list">
+        {% for c in my_claims %}
+        <li class="small">{% if c.status == 'pending' %}<span class="badge badge-warn">{{ c.get_status_display }}</span>{% elif c.status == 'confirmed' %}<span class="badge badge-success">{{ c.get_status_display }}</span>{% else %}<span class="badge badge-danger">{{ c.get_status_display }}</span>{% endif %}
+          {{ c.amount|kes }} · {{ c.paid_on|date:"j M" }}{% if c.status == 'rejected' and c.reject_reason %} · <span class="muted">{{ c.reject_reason }}</span>{% endif %}</li>
+        {% endfor %}
+      </ul>
+      {% endif %}
+      {% endwith %}
+      <details class="paid-box" id="paid-{{ lease.pk }}">
+        <summary class="btn btn-block">{% icon 'file' %}{% translate "I've paid" %}</summary>
+        <form method="post" enctype="multipart/form-data" action="#paid-{{ lease.pk }}" class="stack" style="margin-top:12px">{% csrf_token %}
+          <input type="hidden" name="action" value="claim"><input type="hidden" name="lease" value="{{ lease.pk }}">
+          <p class="muted small" style="margin:0">{% translate "Paid by bank, cash or M-Pesa and it isn't showing? Tell your landlord here. Your balance updates once they confirm it." %}</p>
+          <div class="field"><label for="claim-amount-{{ lease.pk }}">{% translate "Amount (KES)" %}</label>
+            <input id="claim-amount-{{ lease.pk }}" name="amount" type="number" inputmode="numeric" min="1" step="1" required value="{% if balance > 0 %}{{ balance|floatformat:0 }}{% else %}{{ lease.monthly_rent|floatformat:0 }}{% endif %}"></div>
+          <div class="field"><label for="claim-method-{{ lease.pk }}">{% translate "How did you pay?" %}</label>
+            <select id="claim-method-{{ lease.pk }}" name="method">{% for value, label in claim_methods %}<option value="{{ value }}">{{ label }}</option>{% endfor %}</select></div>
+          <div class="field"><label for="claim-date-{{ lease.pk }}">{% translate "Date paid" %}</label>
+            <input id="claim-date-{{ lease.pk }}" name="paid_on" type="date" required value="{{ today|date:'Y-m-d' }}" max="{{ today|date:'Y-m-d' }}"></div>
+          <div class="field"><label for="claim-ref-{{ lease.pk }}">{% translate "M-Pesa code or bank reference (if you have one)" %}</label>
+            <input id="claim-ref-{{ lease.pk }}" name="reference" maxlength="40" autocapitalize="characters" placeholder="{% translate 'e.g. TJK3XY9ABC' %}"></div>
+          <div class="field"><label for="claim-photo-{{ lease.pk }}">{% translate "Photo of the slip or M-Pesa message (optional)" %}</label>
+            <input id="claim-photo-{{ lease.pk }}" name="photo" type="file" accept="image/*"></div>
+          <div class="field"><label for="claim-note-{{ lease.pk }}">{% translate "Note (optional)" %}</label>
+            <input id="claim-note-{{ lease.pk }}" name="note" maxlength="200"></div>
+          <button class="btn btn-primary btn-block">{% translate "Tell my landlord" %}</button>
+        </form>
+      </details>
     </div>
   </section>
   {% empty %}

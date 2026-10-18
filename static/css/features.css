@@ -372,3 +372,14 @@ details.daraja[open] > summary h2::before { transform: rotate(90deg); }
 .doc-list { list-style: none; margin: 0; padding: 0; display: grid; gap: 6px; }
 .doc-list li { display: flex; gap: 10px; align-items: center; flex-wrap: wrap; }
 .doc-list a { display: inline-flex; gap: 6px; align-items: center; }
+
+/* --- Tenants' "I've paid" -------------------------------------------------------------------------------------- */
+.claim-body { display: flex; gap: 16px; align-items: flex-start; flex-wrap: wrap; }
+.claim-photo img { width: 140px; height: 140px; object-fit: cover; border-radius: 10px; border: 1px solid var(--border); display: block; }
+.claim-info { flex: 1; min-width: 220px; }
+.claim-amount { font-size: 1.5rem; font-weight: 700; }
+.claim-actions { display: flex; gap: 10px; flex-wrap: wrap; margin-top: 12px; align-items: center; }
+.claim-list { list-style: none; margin: 0; padding: 0; display: grid; gap: 6px; }
+.paid-box summary { list-style: none; cursor: pointer; justify-content: center; }
+.paid-box summary::-webkit-details-marker { display: none; }
+.paid-box[open] summary { background: var(--surface-2); }

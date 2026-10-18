@@ -68,6 +68,14 @@
   <form method="post" action="{% url 'rentals:records_confirmed' %}">{% csrf_token %}<button class="btn btn-sm" data-confirm="No payments, expenses or tenant changes to record since your last update?" data-confirm-title="Everything up to date?" data-confirm-ok="Yes, all up to date">Everything's up to date</button></form>
 </div>
 {% endif %}
+{% if claims_to_confirm %}
+<div class="alert alert-info" style="margin-bottom:20px">
+  {% icon 'wallet' 18 %}
+  <span><strong>{{ claims_to_confirm }} tenant{{ claims_to_confirm|pluralize }} say{{ claims_to_confirm|pluralize:"s," }} they paid.</strong> Check and confirm, and their receipt goes out.</span>
+  <span class="spacer"></span>
+  <a class="btn btn-primary btn-sm" href="{% url 'payments:claims' %}">Review</a>
+</div>
+{% endif %}
 {% if spending_to_approve %}
 <div class="alert alert-info" style="margin-bottom:20px">
   {% icon 'file' 18 %}
