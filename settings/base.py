@@ -244,7 +244,7 @@ X_FRAME_OPTIONS = 'DENY'
 if os.environ.get('EMAIL_HOST'):
     MAILERS = {
         'default': {
-            'BACKEND': 'django.core.mail.backends.smtp.EmailBackend',
+            'BACKEND': 'ops.mail.BrandedSMTPBackend',  # SMTP, with the designed HTML version of each email
             'OPTIONS': {
                 'host': os.environ['EMAIL_HOST'],
                 'port': int(os.environ.get('EMAIL_PORT', '587')),

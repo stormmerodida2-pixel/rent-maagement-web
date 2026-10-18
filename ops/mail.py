@@ -15,3 +15,22 @@ class ReadableConsoleBackend(EmailBackend):
         if message.attachments:
             lines += [f'(Attachments: {", ".join(str(a[0]) for a in message.attachments)}.)']
         self.stream.write('\n'.join(lines) + '\n' + '-' * 79 + '\n')
+
+
+from django.core.mail.backends.smtp import EmailBackend as SMTPBackend  # noqa: E402
+
+
+class BrandedSMTPBackend(SMTPBackend):
+    """The normal SMTP sender, giving every plain-text email its designed HTML version first (ops/email_design)."""
+
+    def send_messages(self, email_messages):
+        from .email_design import add_html
+
+        for message in email_messages:
+            try:
+                add_html(message)
+            except Exception:  # the plain email still goes if the design can't be made
+                import logging
+
+                logging.getLogger(__name__).exception('Could not add the HTML version to "%s"', message.subject)
+        return super().send_messages(email_messages)
