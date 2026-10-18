@@ -11,6 +11,7 @@ from django.contrib import messages
 from django.contrib.auth import get_user_model
 from django.core.mail import send_mail
 from django.db import IntegrityError, transaction
+from django.db.models import F
 from django.shortcuts import redirect
 from django.urls import reverse
 from django.utils import timezone
@@ -129,7 +130,11 @@ def make_invoice(account, today=None):
                 free_units=conf('FREE_UNITS'), price_per_unit=conf('PRICE_PER_UNIT'), amount=amount, due_date=start)
     except IntegrityError:
         return None  # already billed (another run got there first)
-    if amount == 0:
+    if amount and account.free_months:
+        # A free month earned by inviting another landlord: this bill is on us.
+        BillingAccount.objects.filter(pk=account.pk, free_months__gt=0).update(free_months=F('free_months') - 1)
+        invoice = mark_paid(invoice, Invoice.Method.FREE)
+    elif amount == 0:
         invoice = mark_paid(invoice, Invoice.Method.FREE)
     else:
         email_landlord(invoice, 'bill')
@@ -156,7 +161,25 @@ def mark_paid(invoice, method, reference='', actor=None):
                      summary=f'Paid Rentipay bill {invoice.number}: KES {invoice.amount:,} '
                              f'({invoice.get_method_display()}{", " + invoice.reference if invoice.reference else ""}).')
         email_landlord(invoice, 'receipt')
+        reward_referrer(account.owner)
     return invoice
+
+
+def reward_referrer(owner):
+    """A landlord paid their first bill: whoever invited them gets a free month (once)."""
+    from accounts.models import Referral
+
+    referral = Referral.objects.filter(referred=owner, rewarded_at__isnull=True).select_related('referrer').first()
+    if referral is None or not Referral.objects.filter(pk=referral.pk, rewarded_at__isnull=True).update(
+            rewarded_at=timezone.now()):
+        return
+    account = account_for(referral.referrer)
+    BillingAccount.objects.filter(pk=account.pk).update(free_months=F('free_months') + 1)
+    from audit import utils as audit
+
+    audit.record(owner=referral.referrer, action='referral.rewarded',
+                 summary=f'{owner.first_name or "A landlord you invited"} paid their first bill: you earned a free '
+                         'month.')
 
 
 MPESA_CODE = re.compile(r'[A-Z0-9]{10}')

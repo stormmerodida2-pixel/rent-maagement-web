@@ -470,3 +470,44 @@ def send_invite(access):
         msg = send_sms(phone, f'{owner} invited you to their {settings.APP_NAME} account. Choose a password: {url}')
         return None if msg.status == SmsMessage.Status.FAILED else 'sms'
     return None
+
+
+# --- Referrals (Settings → Invite a landlord) ----------------------------------------------------------------------
+
+def referral_code(user):
+    """A short code for the landlord's invite link, e.g. "k3-9f2a": the account number in base 36 plus a check."""
+    import base64
+    import hmac
+
+    ident = base36(user.pk)
+    check = hmac.new(settings.SECRET_KEY.encode(), f'referral:{user.pk}'.encode(), hashlib.sha256).digest()
+    return f'{ident}-{base64.b32encode(check).decode()[:5].lower()}'
+
+
+def referrer_from_code(code):
+    """The landlord whose invite code this is, or None."""
+    import hmac
+
+    ident, _, _check = (code or '').strip().lower().partition('-')
+    try:
+        pk = int(ident, 36)
+    except ValueError:
+        return None
+    user = get_user_model().objects.filter(pk=pk, is_active=True).first()
+    if user is None or not hmac.compare_digest(referral_code(user), code.strip().lower()):
+        return None
+    return user
+
+
+def base36(number):
+    digits = '0123456789abcdefghijklmnopqrstuvwxyz'
+    out = ''
+    while True:
+        number, rem = divmod(number, 36)
+        out = digits[rem] + out
+        if not number:
+            return out
+
+
+def referral_url(user):
+    return settings.SITE_URL.rstrip('/') + reverse('accounts:signup') + f'?ref={referral_code(user)}'

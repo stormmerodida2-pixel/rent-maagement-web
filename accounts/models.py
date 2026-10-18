@@ -160,3 +160,16 @@ def viewer_for(user):
         return user.viewer_access
     except ViewerAccess.DoesNotExist:
         return None
+
+
+class Referral(models.Model):
+    """A landlord who signed up through another landlord's invite link. The referrer earns a free month when the
+    new landlord pays their first bill."""
+
+    referrer = models.ForeignKey(settings.AUTH_USER_MODEL, on_delete=models.CASCADE, related_name='referrals')
+    referred = models.OneToOneField(settings.AUTH_USER_MODEL, on_delete=models.CASCADE, related_name='referred_by')
+    created_at = models.DateTimeField(auto_now_add=True)
+    rewarded_at = models.DateTimeField(null=True, blank=True)
+
+    class Meta:
+        ordering = ['-created_at']

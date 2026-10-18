@@ -30,4 +30,20 @@
     <div style="margin-top:14px"><a class="btn btn-primary btn-sm" href="{% url 'announcements:create' %}">{% icon 'plus' %}New announcement</a></div></div>
   {% endif %}
 </section>
+
+<section class="card" style="margin-top:20px">
+  <div class="card-header"><h2>Tenants' noticeboard posts</h2></div>
+  {% if board_posts %}
+  <div class="table-wrap"><table class="table"><tbody>
+    {% for p in board_posts %}
+    <tr>
+      <td>{{ p.text }}<div class="muted small">{{ p.author }} · {{ p.property.name }} · {{ p.created_at|timesince }} ago</div></td>
+      <td class="num"><form method="post" action="{% url 'announcements:board_post_remove' p.pk %}">{% csrf_token %}<button class="btn btn-sm btn-ghost" data-confirm="Tenants won't see this post any more." data-confirm-title="Remove post?" data-confirm-ok="Remove">Remove</button></form></td>
+    </tr>
+    {% endfor %}
+  </tbody></table></div>
+  {% else %}
+  <div class="card-body muted small">Tenants can pin short notices for their neighbours on their rent page ("Found: car keys by the gate"). They show here for 30 days, and you can remove any of them. Add your building's water and garbage days under <strong>Properties → Edit → Good to know</strong>.</div>
+  {% endif %}
+</section>
 {% endblock %}

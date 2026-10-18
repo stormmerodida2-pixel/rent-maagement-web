@@ -38,7 +38,7 @@ from .forms import (
     CashForm, ChangePasswordForm, PhoneCodeForm, ProfileForm, RepairForm, ResetRequestForm, SignupForm, StaffExpenseForm,
     StaffForm, StaffMeterForm, TenantNoteForm,
 )
-from .models import Profile, StaffMember, TwoFactor, profile_for
+from .models import Profile, StaffMember, TwoFactor, profile_for, staff_for
 from .utils import (
     TRUST_COOKIE, TRUST_DAYS, check_totp, is_trusted_device, new_recovery_codes, new_totp_secret, qr_svg, totp_uri,
     trust_token, use_recovery_code,
@@ -69,6 +69,8 @@ def _send_verification(request, user):
 def signup(request):
     if request.user.is_authenticated:
         return redirect('rentals:dashboard')
+    if request.GET.get('ref'):
+        request.session['referral'] = request.GET['ref'][:20]  # kept until they sign up
     form = SignupForm(request.POST or None)
     if request.method == 'POST':
         ip = ratelimit.client_ip(request)
@@ -83,6 +85,7 @@ def signup(request):
                 prefs = LandlordPreferences.for_user(user)
                 prefs.phone = form.phone
                 prefs.save(update_fields=['phone'])
+            _record_referral(request, user)
             login(request, user, backend='accounts.utils.EmailOrPhoneBackend')
             if form.phone:
                 send_phone_code(user, form.phone, 'verify')
@@ -94,6 +97,18 @@ def signup(request):
             )
             return redirect('accounts:welcome')
     return render(request, 'registration/signup.html', {'form': form})
+
+
+def _record_referral(request, user):
+    from .models import Referral
+    from .utils import referrer_from_code
+
+    referrer = referrer_from_code(request.session.pop('referral', ''))
+    if referrer is not None and referrer.pk != user.pk and staff_for(referrer) is None:
+        Referral.objects.create(referrer=referrer, referred=user)
+        audit.record(owner=referrer, action='referral.joined',
+                     summary=f'{user.first_name or "A landlord"} signed up with your invite link. You get a free '
+                             'month when they pay their first bill.')
 
 
 def verify_email(request, token):
@@ -1041,3 +1056,22 @@ def invite_accept(request, uidb64, token):
         return redirect('rentals:dashboard')
     return render(request, 'accounts/invite.html', {'form': form, 'access': access})
 
+
+@landlord_required
+def referrals(request):
+    """Settings → Invite a landlord: their share link, who joined, and free months earned."""
+    from billing.models import BillingAccount
+
+    from .models import Referral
+    from .utils import referral_url
+
+    url = referral_url(request.user)
+    name = request.user.first_name or 'A landlord friend'
+    return render(request, 'accounts/referrals.html', {
+        'url': url,
+        'share_text': f'{name} uses {settings.APP_NAME} to collect rent on M-Pesa, send reminders and see who owes. '
+                      f'Try it free: {url}',
+        'referrals': Referral.objects.filter(referrer=request.user).select_related('referred'),
+        'free_months': BillingAccount.objects.filter(owner=request.user).values_list('free_months', flat=True).first()
+        or 0,
+    })

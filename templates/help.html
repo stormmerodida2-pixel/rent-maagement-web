@@ -66,6 +66,10 @@
       <p>Each tenant gets a private link by SMS to their own rent page: what they owe, how to pay, statements and receipts. They can report repairs and message you there. No app or password needed.</p></details>
     <details><summary>How are tenants rewarded for paying on time?</summary>
       <p>Each tenant's rent page shows their record ("Paid on time 11 of 12 months"), their run of on-time months and a <strong>Good tenant</strong> badge if they've been late at most once in a year. They can share a <strong>reference letter</strong> with their next landlord. Receipts say "Well done for paying early!" or "on time". You can also offer a reward under <strong>Settings → On-time rewards</strong>, e.g. KES 500 off after 6 months on time: it's worked out and credited automatically, and the tenant gets an SMS. On time means paid in full within 5 days of the rent day.</p></details>
+    <details><summary>What's the building noticeboard?</summary>
+      <p>Each tenant's rent page has a noticeboard for their building. It shows your <strong>Good to know</strong> note (add water and garbage days, the caretaker's number and so on under <strong>Properties → Edit</strong>) and short notices tenants pin for their neighbours, like "Found: car keys by the gate". Posts show the tenant's first name and house, never their phone number, and disappear after 30 days. You'll find them under <strong>Announcements</strong>, where you can remove any of them.</p></details>
+    <details><summary>Can tenants rate repairs?</summary>
+      <p>Yes. For 30 days after a repair is marked resolved, the tenant can tap 👍 or 👎 on their rent page. Ratings show on the Maintenance list, with a summary of how each person who fixes things was rated.</p></details>
     <details><summary>Can tenants get messages in Kiswahili?</summary>
       <p>Yes. Set their language to Kiswahili on their page; their SMS, rent page and receipts switch over.</p></details>
     <details><summary>How do I tell all my tenants something?</summary>
@@ -84,6 +88,10 @@
       <p>Yes. Open it in your phone's browser and add it to your home screen: in Chrome, menu → <strong>Install app</strong>; on iPhone, Safari's Share button → <strong>Add to Home Screen</strong>. Turn on payment alerts in <strong>Settings</strong> to hear when rent comes in.</p></details>
     <details><summary>How do I keep my account safe?</summary>
       <p>Turn on <strong>Settings → Two-step login</strong>: you then also need a code from an authenticator app on your phone. Your data is backed up every night, encrypted, and copied off-site.</p></details>
+    <details><summary>Can I get a free month?</summary>
+      <p>Yes: <strong>Settings → Invite a landlord</strong> gives you a link to share. For every landlord who joins with it and pays their first bill, your next bill is free.</p></details>
+    <details><summary>How can someone check a receipt is real?</summary>
+      <p>Every printed receipt has a code like R4F-7KQ2X. Anyone can enter it at <a href="{% url 'verify_receipt' %}">{{ request.get_host }}/verify/</a> to see that it's genuine (or that it was cancelled). Only the amount, date, place and the tenant's initial and surname are shown.</p></details>
     <details><summary>Can I get my data out?</summary>
       <p>Yes, any time: download payments and statements as CSV or PDF from Payments and Reports.</p></details>
 

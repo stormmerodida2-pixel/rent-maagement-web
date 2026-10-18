@@ -58,3 +58,15 @@ class MaintenanceRequest(models.Model):
         elif self.status != self.Status.RESOLVED:
             self.resolved_at = None
         super().save(*args, **kwargs)
+
+
+class RepairRating(models.Model):
+    """A tenant's thumbs up or down for a finished repair."""
+
+    repair = models.ForeignKey(MaintenanceRequest, on_delete=models.CASCADE, related_name='ratings')
+    tenant = models.ForeignKey(Tenant, on_delete=models.CASCADE, related_name='repair_ratings')
+    good = models.BooleanField()
+    created_at = models.DateTimeField(auto_now=True)
+
+    class Meta:
+        constraints = [models.UniqueConstraint(fields=['repair', 'tenant'], name='one_rating_per_tenant')]

@@ -98,3 +98,9 @@ def login_label(user):
 
     return label(user)
 
+
+
+@register.filter
+def get_item(mapping, key):
+    """{{ ratings|get_item:repair.pk }}: a dict lookup by a variable key (None when missing)."""
+    return mapping.get(key) if mapping else None
