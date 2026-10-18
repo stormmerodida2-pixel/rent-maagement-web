@@ -449,16 +449,19 @@ class LeaseUpdate(OwnedMixin, FormPageMixin, UpdateView):
     def get_context_data(self, **kwargs):
         ctx = super().get_context_data(**kwargs)
         ctx['cancel_url'] = ctx['cancel_url'] or self.get_success_url()
+        # What they owe isn't typed in: it follows from which months were paid.
+        lease, balance = self.object, self.object.balance
+        owes = (f'{lease.tenant} owes KES {balance:,.0f}.' if balance > 0 else
+                f'{lease.tenant} is KES {-balance:,.0f} in credit.' if balance < 0 else f'{lease.tenant} owes nothing.')
+        if lease.charges.filter(kind=RentCharge.Kind.OPENING).exists():
+            ctx['aside'] = {'text': f'{owes} Balance wrong? Mark the months they paid and it updates by itself.',
+                            'url': reverse('rentals:edit_opening_months', args=[lease.pk]),
+                            'label': 'Change which months were paid'}
+        else:
+            ctx['aside'] = {'text': f'{owes} To correct it, record a payment they made, or void a charge that '
+                                    'shouldn\'t be there, from their statement.',
+                            'url': self.get_success_url() + '#statement', 'label': 'Go to their statement'}
         return ctx
-
-    def form_valid(self, form):
-        response = super().form_valid(form)
-        if form.adjustment is not None:
-            balance = self.object.balance
-            messages.info(self.request, f'Balance updated: {self.object.tenant} now ' + (
-                f'owes KES {balance:,.0f}.' if balance > 0 else f'is KES {-balance:,.0f} in credit.' if balance < 0
-                else 'owes nothing.') + ' It shows on their statement as a "Balance adjustment".')
-        return response
 
 
 class LeaseEnd(OwnedMixin, FormPageMixin, FormView):

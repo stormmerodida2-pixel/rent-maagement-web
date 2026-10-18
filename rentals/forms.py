@@ -158,18 +158,6 @@ class LeaseForm(OwnedForm):
         if self.instance.pk:
             for name in ('bill_now', 'bill_deposit', 'tenancy', 'owed_how', 'balance_now', 'deposit_paid'):
                 del self.fields[name]
-            # Correcting what they owe: the difference becomes one "Balance adjustment" line on their statement.
-            self.current_balance = self.instance.balance
-            self.fields['balance_owed'] = forms.DecimalField(
-                max_digits=12, decimal_places=2, label='Balance owed now (KES)', initial=self.current_balance,
-                required=False,  # blank: leave the balance as it is
-                widget=forms.NumberInput(attrs={'inputmode': 'decimal', 'step': 'any'}),
-                help_text='Change it only to correct what they owe, e.g. a month they paid that was marked unpaid. '
-                          'Minus for credit. If they paid you, use Record cash/bank instead so they get a receipt.')
-            self.fields['balance_reason'] = forms.CharField(
-                max_length=150, required=False, label='Reason for the change',
-                widget=forms.TextInput(attrs={'placeholder': 'e.g. October was actually paid'}),
-                help_text='Shown on their statement next to the adjustment.')
         else:
             self.initial.setdefault('start_date', datetime.date.today())
             for name in ('owed_how', 'deposit_paid'):
@@ -217,9 +205,6 @@ class LeaseForm(OwnedForm):
 
     def save(self, commit=True):
         lease = super().save(commit)
-        if commit and lease.pk and 'balance_owed' in self.fields:
-            self.adjust_balance(lease)
-            return lease
         if commit and self.existing:
             from .utils import bring_forward
 
@@ -232,19 +217,6 @@ class LeaseForm(OwnedForm):
         if commit and self.cleaned_data.get('bill_now') and lease.start_date <= datetime.date.today():
             lease.ensure_charge_for(datetime.date.today())
         return lease
-
-
-    adjustment = None  # the "Balance adjustment" line made by this edit, if any
-
-    def adjust_balance(self, lease):
-        new = self.cleaned_data.get('balance_owed')
-        if new is None or new == self.current_balance:
-            return
-        today = datetime.date.today()
-        reason = (self.cleaned_data.get('balance_reason') or '').strip() or 'Balance corrected by the landlord'
-        self.adjustment = RentCharge.objects.create(
-            lease=lease, kind=RentCharge.Kind.ADJUSTMENT, amount=new - self.current_balance,
-            period=today.replace(day=1), due_date=today, description=reason)
 
 
 class NoticeForm(forms.Form):

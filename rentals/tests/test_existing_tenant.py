@@ -223,3 +223,10 @@ class EditMonthsTests(TestCase):
         new = Lease.objects.create(unit=unit, tenant=tenant, start_date=TODAY, monthly_rent=10000)
         resp = self.client.get(reverse('rentals:edit_opening_months', args=[new.pk]))
         self.assertRedirects(resp, reverse('rentals:lease_detail', args=[new.pk]), fetch_redirect_response=False)
+
+    def test_edit_rent_page_points_to_the_months(self):
+        page = self.client.get(reverse('rentals:lease_update', args=[self.lease.pk]))
+        self.assertContains(page, 'owes KES 16,000')
+        self.assertContains(page, 'Change which months were paid')
+        self.assertContains(page, self.url)
+        self.assertNotIn('balance_owed', page.context['form'].fields)  # never typed in by hand

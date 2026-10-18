@@ -16,7 +16,6 @@ from rentals.models import Lease, RentCharge, Unit
 NON_INCOME_KINDS = [
     RentCharge.Kind.DEPOSIT, RentCharge.Kind.DEPOSIT_APPLIED, RentCharge.Kind.REFUND,
     RentCharge.Kind.OPENING,  # balances carried over when a landlord starts using Rentipay
-    RentCharge.Kind.ADJUSTMENT,  # corrections to what's owed, not new rent
 ]
 
 
