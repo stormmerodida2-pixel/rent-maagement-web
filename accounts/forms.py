@@ -466,3 +466,19 @@ class ViewerForm(forms.Form):
         Profile.objects.update_or_create(user=user, defaults=verified)
         return access
 
+
+
+class RewardForm(forms.ModelForm):
+    """Settings → On-time rewards."""
+
+    class Meta:
+        from rentals.models import RewardRule
+
+        model = RewardRule
+        fields = ['is_active', 'months', 'amount']
+        help_texts = {
+            'is_active': 'Tenants see their progress on their rent page and get an SMS when they earn it.',
+            'months': 'Paying within 5 days of their rent day counts as on time. A late month starts the count again.',
+            'amount': 'Taken off what they owe automatically, and shown on their statement as "On-time reward".',
+        }
+        widgets = {'amount': forms.NumberInput(attrs={'inputmode': 'numeric', 'step': '50'})}

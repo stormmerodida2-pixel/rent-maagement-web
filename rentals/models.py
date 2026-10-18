@@ -485,6 +485,7 @@ class RentCharge(Voidable):
         DEDUCTION = 'deduction', _('Move-out deduction')
         REFUND = 'refund', _('Refund paid to tenant')
         OPENING = 'opening', _('Balance brought forward')  # owed (or in credit) before using Rentipay
+        REWARD = 'reward', _('On-time reward')  # a credit (negative) for paying on time several months running
         OTHER = 'other', _('Other')
 
     # Kinds billed at most once per lease per month.
@@ -587,3 +588,32 @@ class TenantNote(models.Model):
         today = today or timezone.localdate()
         return bool(self.promised_by and self.promised_by < today and self.lease.balance > 0)
 
+
+
+class RewardRule(models.Model):
+    """A landlord's offer to tenants: pay on time `months` months in a row and get `amount` off your rent."""
+
+    owner = models.OneToOneField(settings.AUTH_USER_MODEL, on_delete=models.CASCADE, related_name='reward_rule')
+    months = models.PositiveSmallIntegerField('months on time in a row', default=6,
+                                              validators=[MinValueValidator(2), MaxValueValidator(24)])
+    amount = models.DecimalField('reward (KES off their rent)', max_digits=8, decimal_places=2,
+                                 validators=[MinValueValidator(Decimal('1'))])
+    is_active = models.BooleanField('offer this reward', default=True)
+    started_on = models.DateField(help_text='Only rent months from this day count.')
+
+    def __str__(self):
+        return f'KES {self.amount:,.0f} off after {self.months} months on time ({self.owner})'
+
+
+class RewardGiven(models.Model):
+    """A reward a tenant earned, credited to their rent."""
+
+    lease = models.ForeignKey(Lease, on_delete=models.CASCADE, related_name='rewards')
+    through_period = models.DateField(help_text='The last rent month of the run that earned it.')
+    amount = models.DecimalField(max_digits=8, decimal_places=2)
+    charge = models.OneToOneField(RentCharge, on_delete=models.SET_NULL, null=True, related_name='+')
+    created_at = models.DateTimeField(auto_now_add=True)
+
+    class Meta:
+        ordering = ['-through_period']
+        constraints = [models.UniqueConstraint(fields=['lease', 'through_period'], name='one_reward_per_run')]

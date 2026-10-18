@@ -30,7 +30,7 @@ from payments import mpesa
 from payments.forms import HandoverForm, StkPushForm
 from payments.models import MpesaAccount, MpesaTransaction, Payment
 from payments.utils import HandoverError, record_expense, record_handover, staff_cash
-from rentals.models import Lease, Property, Tenant, TenantNote, Unit
+from rentals.models import Lease, Property, RewardRule, Tenant, TenantNote, Unit
 from rentals.utils import BillingError, add_tenant_note, last_reading, record_water_reading
 
 from . import utils as ratelimit
@@ -311,6 +311,7 @@ def settings_page(request):
         'prefs': LandlordPreferences.for_user(request.user),
         'email_verified': is_verified(request.user),
         'staff_count': request.user.staff_members.filter(user__is_active=True).count(),
+        'reward_rule': RewardRule.objects.filter(owner=request.user).first(),
         'two_factor_on': TwoFactor.objects.filter(user=request.user, confirmed_at__isnull=False).exists(),
     })
 
@@ -793,6 +794,35 @@ def landlord_required(view):
         return view(request, *args, **kwargs)
 
     return wrapper
+
+
+@landlord_required
+def rewards(request):
+    """Settings → On-time rewards: e.g. KES 500 off after 6 months paid on time."""
+    from .forms import RewardForm
+
+    rule = RewardRule.objects.filter(owner=request.user).first()
+    form = RewardForm(request.POST or None, instance=rule,
+                      initial=None if rule else {'is_active': True, 'months': 6, 'amount': 500})
+    if request.method == 'POST' and form.is_valid():
+        rule = form.save(commit=False)
+        switched_on = rule.is_active and (rule.pk is None or 'is_active' in form.changed_data)
+        rule.owner = request.user
+        if switched_on or rule.started_on is None:
+            rule.started_on = timezone.localdate()  # only months from now count: no surprise back-payments
+        rule.save()
+        audit.record(owner=request.user, actor=request.user, action='rewards.updated',
+                     summary=(f'On-time reward: KES {rule.amount:,.0f} off after {rule.months} months on time.'
+                              if rule.is_active else 'Turned off the on-time reward.'))
+        messages.success(request, 'Saved. ' + (f'Rent months from {rule.started_on:%d %b %Y} count towards it.'
+                                              if rule.is_active else 'No more rewards will be given.'))
+        return redirect('accounts:settings')
+    return render(request, 'form_page.html', {
+        'form': form, 'page_title': 'On-time rewards',
+        'intro': 'Give tenants a reason to pay on time: for example, KES 500 off after 6 months paid on time. '
+                 'It\'s worked out and credited automatically.',
+        'submit_label': 'Save', 'cancel_url': reverse('accounts:settings'),
+    })
 
 
 @landlord_required

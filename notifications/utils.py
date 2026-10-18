@@ -221,11 +221,21 @@ def receipt_text(payment, balance):
     """The payment receipt SMS, in the tenant's language."""
     lease = payment.lease
     with tenant_language(lease.tenant):
-        status = _balance_status(balance)
+        status = ' '.join(filter(None, [_balance_status(balance), _praise(payment)]))
         return _('Received %(amount)s (M-Pesa %(reference)s) for %(unit)s. Thank you! %(status)s') % {
             'amount': _kes(payment.amount), 'reference': payment.reference, 'unit': lease.unit.label,
             'status': status,
         }
+
+
+def _praise(payment):
+    from rentals.rewards import praise
+
+    try:
+        return praise(payment)
+    except Exception:  # a receipt must go out even if the thank-you can't be worked out
+        logger.exception('Could not work out the thank-you for payment %s', payment.pk)
+        return ''
 
 
 def _balance_status(balance):
@@ -242,7 +252,7 @@ def cash_receipt_text(payment, balance, recorded_by):
     with tenant_language(lease.tenant):
         return _('Received %(amount)s cash for %(unit)s, recorded by %(name)s. Thank you! %(status)s') % {
             'amount': _kes(payment.amount), 'unit': lease.unit.label, 'name': recorded_by,
-            'status': _balance_status(balance),
+            'status': ' '.join(filter(None, [_balance_status(balance), _praise(payment)])),
         }
 
 

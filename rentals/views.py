@@ -1,4 +1,5 @@
 import datetime
+from decimal import Decimal
 import math
 
 from django.conf import settings
@@ -540,6 +541,47 @@ def tenant_portal(request, token):
         'notices': current_notices(tenant),
         'maintenance_form': maintenance_form,
         'mpesa_account': MpesaAccount.objects.filter(owner=tenant.owner).first(),
+        **_tenant_rewards(tenant, leases),
+    })
+
+
+def _tenant_rewards(tenant, leases):
+    """The tenant's on-time record, their progress towards the landlord's reward, and a reference link to share."""
+    from .models import RewardRule
+    from .rewards import reward_progress, tenant_record
+
+    record = tenant_record(tenant)
+    rule = RewardRule.objects.filter(owner=tenant.owner, is_active=True).first()
+    progress = None
+    if rule and leases:
+        run, _earned = reward_progress(leases[0], rule)
+        progress = {'rule': rule, 'run': run, 'left': rule.months - run}
+    return {'record': record, 'reward': progress, 'reference_ready': bool(record)}
+
+
+@tenant_page
+def tenant_reference_link(request, token):
+    """Make a fresh shareable link to the tenant's reference letter."""
+    from .rewards import reference_token
+
+    tenant = get_object_or_404(Tenant, portal_token=token)
+    return redirect('rentals:tenant_reference', ref=reference_token(tenant))
+
+
+def tenant_reference(request, ref):
+    """The tenant's payment record as a reference letter, for a future landlord. Public, but only through a
+    signed link the tenant shared, which expires."""
+    from .rewards import REFERENCE_DAYS, tenant_from_reference, tenant_record
+
+    tenant = tenant_from_reference(ref)
+    if tenant is None:
+        return render(request, 'rentals/tenant_reference.html', {'expired': True}, status=404)
+    owner = tenant.owner
+    return render(request, 'rentals/tenant_reference.html', {
+        'tenant': tenant, 'record': tenant_record(tenant), 'today': datetime.date.today(),
+        'landlord': owner.get_full_name() or 'The landlord', 'balance': sum(
+            (lease.balance for lease in tenant.leases.filter(is_active=True)), Decimal('0')),
+        'expires_days': REFERENCE_DAYS,
     })
 
 

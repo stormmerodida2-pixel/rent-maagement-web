@@ -1,0 +1,46 @@
+{% extends 'base.html' %}
+{% load ui %}
+{% block title %}Tenant reference · {{ APP_NAME }}{% endblock %}
+{% block body_class %}print-page{% endblock %}
+{% block body %}
+<div class="print-toolbar no-print">
+  <span class="brand" style="padding:0">{% include 'includes/logo.html' %}</span>
+  <span class="spacer"></span>
+  {% if not expired %}
+  <button type="button" class="btn" data-share="Tenant reference for {{ tenant.full_name }}: {{ request.build_absolute_uri }}"><span data-share-label>Share</span></button>
+  <button type="button" class="btn btn-primary" data-print>Print / Save as PDF</button>
+  {% endif %}
+</div>
+<article class="doc">
+  {% if expired %}
+  <h1>Link expired</h1>
+  <p class="muted">This reference link is no longer valid. Ask the tenant to send you a new one from their {{ APP_NAME }} rent page.</p>
+  {% else %}
+  <header class="doc-head">
+    <div><div class="row" style="gap:10px">{% include 'includes/logo.html' %}</div></div>
+    <div class="doc-title">Tenant reference<div class="muted small" style="font-weight:400">{{ today|date:"j F Y" }}</div></div>
+  </header>
+  <p>This is the rent payment record of <strong>{{ tenant.full_name }}</strong>, kept by {{ APP_NAME }} for their landlord, <strong>{{ landlord }}</strong>.</p>
+
+  <h2 style="margin-top:20px">Tenancy</h2>
+  <table class="table"><tbody>
+    {% for lease in record.leases %}
+    <tr><td>{{ lease.unit.label }}, {{ lease.unit.property.name }}</td>
+        <td class="num">{{ lease.start_date|date:"M Y" }} – {% if lease.is_active %}now{% else %}{{ lease.end_date|date:"M Y"|default:"ended" }}{% endif %}</td></tr>
+    {% endfor %}
+  </tbody></table>
+
+  <h2 style="margin-top:20px">Payment record</h2>
+  {% if record %}
+  <p class="record-big">Paid rent on time {{ record.on_time }} of the last {{ record.months }} month{{ record.months|pluralize }}{% if record.good %} ⭐{% endif %}</p>
+  {% if record.streak >= 2 %}<p>On time for the last {{ record.streak }} months in a row.</p>{% endif %}
+  <p>{% if balance > 0 %}Currently owes rent.{% else %}Owes no rent today.{% endif %}</p>
+  <p class="muted small">"On time" means paid in full within 5 days of the rent day. Figures come straight from the payments recorded in {{ APP_NAME }}.</p>
+  {% else %}
+  <p>Not enough rent months recorded yet.</p>
+  {% endif %}
+
+  <footer class="doc-foot muted small">Shared by the tenant through {{ APP_NAME }}. This link stops working {{ expires_days }} days after it was made.</footer>
+  {% endif %}
+</article>
+{% endblock %}
