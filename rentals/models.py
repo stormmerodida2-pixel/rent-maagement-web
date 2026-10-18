@@ -51,11 +51,14 @@ def unit_sort_key(label):
 class Unit(models.Model):
     class Type(models.TextChoices):
         SINGLE = 'single', 'Single room'
+        DOUBLE = 'double', 'Double room'
         ONE_BEDROOM = 'one_bedroom', 'One bedroom'
         TWO_BEDROOM = 'two_bedroom', 'Two bedroom'
+        THREE_BEDROOM = 'three_bedroom', 'Three bedroom'
         SHOP = 'shop', 'Shop'
 
-    BEDROOMS = {Type.SINGLE: 0, Type.ONE_BEDROOM: 1, Type.TWO_BEDROOM: 2, Type.SHOP: 0}
+    BEDROOMS = {Type.SINGLE: 0, Type.DOUBLE: 1, Type.ONE_BEDROOM: 1, Type.TWO_BEDROOM: 2, Type.THREE_BEDROOM: 3,
+                Type.SHOP: 0}
 
     property = models.ForeignKey(Property, on_delete=models.CASCADE, related_name='units')
     label = models.CharField(max_length=50, help_text='e.g. A1, House 4')

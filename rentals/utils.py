@@ -389,8 +389,11 @@ IMPORT_TEMPLATE_HEADINGS = ['Unit', 'Type', 'Rent', 'Tenant name', 'Phone', 'Ema
                             'Moved in', 'Deposit', 'Balance owed now', 'Language']
 
 
+TYPE_NAMES = ', '.join(label for _, label in Unit.Type.choices[:-1]) + f' or {Unit.Type.choices[-1][1]}'
+
+
 def unit_type_from_text(text):
-    """One of the four unit types from how people write them ("Bedsitter", "2-bedroom", "1BR", "Shop"),
+    """One of the unit types from how people write them ("Bedsitter", "Double", "2-bedroom", "3BR", "Shop"),
     or None if it isn't clear."""
     t = re.sub(r'[^a-z0-9]+', ' ', (text or '').lower()).strip()
     for value, label in Unit.Type.choices:
@@ -398,8 +401,12 @@ def unit_type_from_text(text):
             return value
     if re.search(r'\b(shop|kiosk|stall|office|store)\b', t):
         return Unit.Type.SHOP
+    if re.search(r'\b(double|doubles|two rooms|2 rooms)\b', t):
+        return Unit.Type.DOUBLE
     if re.search(r'\b(single|bedsitter|bedsit|studio)\b', t):
         return Unit.Type.SINGLE
+    if re.search(r'\b(3|three)\s*(br|bed|bedroom|bedrooms)\b', t) or re.search(r'\b3br\b', t):
+        return Unit.Type.THREE_BEDROOM
     if re.search(r'\b(2|two)\s*(br|bed|bedroom|bedrooms)\b', t) or re.search(r'\b2br\b', t):
         return Unit.Type.TWO_BEDROOM
     if re.search(r'\b(1|one)\s*(br|bed|bedroom)\b', t) or re.search(r'\b1br\b', t):
@@ -500,11 +507,11 @@ def check_import(rows, owner, prop):
         clean['unit'] = label[:50]
         type_text, beds_text = row.get('type', '').strip(), row.get('bedrooms', '').strip()
         clean['type'] = unit_type_from_text(type_text) if type_text else \
-            {'0': Unit.Type.SINGLE, '1': Unit.Type.ONE_BEDROOM, '2': Unit.Type.TWO_BEDROOM}.get(
+            {'0': Unit.Type.SINGLE, '1': Unit.Type.ONE_BEDROOM, '2': Unit.Type.TWO_BEDROOM,
+             '3': Unit.Type.THREE_BEDROOM}.get(
                 beds_text.split('.')[0], Unit.Type.SINGLE if not beds_text else None)
         if clean['type'] is None:
-            errors.append(f'Type "{type_text or beds_text + " bedrooms"}" should be Single room, One bedroom, '
-                          'Two bedroom or Shop')
+            errors.append(f'Type "{type_text or beds_text + " bedrooms"}" should be one of: {TYPE_NAMES}')
         for field, label_text, allow_negative in (('rent', 'Rent', False), ('deposit', 'Deposit', False),
                                                    ('balance', 'Balance owed now', True)):
             try:
@@ -752,14 +759,14 @@ def import_template():
     for column, width in zip('ABCDEFGHIJK', (8, 14, 10, 22, 16, 24, 10, 12, 10, 16, 11), strict=True):
         sheet.column_dimensions[column].width = width
     types = DataValidation(type='list', formula1='"' + ','.join(label for _, label in Unit.Type.choices) + '"',
-                           allow_blank=True, error='Choose Single room, One bedroom, Two bedroom or Shop.')
+                           allow_blank=True, error=f'Choose one of: {TYPE_NAMES}.')
     sheet.add_data_validation(types)
     types.add(f'B2:B{IMPORT_MAX_ROWS + 1}')
     notes = book.create_sheet('How to fill it in')
     for line in [
         'One row per unit. Delete the two example rows, then add yours.',
         'Unit and Rent are required. Leave the tenant columns empty for a vacant unit.',
-        'Type: Single room, One bedroom, Two bedroom or Shop (pick from the list). Empty = Single room.',
+        f'Type: {TYPE_NAMES} (pick from the list). Empty = Single room.',
         'Phone: the tenant\'s M-Pesa number, e.g. 0712 345 678.',
         'Rent day: the day of the month rent is due (1-31). Empty = the day they moved in.',
         'Moved in: e.g. 01/06/2024. Empty = today.',
