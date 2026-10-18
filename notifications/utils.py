@@ -602,6 +602,16 @@ def check_sms_account(cfg):
     if resp.status_code == 200 and 'UserData' in data:
         return True, f"Connected. Balance: {data['UserData'].get('balance', 'unknown')}."
     reason = data.get('errorMessage') or resp.text[:200] or f'HTTP {resp.status_code}'
+    # Newer keys ("atsk_…") may not be allowed to read the balance. Ask the SMS service instead, with no phone
+    # number so nothing is sent: if it complains about the missing number, the username and key were accepted.
+    try:
+        probe = requests.post(f'https://{host}/version1/messaging', timeout=20,
+                              data={'username': cfg['AT_USERNAME'], 'to': '', 'message': 'check'},
+                              headers={'apiKey': cfg['AT_API_KEY'], 'Accept': 'application/json'})
+        if 'phone number' in probe.text.lower():
+            return True, "Connected: Africa's Talking accepted the username and key. (This key can't show the balance.)"
+    except requests.RequestException:
+        pass
     return False, f"Africa's Talking said: {reason}"
 
 

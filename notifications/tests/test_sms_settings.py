@@ -80,3 +80,49 @@ class SmsSettingsTests(TestCase):
     def test_landlords_cannot_see_it(self):
         self.client.force_login(get_user_model().objects.create_user('landlord'))
         self.assertEqual(self.client.get(self.url).status_code, 404)
+
+
+class CheckConnectionTests(TestCase):
+    """New Africa's Talking keys may not read the balance; the check then asks the SMS service (sending nothing)."""
+
+    CFG = {'AT_USERNAME': 'stormer', 'AT_API_KEY': 'atsk_test'}
+
+    def response(self, status, text, json_data=None):
+        from unittest import mock
+
+        resp = mock.Mock(status_code=status, text=text)
+        resp.headers = {'content-type': 'application/json' if json_data is not None else 'text/plain'}
+        resp.json.return_value = json_data or {}
+        return resp
+
+    def test_balance_works(self):
+        from unittest import mock
+
+        from ..utils import check_sms_account
+
+        with mock.patch('requests.get', return_value=self.response(200, '', {'UserData': {'balance': 'KES 10'}})):
+            self.assertEqual(check_sms_account(self.CFG), (True, 'Connected. Balance: KES 10.'))
+
+    def test_new_key_without_balance_access(self):
+        from unittest import mock
+
+        from ..utils import check_sms_account
+
+        denied = self.response(401, '', {'errorMessage': 'The supplied authentication is invalid'})
+        accepted = self.response(400, 'requirement failed: Please provide the phone numbers to send to')
+        with mock.patch('requests.get', return_value=denied), mock.patch('requests.post', return_value=accepted) as post:
+            ok, text = check_sms_account(self.CFG)
+        self.assertTrue(ok)
+        self.assertIn('accepted the username and key', text)
+        self.assertEqual(post.call_args.kwargs['data']['to'], '')  # nothing is sent
+
+    def test_wrong_key(self):
+        from unittest import mock
+
+        from ..utils import check_sms_account
+
+        denied = self.response(401, '', {'errorMessage': 'The supplied authentication is invalid'})
+        rejected = self.response(401, 'The supplied authentication is invalid')
+        with mock.patch('requests.get', return_value=denied), mock.patch('requests.post', return_value=rejected):
+            self.assertEqual(check_sms_account(self.CFG),
+                             (False, "Africa's Talking said: The supplied authentication is invalid"))
