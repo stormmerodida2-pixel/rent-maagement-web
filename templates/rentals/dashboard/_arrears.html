@@ -21,7 +21,7 @@
         <td class="num text-danger"><strong>{{ balance|kes }}</strong></td>
         <td class="num">
           <form method="post" action="{% url 'rentals:send_reminder' lease.pk %}">
-            {% csrf_token %}<input type="hidden" name="next" value="{{ request.get_full_path }}">
+            {% csrf_token %}<input type="hidden" name="next" value="{% url 'rentals:dashboard' %}">
             <button class="btn btn-sm">{% icon 'bell' %}Remind</button>
           </form>
         </td>
