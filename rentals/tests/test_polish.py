@@ -144,3 +144,15 @@ class BrandingTests(Base):
         receipt = self.client.get(reverse('reports:payment_receipt', args=[payment.pk]))
         self.assertNotContains(receipt, '--doc-accent')
         self.assertTrue(Lease.objects.exists())
+
+
+class LiveRefreshTests(Base):
+    def test_reminders_from_refreshed_dashboard_parts_come_back_to_the_dashboard(self):
+        RentCharge.objects.create(lease=self.lease, period=self.lease.start_date.replace(day=1),
+                                  due_date=self.lease.start_date, amount=D('15000'), kind=RentCharge.Kind.RENT)
+        fragments = self.client.get(reverse('rentals:live') + '?since=0&fragments=1').json()['fragments']
+        self.assertIn(f'name="next" value="{reverse("rentals:dashboard")}"', fragments['arrears'])
+        self.assertNotIn('/live/', fragments['arrears'])
+        resp = self.client.post(reverse('rentals:send_reminder', args=[self.lease.pk]),
+                                {'next': reverse('rentals:dashboard')})
+        self.assertRedirects(resp, reverse('rentals:dashboard'), fetch_redirect_response=False)
