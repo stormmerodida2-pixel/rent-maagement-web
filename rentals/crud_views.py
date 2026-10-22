@@ -193,26 +193,37 @@ def property_import(request):
     ctx = {'properties': properties, 'selected': request.GET.get('property', '')}
     action = request.POST.get('action')
 
-    if request.method == 'POST' and action == 'preview':
+    from .rentbook import MAX_PHOTOS, available as rent_book_available
+
+    ctx.update(rent_book=rent_book_available(), max_photos=MAX_PHOTOS)
+    if request.method == 'POST' and action in ('preview', 'photos'):
         choice, new_name = request.POST.get('property', ''), request.POST.get('new_property', '').strip()
         upload = request.FILES.get('file')
+        photos = request.FILES.getlist('photos')
         prop = properties.filter(pk=choice).first() if choice.isdigit() else None
-        ctx.update(selected=choice, new_property=new_name)
+        ctx.update(selected=choice, new_property=new_name, from_photos=action == 'photos')
         if prop is None and not new_name:
             ctx['error'] = 'Choose a property, or type a name for a new one.'
         elif prop is None and properties.filter(name__iexact=new_name).exists():
             ctx['error'] = f'You already have a property called "{new_name}". Choose it from the list instead.'
-        elif upload is None:
+        elif action == 'preview' and upload is None:
             ctx['error'] = 'Choose the file to upload.'
-        elif upload.size > IMPORT_MAX_BYTES:
+        elif action == 'preview' and upload.size > IMPORT_MAX_BYTES:
             ctx['error'] = 'That file is over 5 MB. Split it into smaller files.'
+        elif action == 'photos' and not photos:
+            ctx['error'] = 'Take or choose at least one photo of your rent book.'
+        elif action == 'photos' and len(photos) > MAX_PHOTOS:
+            ctx['error'] = f'Up to {MAX_PHOTOS} photos at a time, please.'
         else:
             try:
-                rows = read_spreadsheet(upload)
+                rows = read_spreadsheet(upload) if action == 'preview' else _rows_from_photos(photos)
             except ImportError_ as exc:
                 ctx['error'] = str(exc)
             else:
                 checked = check_import(rows, request.user, prop)
+                unclear = {r['line'] for r in rows if r.get('unclear')}
+                for row in checked:
+                    row['unclear'] = row.get('line') in unclear
                 request.session[IMPORT_SESSION_KEY] = {'property': prop.pk if prop else None,
                                                        'new_property': new_name, 'rows': rows}
                 ok = [r for r in checked if not r['errors']]
@@ -242,6 +253,23 @@ def property_import(request):
 
     request.session.pop(IMPORT_SESSION_KEY, None)
     return render(request, 'rentals/property_import.html', ctx)
+
+
+def _rows_from_photos(photos):
+    """Resize each photo (and strip its location data) before Claude reads the rent book from them."""
+    from django.core.exceptions import ValidationError
+
+    from listings.utils import prepare_photo
+
+    from .rentbook import read_rent_book
+
+    prepared = []
+    for upload in photos:
+        try:
+            prepared.append(prepare_photo(upload).read())
+        except ValidationError as exc:
+            raise ImportError_(' '.join(exc.messages)) from exc
+    return read_rent_book(prepared)
 
 
 class UnitCreate(OwnedMixin, FormPageMixin, CreateView):

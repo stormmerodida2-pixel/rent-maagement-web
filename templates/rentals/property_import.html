@@ -1,10 +1,10 @@
 {% extends 'app_base.html' %}
 {% load ui %}
-{% block page_title %}Import from Excel{% endblock %}
+{% block page_title %}Import units and tenants{% endblock %}
 {% block content %}
 <div class="page-header">
-  <div><h1>Import from Excel</h1>
-    <p class="sub">Add a building's units and the tenants already living there in one go. You'll see a preview before anything is saved.</p></div>
+  <div><h1>Import units and tenants</h1>
+    <p class="sub">Add a building's units and the tenants already living there in one go{% if rent_book %}, from photos of your rent book or a spreadsheet{% else %} from a spreadsheet{% endif %}. You'll see a preview before anything is saved.</p></div>
   <div class="actions"><a class="btn" href="{% url 'rentals:import_template' %}">{% icon 'file' %}Download the template</a></div>
 </div>
 
@@ -13,13 +13,14 @@
     <div class="card-body row">
       <div style="flex:1;min-width:240px">
         <strong>{{ ok_count }} row{{ ok_count|pluralize }} ready</strong> for <strong>{{ target }}</strong>{% if tenant_count %}, including {{ tenant_count }} tenant{{ tenant_count|pluralize }}{% endif %}.
-        {% if error_count %}<div class="text-danger small">{{ error_count }} row{{ error_count|pluralize }} with problems will be skipped. Fix them in the file and upload it again, or import the rest now.</div>{% endif %}
+        {% if from_photos %}<div class="small" style="margin-top:4px">📷 Read from your photos. <strong>Check every row against your book</strong>, especially rows marked <span class="badge badge-warn">Check</span>. You can correct anything after importing.</div>{% endif %}
+        {% if error_count %}<div class="text-danger small">{{ error_count }} row{{ error_count|pluralize }} with problems will be skipped. {% if from_photos %}Add those by hand afterwards, or take a clearer photo.{% else %}Fix them in the file and upload it again, or import the rest now.{% endif %}</div>{% endif %}
       </div>
       <form method="post">{% csrf_token %}
         <button name="action" value="confirm" class="btn btn-primary" {% if not ok_count %}disabled{% endif %}
                 data-confirm="{{ ok_count }} unit{{ ok_count|pluralize }}{% if tenant_count %} and {{ tenant_count }} tenant{{ tenant_count|pluralize }}{% endif %} will be added to {{ target }}." data-confirm-title="Import now?" data-confirm-ok="Import">Import {{ ok_count }} row{{ ok_count|pluralize }}</button>
       </form>
-      <a class="btn btn-ghost" href="{% url 'rentals:property_import' %}">Upload a different file</a>
+      <a class="btn btn-ghost" href="{% url 'rentals:property_import' %}">{% if from_photos %}Start again{% else %}Upload a different file{% endif %}</a>
     </div>
   </section>
   <section class="card">
@@ -29,7 +30,7 @@
       {% for r in checked %}
       <tr{% if r.errors %} class="row-error"{% endif %}>
         <td class="muted">{{ r.line }}</td>
-        <td><strong>{{ r.unit|default:"—" }}</strong>{% if r.type %}<div class="muted small">{{ r.type }}</div>{% endif %}</td>
+        <td><strong>{{ r.unit|default:"—" }}</strong>{% if r.unclear %} <span class="badge badge-warn" title="Hard to read in the photo: check it">Check</span>{% endif %}{% if r.type %}<div class="muted small">{{ r.type }}</div>{% endif %}</td>
         <td>{{ r.tenant|default:"—" }}{% if r.phone %}<div class="muted small">{{ r.phone }}</div>{% endif %}</td>
         <td class="num">{% if r.rent %}{{ r.rent|kes }}{% endif %}</td>
         <td>{% if r.errors %}<span class="text-danger">{{ r.errors|join:"; " }}</span>{% else %}{{ r.action }}{% endif %}</td>
@@ -61,12 +62,22 @@
         <label for="id_new_property">New property name</label>
         <input id="id_new_property" name="new_property" value="{{ new_property }}" placeholder="e.g. Riverside Court" maxlength="200">
       </div>
-      <div class="field">
-        <label for="id_file">Spreadsheet</label>
-        <input id="id_file" name="file" type="file" accept=".xlsx,.csv,application/vnd.openxmlformats-officedocument.spreadsheetml.sheet,text/csv" required>
+      {% if rent_book %}
+      <div class="import-option">
+        <strong>📷 Snap your rent book</strong>
+        <p class="muted small">Take a photo of each page (up to {{ max_photos }}), flat and in good light. We read the houses, tenants, rents and balances for you to check.</p>
+        <input id="id_photos" name="photos" type="file" accept="image/*" capture="environment" multiple aria-label="Photos of your rent book">
+        <button name="action" value="photos" class="btn btn-primary" style="margin-top:10px">Read my photos</button>
       </div>
-      <div class="form-actions"><button name="action" value="preview" class="btn btn-primary">Preview</button>
-        <a class="btn btn-ghost" href="{% url 'rentals:property_list' %}">Cancel</a></div>
+      <div class="import-or"><span>or</span></div>
+      {% endif %}
+      <div class="import-option">
+        <strong>📄 Excel or CSV</strong>
+        <p class="muted small">Using <a href="{% url 'rentals:import_template' %}">our template</a>.</p>
+        <input id="id_file" name="file" type="file" accept=".xlsx,.csv,application/vnd.openxmlformats-officedocument.spreadsheetml.sheet,text/csv" aria-label="Spreadsheet">
+        <button name="action" value="preview" class="btn{% if not rent_book %} btn-primary{% endif %}" style="margin-top:10px">Preview</button>
+      </div>
+      <div class="form-actions"><a class="btn btn-ghost" href="{% url 'rentals:property_list' %}">Cancel</a></div>
     </form>
   </div>
 </section>

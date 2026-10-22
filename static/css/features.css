@@ -387,3 +387,8 @@ details.daraja[open] > summary h2::before { transform: rotate(90deg); }
 /* Home page header when logged in: "Log out" next to "Open dashboard"; just the icon on phones. */
 .site-nav form { margin: 0; }
 @media (max-width: 640px) { .site-nav .nav-logout-label { display: none; } }
+
+/* --- Import: snap your rent book or a spreadsheet --------------------------------------------------------------- */
+.import-option { border: 1px solid var(--border); border-radius: 12px; padding: 14px 16px; margin-top: 14px; }
+.import-option p { margin: 4px 0 10px; }
+.import-or { text-align: center; color: var(--muted); font-size: 0.85rem; margin: 10px 0 -4px; }
