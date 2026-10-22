@@ -7,7 +7,7 @@
   <div class="actions">
     <a class="btn" href="{% url 'maintenance:create' %}?property={{ object.pk }}&amp;next={{ request.path|urlencode }}">{% icon 'wrench' %}General repair</a>
     <a class="btn" href="{% url 'rentals:water_readings' object.pk %}">{% icon 'chart' %}Water readings</a>
-    <a class="btn" href="{% url 'rentals:property_import' %}?property={{ object.pk }}">Import from Excel</a>
+    <a class="btn" href="{% url 'rentals:property_import' %}?property={{ object.pk }}">Import tenants</a>
     <a class="btn" href="{% url 'rentals:property_rents' object.pk %}">Set rents</a>
     <a class="btn" href="{% url 'rentals:property_rent_change' object.pk %}">Change rent</a>
     <a class="btn" href="{% url 'rentals:property_update' object.pk %}">Edit property</a>

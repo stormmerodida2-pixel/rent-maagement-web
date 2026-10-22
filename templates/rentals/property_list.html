@@ -4,7 +4,7 @@
 {% block content %}
 <div class="page-header">
   <div><h1>Properties</h1><p class="sub">Your buildings and their units.</p></div>
-  <div class="actions"><a class="btn" href="{% url 'rentals:property_import' %}">{% icon 'file' %}Import from Excel</a><a class="btn btn-primary" href="{% url 'rentals:property_create' %}">{% icon 'plus' %}Add property</a></div>
+  <div class="actions"><a class="btn" href="{% url 'rentals:property_import' %}">{% icon 'file' %}Import tenants</a><a class="btn btn-primary" href="{% url 'rentals:property_create' %}">{% icon 'plus' %}Add property</a></div>
 </div>
 {% if object_list %}
 <div class="cards-grid">

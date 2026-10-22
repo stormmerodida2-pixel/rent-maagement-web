@@ -27,3 +27,4 @@ six==1.17.0
 sqlparse==0.6.0
 urllib3==2.8.0
 whitenoise==6.12.0
+anthropic==2.1.0  # Claude reads photos of rent books (Import tenants)
